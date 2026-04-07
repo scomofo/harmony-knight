@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:harmony_knight/core/constants.dart';
 import 'package:harmony_knight/models/note.dart';
 
 /// The state of a Collaborative Counterpoint Duel against the Discord Sentinel.
