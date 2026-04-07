@@ -2,17 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:harmony_knight/core/router.dart';
+import 'package:harmony_knight/engine/audio_service.dart';
 
 /// Quest of the Harmony Knight
 ///
 /// A neuro-inclusive, high-performance music theory app (Grade 0–8+)
 /// optimized for ADHD learners using multisensory engagement, user-led
 /// scaffolding, and collaborative AI mechanics.
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Force portrait orientation for consistent layout.
-  SystemChrome.setPreferredOrientations([
+  await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
@@ -24,6 +25,13 @@ void main() {
     systemNavigationBarColor: Color(0xFF0D1117),
     systemNavigationBarIconBrightness: Brightness.light,
   ));
+
+  // Initialize the audio engine (non-blocking — app works without audio).
+  try {
+    await AudioService().initialize();
+  } catch (e) {
+    debugPrint('Audio init failed (non-critical): $e');
+  }
 
   runApp(const ProviderScope(child: HarmonyKnightApp()));
 }

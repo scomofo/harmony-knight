@@ -26,8 +26,8 @@ class HomeScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Header with streak and points.
-              _buildHeader(progress.currentStreak, progress.harmonyPoints),
+              // Header with streak, points, and settings.
+              _buildHeader(context, progress.currentStreak, progress.harmonyPoints),
               const SizedBox(height: 16),
 
               // Current quest banner.
@@ -82,7 +82,7 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeader(int streak, int points) {
+  Widget _buildHeader(BuildContext context, int streak, int points) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -111,7 +111,7 @@ class HomeScreen extends ConsumerWidget {
             letterSpacing: 1.2,
           ),
         ),
-        // Harmony points.
+        // Harmony points + settings.
         Row(
           children: [
             const Icon(Icons.star, color: Color(0xFFFFD54F), size: 24),
@@ -123,6 +123,11 @@ class HomeScreen extends ConsumerWidget {
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
               ),
+            ),
+            const SizedBox(width: 12),
+            GestureDetector(
+              onTap: () => context.go('/settings'),
+              child: Icon(Icons.settings, color: Colors.white.withAlpha(120), size: 22),
             ),
           ],
         ),
