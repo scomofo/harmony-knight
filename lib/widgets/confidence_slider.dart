@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:harmony_knight/providers/scaffolding_provider.dart';
@@ -119,46 +118,6 @@ class _ConfidenceSliderState extends ConsumerState<ConfidenceSlider>
       ),
     );
   }
-}
-
-/// Animated "breathing" wrapper — uses AnimatedBuilder pattern.
-class AnimatedBuilder extends StatelessWidget {
-  final Animation<double> animation;
-  final Widget Function(BuildContext, Widget?) builder;
-  final Widget? child;
-
-  const AnimatedBuilder({
-    super.key,
-    required this.animation,
-    required this.builder,
-    this.child,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder_(
-      animation: animation,
-      builder: builder,
-      child: child,
-    );
-  }
-}
-
-class AnimatedBuilder_ extends AnimatedWidget {
-  final Widget Function(BuildContext, Widget?) builder;
-  final Widget? child;
-
-  const AnimatedBuilder_({
-    super.key,
-    required super.listenable,
-    required this.builder,
-    this.child,
-  }) : super();
-
-  Animation<double> get animation => listenable as Animation<double>;
-
-  @override
-  Widget build(BuildContext context) => builder(context, child);
 }
 
 /// Custom thumb shape that scales for the "breathing" effect.
