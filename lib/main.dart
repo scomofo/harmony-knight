@@ -12,10 +12,12 @@ import 'package:harmony_knight/engine/audio_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Force portrait orientation for consistent layout.
+  // Allow all orientations — the Row layout adapts to wide screens.
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
   ]);
 
   // Dark system UI overlay for immersive experience.
