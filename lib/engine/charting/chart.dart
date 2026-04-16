@@ -1,4 +1,4 @@
-import 'chart_note.dart';
+import '../core/chart_note.dart';
 
 /// A complete precomputed chart for a song/exercise.
 ///

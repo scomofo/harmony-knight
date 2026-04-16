@@ -73,7 +73,9 @@ class PersistenceService {
       if (!await file.exists()) return [];
       final contents = await file.readAsString();
       final list = jsonDecode(contents) as List;
-      return list.map((j) => SessionRecord.fromJson(j)).toList();
+      return list
+          .map((j) => SessionRecord.fromJson(Map<String, dynamic>.from(j as Map)))
+          .toList();
     } catch (e) {
       return [];
     }
@@ -104,7 +106,9 @@ class PersistenceService {
       if (!await file.exists()) return [];
       final contents = await file.readAsString();
       final list = jsonDecode(contents) as List;
-      return list.map((j) => EngagementPoint.fromJson(j)).toList();
+      return list
+          .map((j) => EngagementPoint.fromJson(Map<String, dynamic>.from(j as Map)))
+          .toList();
     } catch (e) {
       return [];
     }
@@ -177,12 +181,12 @@ class SessionRecord {
       };
 
   factory SessionRecord.fromJson(Map<String, dynamic> j) => SessionRecord(
-        startedAt: DateTime.parse(j['startedAt']),
-        durationSeconds: j['durationSeconds'],
-        notesPlayed: j['notesPlayed'],
-        correctNotes: j['correctNotes'],
-        gradeLevel: j['gradeLevel'],
-        exerciseType: j['exerciseType'],
+        startedAt: DateTime.parse(j['startedAt'] as String),
+        durationSeconds: j['durationSeconds'] as int,
+        notesPlayed: j['notesPlayed'] as int,
+        correctNotes: j['correctNotes'] as int,
+        gradeLevel: j['gradeLevel'] as int,
+        exerciseType: j['exerciseType'] as String,
         confidenceAtStart: (j['confidenceAtStart'] as num).toDouble(),
         confidenceAtEnd: (j['confidenceAtEnd'] as num).toDouble(),
       );
@@ -216,11 +220,11 @@ class EngagementPoint {
       };
 
   factory EngagementPoint.fromJson(Map<String, dynamic> j) => EngagementPoint(
-        timestamp: DateTime.parse(j['timestamp']),
-        topic: j['topic'],
+        timestamp: DateTime.parse(j['timestamp'] as String),
+        topic: j['topic'] as String,
         focusDuration: (j['focusDuration'] as num).toDouble(),
-        wasOffTask: j['wasOffTask'] ?? false,
-        wasHyperfocused: j['wasHyperfocused'] ?? false,
-        errorsInWindow: j['errorsInWindow'] ?? 0,
+        wasOffTask: j['wasOffTask'] as bool? ?? false,
+        wasHyperfocused: j['wasHyperfocused'] as bool? ?? false,
+        errorsInWindow: j['errorsInWindow'] as int? ?? 0,
       );
 }

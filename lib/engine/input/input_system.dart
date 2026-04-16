@@ -73,7 +73,7 @@ class InputSystem {
     await _frameCtrl.close();
   }
 
-  void _onAudio(dynamic buffer) {
+  Future<void> _onAudio(dynamic buffer) async {
     // [buffer] is a list of Float32 samples (or List<double>).
     final List<double> samples = _toDoubleList(buffer);
     if (samples.isEmpty) return;
@@ -87,7 +87,7 @@ class InputSystem {
 
     // Run pitch detection. Returns (pitch, probability) or similar.
     // Package API: getPitch(List<double>) -> PitchDetectorResult
-    final result = _detector.getPitch(samples);
+    final result = await _detector.getPitchFromFloatBuffer(samples);
     final frequency = result.pitched ? result.pitch : null;
     final confidence = result.pitched ? result.probability : 0.0;
 

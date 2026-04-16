@@ -46,8 +46,7 @@ class PitchDetector {
     if (maxLag >= bufferSize) return null;
 
     // Compute the normalized autocorrelation (NSDF).
-    double bestCorrelation = 0;
-    int bestLag = 0;
+    final correlations = <double>[];
 
     for (int lag = minLag; lag <= maxLag && lag < bufferSize ~/ 2; lag++) {
       double correlation = 0;
@@ -63,10 +62,37 @@ class PitchDetector {
 
       final energy = sqrt(energy1 * energy2);
       if (energy > 0) {
-        final normalizedCorrelation = correlation / energy;
-        if (normalizedCorrelation > bestCorrelation) {
-          bestCorrelation = normalizedCorrelation;
-          bestLag = lag;
+        correlations.add(correlation / energy);
+      } else {
+        correlations.add(0);
+      }
+    }
+
+    double bestCorrelation = 0;
+    int bestLag = 0;
+
+    // Prefer the first strong local maximum to avoid locking onto octave-down
+    // harmonics later in the autocorrelation curve.
+    for (int i = 1; i < correlations.length - 1; i++) {
+      final current = correlations[i];
+      if (current < confidenceThreshold) continue;
+
+      final isLocalMaximum =
+          current >= correlations[i - 1] && current >= correlations[i + 1];
+      if (isLocalMaximum) {
+        bestCorrelation = current;
+        bestLag = minLag + i;
+        break;
+      }
+    }
+
+    // Fall back to the global maximum when no clear local peak exists.
+    if (bestLag == 0) {
+      for (int i = 0; i < correlations.length; i++) {
+        final current = correlations[i];
+        if (current > bestCorrelation) {
+          bestCorrelation = current;
+          bestLag = minLag + i;
         }
       }
     }
