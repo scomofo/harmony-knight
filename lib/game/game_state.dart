@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:harmony_knight/engine/duel_engine.dart';
 import 'package:harmony_knight/game/challenge.dart';
 import 'package:harmony_knight/game/evaluation_engine.dart';
+import 'package:harmony_knight/game/insight_tracker.dart';
 import 'package:harmony_knight/game/player_progress_session.dart';
 import 'package:harmony_knight/game/sentinel.dart';
 import 'package:harmony_knight/game/session_stats.dart';
@@ -9,49 +10,66 @@ import 'package:harmony_knight/models/note.dart';
 
 export 'package:harmony_knight/game/player_progress_session.dart';
 
-/// Central game state that wires input -> evaluation -> feedback -> progression.
+/// Central game state: context -> question -> decision -> validation -> explanation.
 class GameState extends ChangeNotifier {
   final DuelEngine duel;
   final EvaluationEngine evaluator;
   final Sentinel sentinel;
   final SessionStats stats = SessionStats();
+  final InsightTracker insights = InsightTracker();
 
   late Challenge currentChallenge;
   final PlayerProgress progress = PlayerProgress.initial();
 
-  /// Primary feedback line (context-aware musical coaching).
+  /// Primary explanation line.
   String lastFeedback = '';
 
-  /// Secondary coaching hint (what to try next).
+  /// Secondary coaching hint.
   String lastHint = '';
 
-  /// The most recent harmony meter value (0.0 to 1.0).
-  double harmonyValue = 0.0;
+  /// Stability meter (0.0 to 1.0).
+  double stabilityValue = 0.0;
 
-  /// The most recent evaluation result (for UI rendering).
+  /// The most recent evaluation result.
   EvaluationResult? lastResult;
+
+  /// Think-mode: when true, user has answered and is reading the explanation.
+  /// The Next button advances to the next question.
+  bool awaitingNext = false;
 
   GameState({
     required this.duel,
     required this.evaluator,
     required this.sentinel,
   }) {
-    currentChallenge = sentinel.next(progress);
+    currentChallenge = sentinel.next(progress, insights);
+  }
+
+  /// The current curriculum concept name.
+  String get currentConcept => sentinel.currentNode(progress).concept;
+
+  /// Progress within the current curriculum node (0.0 to 1.0).
+  double get nodeProgress {
+    final node = sentinel.currentNode(progress);
+    return (progress.nodeScore / node.requiredScore).clamp(0.0, 1.0);
   }
 
   void onPlayerAction(Note note) {
-    final result = evaluator.evaluate(note, currentChallenge.context);
+    // Think-mode: ignore input while reading explanation.
+    if (awaitingNext) return;
+
+    final result = evaluator.evaluate(note, currentChallenge.context, currentChallenge.type);
     lastResult = result;
 
-    // Update harmony meter.
+    // Update stability meter.
     if (result.correct) {
-      harmonyValue = (harmonyValue + result.quality * 0.1).clamp(0.0, 1.0);
+      stabilityValue = (stabilityValue + result.quality * 0.1).clamp(0.0, 1.0);
     } else {
-      harmonyValue = (harmonyValue - 0.05).clamp(0.0, 1.0);
+      stabilityValue = (stabilityValue - 0.05).clamp(0.0, 1.0);
     }
 
-    // Track per-challenge accuracy for adaptive selection.
-    final challengeIdx = sentinel.lastChallengeIndex ?? 0;
+    // Track stats.
+    final challengeIdx = progress.currentNodeIndex;
     if (result.correct) {
       progress.recordHit(challengeIdx);
     } else {
@@ -60,100 +78,139 @@ class GameState extends ChangeNotifier {
 
     progress.addScore(result.quality);
     stats.record(result.correct);
+    insights.record(currentChallenge.type, result.correct);
 
-    // Build context-aware feedback.
-    final fb = _buildFeedback(result);
+    // Build explanation.
+    final fb = _buildExplanation(result);
     lastFeedback = fb.$1;
     lastHint = fb.$2;
 
-    if (result.quality >= 0.7) {
-      currentChallenge = sentinel.next(progress);
-    }
+    // Enter think-mode: user reads explanation, then presses Next.
+    awaitingNext = true;
 
     notifyListeners();
   }
 
-  /// Returns (feedback, hint) using musical context from the evaluation.
-  (String, String) _buildFeedback(EvaluationResult result) {
+  /// Advance to the next question (called from Next button).
+  void advanceToNext() {
+    if (!awaitingNext) return;
+
+    awaitingNext = false;
+    currentChallenge = sentinel.next(progress, insights);
+    lastResult = null;
+
+    notifyListeners();
+  }
+
+  /// Returns (explanation, hint) using full musical context.
+  (String, String) _buildExplanation(EvaluationResult result) {
     if (!result.correct) {
-      return _buildMissFeedback(result);
+      return _buildMissExplanation(result);
     }
+
+    final type = currentChallenge.type;
 
     switch (result.role) {
       case NoteRole.root:
         return (
-          '${result.playedNoteName} is the root of ${result.chordName} \u2014 very stable',
-          progress.streak >= 3
-              ? 'You\'re on a roll \u2014 ${progress.streak} in a row'
-              : 'Roots anchor the harmony',
+          '${result.playedNoteName} is the root of ${result.chordName}. '
+          'The root is the most stable note \u2014 it anchors the chord.',
+          _streakHint() ?? 'Roots define what chord you\'re hearing',
         );
       case NoteRole.fifth:
+        final typeHint = type == QuestionType.resolution
+            ? 'For resolution, the root (${result.rootName}) is even more stable'
+            : 'The 5th supports the root without adding color';
         return (
-          '${result.playedNoteName} is the 5th of ${result.chordName} \u2014 strong',
-          'Try the root (${result.rootName}) for maximum stability',
+          '${result.playedNoteName} is the 5th of ${result.chordName}. '
+          'The perfect 5th is strong and open-sounding.',
+          typeHint,
         );
       case NoteRole.third:
         return (
-          '${result.playedNoteName} is the 3rd of ${result.chordName} \u2014 good color',
-          'The 3rd defines major vs. minor character',
+          '${result.playedNoteName} is the 3rd of ${result.chordName}. '
+          'The 3rd determines whether the chord sounds major or minor.',
+          'Major 3rd = bright, minor 3rd = dark',
         );
       case NoteRole.nonChord:
-        // Shouldn't reach here if correct, but handle gracefully.
         return ('That works', '');
     }
   }
 
-  (String, String) _buildMissFeedback(EvaluationResult result) {
+  (String, String) _buildMissExplanation(EvaluationResult result) {
     final interval = result.intervalFromRoot;
     final played = result.playedNoteName;
     final chord = result.chordName;
     final root = result.rootName;
+    final ctx = currentChallenge.context;
 
-    // Contextual coaching based on what they actually played.
+    // Check if the note is in the scale but not in the chord.
+    final inScale = ctx.scalePitchClasses.contains(
+        result.playedNoteName.length == 1
+            ? _nameToPC(result.playedNoteName)
+            : _nameToPC(result.playedNoteName));
+
     if (interval == 1 || interval == 11) {
-      // Half step away from root — very close.
       return (
-        '$played is a half step from $root \u2014 close but tense',
-        'Slide ${interval == 1 ? "down" : "up"} one key to $root',
+        '$played is a half step from $root \u2014 this creates strong tension. '
+        'Half steps want to resolve to the nearest chord tone.',
+        'Move ${interval == 1 ? "down" : "up"} one step to $root',
       );
     }
 
     if (interval == 6) {
-      // Tritone — maximum tension.
       return (
-        '$played creates a tritone against $root \u2014 maximum tension',
-        'Try a chord tone from $chord instead',
+        '$played creates a tritone against $root. '
+        'The tritone is the most unstable interval in Western music.',
+        'It naturally resolves inward or outward to a consonance',
+      );
+    }
+
+    if (inScale && currentChallenge.type == QuestionType.chordTone) {
+      return (
+        '$played is in the key of ${ctx.key}, but not in the $chord chord. '
+        'Scale tones outside the chord create color and tension.',
+        'The chord tones of $chord are ${_chordToneNames()}',
       );
     }
 
     if (interval == 2 || interval == 10) {
-      // Whole step — passing tone territory.
       return (
-        '$played is a step away \u2014 sounds like a passing tone',
-        'Move to $root to resolve the tension',
+        '$played is a whole step from $root \u2014 it sounds like a passing tone. '
+        'Passing tones connect chord tones but don\'t rest on them.',
+        'Resolve to $root for stability',
       );
     }
 
-    if (interval == 5) {
-      // Perfect 4th — ambiguous, not dissonant but not in chord.
-      return (
-        '$played is a 4th above $root \u2014 not wrong, but not in the chord',
-        'The chord tones of $chord will sound more grounded',
-      );
-    }
-
-    // General miss.
     return (
-      '$played doesn\'t belong to $chord',
-      'The chord tones are ${_chordToneNames(result)}',
+      '$played is outside the $chord chord. '
+      'The chord tones are ${_chordToneNames()}.',
+      'Chord tones sound stable because they belong to the harmony',
     );
   }
 
-  String _chordToneNames(EvaluationResult result) {
+  String? _streakHint() {
+    if (progress.streak >= 5) {
+      return '${progress.streak} correct in a row \u2014 strong understanding';
+    }
+    if (progress.streak >= 3) {
+      return '${progress.streak} in a row \u2014 building confidence';
+    }
+    return null;
+  }
+
+  String _chordToneNames() {
     const names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-    // Get the target pitch classes from the current challenge.
     return currentChallenge.context.targetPitchClasses
         .map((pc) => names[pc])
         .join(', ');
+  }
+
+  int _nameToPC(String name) {
+    const map = {
+      'C': 0, 'C#': 1, 'D': 2, 'D#': 3, 'E': 4, 'F': 5,
+      'F#': 6, 'G': 7, 'G#': 8, 'A': 9, 'A#': 10, 'B': 11,
+    };
+    return map[name] ?? 0;
   }
 }

@@ -13,7 +13,7 @@ class HarmonyBar extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Harmony',
+          'Stability',
           style: TextStyle(
             fontSize: 12,
             color: Colors.white.withAlpha(150),

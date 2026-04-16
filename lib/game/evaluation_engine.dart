@@ -11,25 +11,12 @@ enum NoteRole {
 
 /// Result of evaluating a player's note against a challenge.
 class EvaluationResult {
-  /// Whether the note is harmonically acceptable.
   final bool correct;
-
-  /// Quality score from 0.0 (barely acceptable) to 1.0 (ideal).
   final double quality;
-
-  /// The note name the player actually played (e.g. "E").
   final String playedNoteName;
-
-  /// The role this note plays relative to the chord.
   final NoteRole role;
-
-  /// The chord name from the challenge (e.g. "C major").
   final String chordName;
-
-  /// The root note name of the chord (e.g. "C").
   final String rootName;
-
-  /// The interval in semitones from the root to the played note (mod 12).
   final int intervalFromRoot;
 
   const EvaluationResult({
@@ -43,57 +30,137 @@ class EvaluationResult {
   });
 }
 
-/// Evaluates player input against the current challenge context.
+/// Evaluates player input against the current challenge's musical context.
+///
+/// Evaluation is type-aware:
+///   - chordTone: chord tones are correct
+///   - scaleTone: any scale note is correct, chord tones score higher
+///   - resolution: only the root is fully correct
+///   - interval: the 5th is the target (for "choose the 5th" questions)
 class EvaluationEngine {
   static const _noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
-  /// Evaluate a note against the challenge context.
-  EvaluationResult evaluate(Note note, ChallengeContext context) {
+  /// Evaluate a note against the musical context and question type.
+  EvaluationResult evaluate(Note note, MusicalContext context, [QuestionType? type]) {
     final pc = note.midi % 12;
-    final isTarget = context.targetPitchClasses.contains(pc);
     final intervalFromRoot = (pc - context.rootPitchClass + 12) % 12;
     final role = _classifyRole(pc, context);
+    final noteName = _noteNames[pc];
+    final rootName = _noteNames[context.rootPitchClass];
 
+    switch (type ?? QuestionType.chordTone) {
+      case QuestionType.scaleTone:
+        return _evaluateScaleTone(pc, role, noteName, context, rootName, intervalFromRoot);
+      case QuestionType.resolution:
+        return _evaluateResolution(pc, role, noteName, context, rootName, intervalFromRoot);
+      case QuestionType.interval:
+        return _evaluateInterval(pc, role, noteName, context, rootName, intervalFromRoot);
+      case QuestionType.chordTone:
+        return _evaluateChordTone(pc, role, noteName, context, rootName, intervalFromRoot);
+    }
+  }
+
+  /// Chord tone: only chord tones are correct.
+  EvaluationResult _evaluateChordTone(
+      int pc, NoteRole role, String noteName,
+      MusicalContext ctx, String rootName, int interval) {
+    final isTarget = ctx.targetPitchClasses.contains(pc);
     if (!isTarget) {
       return EvaluationResult(
-        correct: false,
-        quality: 0.0,
-        playedNoteName: _noteNames[pc],
-        role: role,
-        chordName: context.chordName,
-        rootName: _noteNames[context.rootPitchClass],
-        intervalFromRoot: intervalFromRoot,
+        correct: false, quality: 0.0, playedNoteName: noteName,
+        role: role, chordName: ctx.chordName, rootName: rootName,
+        intervalFromRoot: interval,
       );
     }
-
-    final quality = role == NoteRole.root ? 1.0 : 0.7;
-
     return EvaluationResult(
-      correct: true,
-      quality: quality,
-      playedNoteName: _noteNames[pc],
-      role: role,
-      chordName: context.chordName,
-      rootName: _noteNames[context.rootPitchClass],
-      intervalFromRoot: intervalFromRoot,
+      correct: true, quality: role == NoteRole.root ? 1.0 : 0.7,
+      playedNoteName: noteName, role: role, chordName: ctx.chordName,
+      rootName: rootName, intervalFromRoot: interval,
     );
   }
 
-  /// Determine the musical role of a pitch class relative to the chord.
-  NoteRole _classifyRole(int pc, ChallengeContext context) {
-    if (pc == context.rootPitchClass) return NoteRole.root;
+  /// Scale tone: any diatonic note is correct, chord tones score higher.
+  EvaluationResult _evaluateScaleTone(
+      int pc, NoteRole role, String noteName,
+      MusicalContext ctx, String rootName, int interval) {
+    final inScale = ctx.scalePitchClasses.contains(pc);
+    if (!inScale) {
+      return EvaluationResult(
+        correct: false, quality: 0.0, playedNoteName: noteName,
+        role: role, chordName: ctx.chordName, rootName: rootName,
+        intervalFromRoot: interval,
+      );
+    }
+    // Chord tones score higher than non-chord scale tones.
+    final inChord = ctx.targetPitchClasses.contains(pc);
+    final quality = inChord ? 1.0 : 0.7;
+    return EvaluationResult(
+      correct: true, quality: quality, playedNoteName: noteName,
+      role: role, chordName: ctx.chordName, rootName: rootName,
+      intervalFromRoot: interval,
+    );
+  }
 
+  /// Resolution: only the root is fully correct. Other chord tones partially.
+  EvaluationResult _evaluateResolution(
+      int pc, NoteRole role, String noteName,
+      MusicalContext ctx, String rootName, int interval) {
+    if (pc == ctx.rootPitchClass) {
+      return EvaluationResult(
+        correct: true, quality: 1.0, playedNoteName: noteName,
+        role: NoteRole.root, chordName: ctx.chordName, rootName: rootName,
+        intervalFromRoot: interval,
+      );
+    }
+    // Other chord tones are acceptable but not ideal.
+    if (ctx.targetPitchClasses.contains(pc)) {
+      return EvaluationResult(
+        correct: true, quality: 0.5, playedNoteName: noteName,
+        role: role, chordName: ctx.chordName, rootName: rootName,
+        intervalFromRoot: interval,
+      );
+    }
+    return EvaluationResult(
+      correct: false, quality: 0.0, playedNoteName: noteName,
+      role: role, chordName: ctx.chordName, rootName: rootName,
+      intervalFromRoot: interval,
+    );
+  }
+
+  /// Interval: for "choose the 5th" — the 5th is correct, root is partial.
+  EvaluationResult _evaluateInterval(
+      int pc, NoteRole role, String noteName,
+      MusicalContext ctx, String rootName, int interval) {
+    if (interval == 7) {
+      // Perfect 5th — correct answer.
+      return EvaluationResult(
+        correct: true, quality: 1.0, playedNoteName: noteName,
+        role: NoteRole.fifth, chordName: ctx.chordName, rootName: rootName,
+        intervalFromRoot: interval,
+      );
+    }
+    if (ctx.targetPitchClasses.contains(pc)) {
+      // Other chord tone — partial credit.
+      return EvaluationResult(
+        correct: false, quality: 0.3, playedNoteName: noteName,
+        role: role, chordName: ctx.chordName, rootName: rootName,
+        intervalFromRoot: interval,
+      );
+    }
+    return EvaluationResult(
+      correct: false, quality: 0.0, playedNoteName: noteName,
+      role: role, chordName: ctx.chordName, rootName: rootName,
+      intervalFromRoot: interval,
+    );
+  }
+
+  NoteRole _classifyRole(int pc, MusicalContext context) {
+    if (pc == context.rootPitchClass) return NoteRole.root;
     if (!context.targetPitchClasses.contains(pc)) return NoteRole.nonChord;
 
     final interval = (pc - context.rootPitchClass + 12) % 12;
-
-    // 3 or 4 semitones = minor or major 3rd
     if (interval == 3 || interval == 4) return NoteRole.third;
-
-    // 7 semitones = perfect 5th
     if (interval == 7) return NoteRole.fifth;
-
-    // Other chord tone (e.g. in extended chords)
-    return NoteRole.third; // default to "third" for other chord members
+    return NoteRole.third;
   }
 }

@@ -3,10 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:harmony_knight/screens/game_screen.dart';
 import 'package:harmony_knight/ui/theme/app_theme.dart';
 
-/// Redesigned onboarding: 3 steps, forced interaction, guaranteed success.
+/// Theory-first onboarding: 3 steps.
 ///
-/// Step 1: "Play notes. Learn what works." (minimal text)
-/// Step 2: Force interaction — user must press a key to proceed.
+/// Step 1: "Understand music. One concept at a time."
+/// Step 2: Force interaction — user must choose a note to proceed.
 /// Step 3: Guarantee success — C, E, or G always succeeds.
 ///
 /// Transitions smoothly into the game screen with a fade.
@@ -128,7 +128,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     ),
                   ),
                   child: Text(
-                    _step == 2 ? 'Start Playing' : 'Next',
+                    _step == 2 ? 'Start Learning' : 'Next',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -188,7 +188,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         ),
         const SizedBox(height: 32),
         const Text(
-          'Play notes.\nLearn what works.',
+          'Understand music.\nOne concept at a time.',
           textAlign: TextAlign.center,
           style: TextStyle(
             color: Colors.white,
@@ -199,7 +199,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         ),
         const SizedBox(height: 16),
         Text(
-          'No timers. No wrong answers.\nJust explore and discover.',
+          'Read the context. Think. Choose.\nLearn why it works.',
           textAlign: TextAlign.center,
           style: TextStyle(
             color: Colors.white.withAlpha(150),
@@ -232,7 +232,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         ),
         const SizedBox(height: 32),
         Text(
-          _interacted ? 'You got it!' : 'Press any key to try it',
+          _interacted ? 'You got it!' : 'Choose any note to try it',
           textAlign: TextAlign.center,
           style: const TextStyle(
             color: Colors.white,
@@ -288,7 +288,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         ),
         const SizedBox(height: 32),
         const Text(
-          'Find a chord tone',
+          'Which notes are stable\nover C major?',
           textAlign: TextAlign.center,
           style: TextStyle(
             color: Colors.white,
@@ -299,7 +299,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         ),
         const SizedBox(height: 12),
         Text(
-          'Try C, E, or G — they belong to the C major chord',
+          'The chord tones are C, E, and G',
           textAlign: TextAlign.center,
           style: TextStyle(
             color: Colors.white.withAlpha(150),
@@ -341,7 +341,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         // Success feedback.
         if (_success)
           const Text(
-            'Nice \u2014 you found a chord tone',
+            'Correct \u2014 that\'s a chord tone of C major',
             style: TextStyle(
               color: AppTheme.success,
               fontSize: 16,

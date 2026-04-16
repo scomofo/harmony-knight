@@ -1,136 +1,112 @@
 import 'dart:math';
 import 'package:harmony_knight/game/challenge.dart';
+import 'package:harmony_knight/game/challenge_factory.dart';
+import 'package:harmony_knight/game/curriculum_node.dart';
+import 'package:harmony_knight/game/insight_tracker.dart';
 import 'package:harmony_knight/game/player_progress_session.dart';
 
-/// The Discord Sentinel — adaptive challenge selection.
+/// The Discord Sentinel — curriculum-driven adaptive challenge selection.
 ///
-/// Selection strategy:
-///   1. If the player is on a miss streak (3+), repeat last failed challenge.
-///   2. If on a hot streak (5+), introduce the least-attempted challenge.
-///   3. Otherwise, pick the challenge with the lowest accuracy,
-///      weighted toward ones with fewer attempts (explore vs. exploit).
-///   4. Never repeat the same challenge twice in a row (unless forced by rule 1).
+/// Walks through the theory curriculum, generating questions appropriate
+/// to the current node. Advances when the player meets the score threshold.
 class Sentinel {
-  static const challenges = [
-    Challenge(
-      prompt: 'Play a note from the C major chord (C, E, or G)',
-      context: ChallengeContext(
-        targetPitchClasses: [0, 4, 7], // C, E, G
-        rootPitchClass: 0,
-        chordName: 'C major',
-      ),
-    ),
-    Challenge(
-      prompt: 'Play a note from the G major chord (G, B, or D)',
-      context: ChallengeContext(
-        targetPitchClasses: [7, 11, 2], // G, B, D
-        rootPitchClass: 7,
-        chordName: 'G major',
-      ),
-    ),
-    Challenge(
-      prompt: 'Play a note from the F major chord (F, A, or C)',
-      context: ChallengeContext(
-        targetPitchClasses: [5, 9, 0], // F, A, C
-        rootPitchClass: 5,
-        chordName: 'F major',
-      ),
-    ),
-    Challenge(
-      prompt: 'Play a note from the A minor chord (A, C, or E)',
-      context: ChallengeContext(
-        targetPitchClasses: [9, 0, 4], // A, C, E
-        rootPitchClass: 9,
-        chordName: 'A minor',
-      ),
-    ),
-    Challenge(
-      prompt: 'Play a note from the D minor chord (D, F, or A)',
-      context: ChallengeContext(
-        targetPitchClasses: [2, 5, 9], // D, F, A
-        rootPitchClass: 2,
-        chordName: 'D minor',
-      ),
-    ),
-    Challenge(
-      prompt: 'Play a note from the E minor chord (E, G, or B)',
-      context: ChallengeContext(
-        targetPitchClasses: [4, 7, 11], // E, G, B
-        rootPitchClass: 4,
-        chordName: 'E minor',
-      ),
-    ),
-  ];
-
+  final List<CurriculumNode> curriculum;
   final Random _rng = Random();
-  int? _lastIndex;
 
-  /// Select the next challenge based on player patterns.
-  Challenge next(PlayerProgress progress) {
-    final picked = _select(progress);
-    _lastIndex = picked;
-    return challenges[picked];
-  }
+  Sentinel([List<CurriculumNode>? curriculum])
+      : curriculum = curriculum ?? theoryCurriculum;
 
-  /// Returns the index of the challenge that was just served.
-  int? get lastChallengeIndex => _lastIndex;
-
-  int _select(PlayerProgress progress) {
-    // Rule 1: struggling — repeat what they failed (unless it's the same).
-    if (progress.missStreak >= 3 && _lastIndex != null) {
-      return _lastIndex!;
+  /// Select the next challenge based on curriculum position, progress,
+  /// and insight into the player's weak areas.
+  Challenge next(PlayerProgress progress, [InsightTracker? insights]) {
+    // Check if we should advance.
+    final node = currentNode(progress);
+    if (progress.nodeScore >= node.requiredScore) {
+      progress.advanceNode(curriculum);
     }
 
-    // Rule 2: hot streak — introduce something unexplored.
-    if (progress.streak >= 5) {
-      return _leastAttempted(progress);
+    final current = currentNode(progress);
+
+    // Prefer the weakest question type if it's in this node's types.
+    QuestionType type;
+    final weak = insights?.weakestType();
+    if (weak != null && current.types.contains(weak)) {
+      type = weak;
+    } else {
+      type = current.types[_rng.nextInt(current.types.length)];
     }
 
-    // Rule 3: pick weakest challenge, weighted by exposure.
-    return _weakest(progress);
+    // Pick a random key from this node's keys.
+    final keyName = current.keys[_rng.nextInt(current.keys.length)];
+
+    final context = _buildContext(keyName);
+    return ChallengeFactory.build(type, context);
   }
 
-  /// Challenge with fewest total attempts (excluding last to avoid repeats).
-  int _leastAttempted(PlayerProgress progress) {
-    int bestIdx = 0;
-    int bestAttempts = 999999;
-
-    for (int i = 0; i < challenges.length; i++) {
-      if (i == _lastIndex) continue;
-      final attempts = progress.attemptsFor(i);
-      if (attempts < bestAttempts) {
-        bestAttempts = attempts;
-        bestIdx = i;
-      }
-    }
-    return bestIdx;
+  /// The current curriculum node the player is on.
+  CurriculumNode currentNode(PlayerProgress progress) {
+    final idx = progress.currentNodeIndex.clamp(0, curriculum.length - 1);
+    return curriculum[idx];
   }
 
-  /// Challenge with lowest accuracy. Ties broken by fewer attempts.
-  /// Unattempted challenges get a synthetic low accuracy to encourage exploration.
-  int _weakest(PlayerProgress progress) {
-    int bestIdx = -1;
-    double bestScore = double.infinity;
+  /// Build a MusicalContext from a key name (e.g. "C", "G", "Am").
+  MusicalContext _buildContext(String keyName) {
+    final data = _keyData[keyName];
+    if (data != null) return data;
 
-    for (int i = 0; i < challenges.length; i++) {
-      if (i == _lastIndex) continue;
-
-      final acc = progress.accuracyFor(i);
-      final attempts = progress.attemptsFor(i);
-
-      // Unattempted = accuracy 0.0, attempted = real accuracy.
-      // Subtract a small exploration bonus for low-attempt challenges.
-      final score = (acc ?? 0.0) - (0.1 / (attempts + 1));
-
-      if (score < bestScore) {
-        bestScore = score;
-        bestIdx = i;
-      }
-    }
-
-    // Fallback if everything was skipped (only one challenge).
-    if (bestIdx < 0) bestIdx = _rng.nextInt(challenges.length);
-
-    return bestIdx;
+    // Fallback to C major.
+    return _keyData['C']!;
   }
+
+  /// Pre-built musical contexts for each supported key.
+  static final _keyData = {
+    'C': const MusicalContext(
+      key: 'C Major',
+      chordName: 'C major',
+      targetPitchClasses: [0, 4, 7],     // C, E, G
+      rootPitchClass: 0,
+      scaleNotes: 'C D E F G A B',
+      scalePitchClasses: [0, 2, 4, 5, 7, 9, 11],
+    ),
+    'G': const MusicalContext(
+      key: 'G Major',
+      chordName: 'G major',
+      targetPitchClasses: [7, 11, 2],    // G, B, D
+      rootPitchClass: 7,
+      scaleNotes: 'G A B C D E F#',
+      scalePitchClasses: [7, 9, 11, 0, 2, 4, 6],
+    ),
+    'F': const MusicalContext(
+      key: 'F Major',
+      chordName: 'F major',
+      targetPitchClasses: [5, 9, 0],     // F, A, C
+      rootPitchClass: 5,
+      scaleNotes: 'F G A Bb C D E',
+      scalePitchClasses: [5, 7, 9, 10, 0, 2, 4],
+    ),
+    'Am': const MusicalContext(
+      key: 'A Minor',
+      chordName: 'A minor',
+      targetPitchClasses: [9, 0, 4],     // A, C, E
+      rootPitchClass: 9,
+      scaleNotes: 'A B C D E F G',
+      scalePitchClasses: [9, 11, 0, 2, 4, 5, 7],
+    ),
+    'Dm': const MusicalContext(
+      key: 'D Minor',
+      chordName: 'D minor',
+      targetPitchClasses: [2, 5, 9],     // D, F, A
+      rootPitchClass: 2,
+      scaleNotes: 'D E F G A Bb C',
+      scalePitchClasses: [2, 4, 5, 7, 9, 10, 0],
+    ),
+    'Em': const MusicalContext(
+      key: 'E Minor',
+      chordName: 'E minor',
+      targetPitchClasses: [4, 7, 11],    // E, G, B
+      rootPitchClass: 4,
+      scaleNotes: 'E F# G A B C D',
+      scalePitchClasses: [4, 6, 7, 9, 11, 0, 2],
+    ),
+  };
 }
