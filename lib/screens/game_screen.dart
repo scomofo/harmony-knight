@@ -126,7 +126,7 @@ class _GameScreenState extends State<GameScreen> {
         const SizedBox(height: 32),
 
         // Feedback banner.
-        FeedbackBanner(game.lastFeedback),
+        FeedbackBanner(game.lastFeedback, hint: game.lastHint),
 
         const Spacer(),
 

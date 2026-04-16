@@ -1,20 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:harmony_knight/ui/theme/app_theme.dart';
 
-/// Animated feedback banner that highlights positive vs. negative results.
+/// Animated feedback banner showing context-aware musical coaching.
 ///
-/// Uses subtle color shifts and smooth animation to make feedback
-/// noticeable without being jarring.
+/// Displays primary feedback (what happened) and a secondary hint
+/// (what to try next). Color-coded by positive/negative result.
 class FeedbackBanner extends StatelessWidget {
   final String text;
+  final String hint;
 
-  const FeedbackBanner(this.text, {super.key});
+  const FeedbackBanner(this.text, {this.hint = '', super.key});
 
   @override
   Widget build(BuildContext context) {
     if (text.isEmpty) return const SizedBox.shrink();
 
-    final isPositive = text.contains('Strong') || text.contains('Good');
+    final isPositive = !text.contains('doesn\'t') &&
+        !text.contains('tense') &&
+        !text.contains('tension') &&
+        !text.contains('not in the chord') &&
+        !text.contains('passing tone');
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 150),
@@ -31,6 +36,7 @@ class FeedbackBanner extends StatelessWidget {
         ),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(
             isPositive ? Icons.check_circle_outline : Icons.info_outline,
@@ -39,12 +45,28 @@ class FeedbackBanner extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              text,
-              style: TextStyle(
-                fontSize: 16,
-                color: isPositive ? AppTheme.success : AppTheme.error,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  text,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: isPositive ? AppTheme.success : AppTheme.error,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                if (hint.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    hint,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.white.withAlpha(150),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         ],
