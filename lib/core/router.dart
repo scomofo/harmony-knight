@@ -7,13 +7,14 @@ import 'package:harmony_knight/screens/circle_of_fifths_screen.dart';
 import 'package:harmony_knight/screens/heatmap_screen.dart';
 import 'package:harmony_knight/screens/settings_screen.dart';
 import 'package:harmony_knight/screens/onboarding_screen.dart';
+import 'package:harmony_knight/screens/game_screen.dart';
 
 /// App router with simple, direct navigation paths.
 ///
-/// Designed for low-friction entry: Home → Practice/Duel/Curriculum.
+/// Designed for low-friction entry: Onboarding → Game → Home/Practice/Duel.
 /// No deep nesting, no hidden menus — the 10-Second Rule applies.
 final appRouter = GoRouter(
-  initialLocation: '/',
+  initialLocation: '/onboarding',
   routes: [
     GoRoute(
       path: '/',
@@ -22,6 +23,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/onboarding',
       builder: (context, state) => const OnboardingScreen(),
+    ),
+    GoRoute(
+      path: '/game',
+      builder: (context, state) => createGameScreen(),
     ),
     GoRoute(
       path: '/practice',
