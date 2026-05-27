@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'dart:convert';
 import 'package:harmony_knight/models/quest.dart';
 import 'package:harmony_knight/providers/quest_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -99,6 +100,65 @@ void main() {
 
     expect(notifier.state.recommendedQuest.progressCount, 2);
     expect(notifier.state.dailyQuests.first.progressCount, 2);
+  });
+
+  test('QuestNotifier restores saved quests from the same day', () async {
+    final prefs = await SharedPreferences.getInstance();
+    final today = DateTime(2026, 5, 27, 9);
+    final saved = QuestNotifier.initialState(now: today).copyWith(
+      recommendedQuest:
+          QuestNotifier.initialState(now: today).recommendedQuest.increment(),
+      dailyQuests: [
+        QuestNotifier.initialState(now: today).dailyQuests[0].increment(),
+        QuestNotifier.initialState(now: today).dailyQuests[1],
+        QuestNotifier.initialState(now: today).dailyQuests[2],
+      ],
+    );
+    await prefs.setString(QuestNotifier.storageKey, saved.toJsonString());
+
+    final notifier = QuestNotifier(prefs: prefs, now: () => today);
+
+    expect(notifier.state.generatedForDay, '2026-05-27');
+    expect(notifier.state.dailyQuests.first.progressCount, 1);
+  });
+
+  test('QuestNotifier resets saved quests from a previous day', () async {
+    final prefs = await SharedPreferences.getInstance();
+    final yesterday = DateTime(2026, 5, 26, 9);
+    final today = DateTime(2026, 5, 27, 9);
+    final saved = QuestNotifier.initialState(now: yesterday).copyWith(
+      recommendedQuest: QuestNotifier.initialState(now: yesterday)
+          .recommendedQuest
+          .increment(amount: 5),
+      dailyQuests: [
+        QuestNotifier.initialState(now: yesterday)
+            .dailyQuests[0]
+            .increment(amount: 5)
+            .copyWith(claimed: true),
+        QuestNotifier.initialState(now: yesterday).dailyQuests[1],
+        QuestNotifier.initialState(now: yesterday).dailyQuests[2],
+      ],
+    );
+    await prefs.setString(QuestNotifier.storageKey, saved.toJsonString());
+
+    final notifier = QuestNotifier(prefs: prefs, now: () => today);
+
+    expect(notifier.state.generatedForDay, '2026-05-27');
+    expect(notifier.state.dailyQuests.first.progressCount, 0);
+    expect(notifier.state.dailyQuests.first.claimed, isFalse);
+  });
+
+  test('QuestNotifier resets legacy quest state without day key', () async {
+    final prefs = await SharedPreferences.getInstance();
+    final today = DateTime(2026, 5, 27, 9);
+    final legacyJson = QuestNotifier.initialState(now: today).toJson()
+      ..remove('generatedForDay');
+    await prefs.setString(QuestNotifier.storageKey, jsonEncode(legacyJson));
+
+    final notifier = QuestNotifier(prefs: prefs, now: () => today);
+
+    expect(notifier.state.generatedForDay, '2026-05-27');
+    expect(notifier.state.dailyQuests.first.progressCount, 0);
   });
 
   test('QuestNotifier persists progress updates', () async {

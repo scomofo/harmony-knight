@@ -6,29 +6,34 @@ import 'package:harmony_knight/models/quest.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class QuestState extends Equatable {
+  final String generatedForDay;
   final Quest recommendedQuest;
   final List<Quest> dailyQuests;
 
   const QuestState({
+    required this.generatedForDay,
     required this.recommendedQuest,
     required this.dailyQuests,
   });
 
   QuestState copyWith({
+    String? generatedForDay,
     Quest? recommendedQuest,
     List<Quest>? dailyQuests,
   }) {
     return QuestState(
+      generatedForDay: generatedForDay ?? this.generatedForDay,
       recommendedQuest: recommendedQuest ?? this.recommendedQuest,
       dailyQuests: dailyQuests ?? this.dailyQuests,
     );
   }
 
   @override
-  List<Object?> get props => [recommendedQuest, dailyQuests];
+  List<Object?> get props => [generatedForDay, recommendedQuest, dailyQuests];
 
   factory QuestState.fromJson(Map<String, dynamic> json) {
     return QuestState(
+      generatedForDay: json['generatedForDay'] as String,
       recommendedQuest:
           Quest.fromJson(json['recommendedQuest'] as Map<String, dynamic>),
       dailyQuests: (json['dailyQuests'] as List<dynamic>)
@@ -39,6 +44,7 @@ class QuestState extends Equatable {
 
   Map<String, dynamic> toJson() {
     return {
+      'generatedForDay': generatedForDay,
       'recommendedQuest': recommendedQuest.toJson(),
       'dailyQuests': dailyQuests.map((quest) => quest.toJson()).toList(),
     };
@@ -51,10 +57,12 @@ class QuestNotifier extends StateNotifier<QuestState> {
   static const storageKey = 'quests.state';
 
   SharedPreferences? _prefs;
+  final DateTime Function() _now;
 
-  QuestNotifier({SharedPreferences? prefs})
+  QuestNotifier({SharedPreferences? prefs, DateTime Function()? now})
       : _prefs = prefs,
-        super(initialState()) {
+        _now = now ?? DateTime.now,
+        super(initialState(now: now?.call())) {
     if (prefs == null) {
       loadSavedState();
     } else {
@@ -62,7 +70,7 @@ class QuestNotifier extends StateNotifier<QuestState> {
     }
   }
 
-  static QuestState initialState() {
+  static QuestState initialState({DateTime? now}) {
     const readNotes = Quest(
       id: 'daily-read-5',
       title: 'Read 5 notes',
@@ -71,9 +79,10 @@ class QuestNotifier extends StateNotifier<QuestState> {
       rewardHarmonyPoints: 20,
     );
 
-    return const QuestState(
+    return QuestState(
+      generatedForDay: dayKey(now ?? DateTime.now()),
       recommendedQuest: readNotes,
-      dailyQuests: [
+      dailyQuests: const [
         readNotes,
         Quest(
           id: 'daily-hit-6',
@@ -93,6 +102,13 @@ class QuestNotifier extends StateNotifier<QuestState> {
     );
   }
 
+  static String dayKey(DateTime date) {
+    final year = date.year.toString().padLeft(4, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return '$year-$month-$day';
+  }
+
   Future<SharedPreferences> get _store async {
     return _prefs ??= await SharedPreferences.getInstance();
   }
@@ -106,9 +122,13 @@ class QuestNotifier extends StateNotifier<QuestState> {
     if (saved == null) return;
 
     try {
-      state = QuestState.fromJson(jsonDecode(saved) as Map<String, dynamic>);
+      final savedState =
+          QuestState.fromJson(jsonDecode(saved) as Map<String, dynamic>);
+      state = savedState.generatedForDay == dayKey(_now())
+          ? savedState
+          : initialState(now: _now());
     } catch (_) {
-      state = initialState();
+      state = initialState(now: _now());
     }
   }
 
