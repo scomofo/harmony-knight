@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:harmony_knight/core/router.dart';
 import 'package:harmony_knight/main.dart';
+import 'package:harmony_knight/providers/mastery_provider.dart';
 import 'package:harmony_knight/providers/quest_provider.dart';
 import 'package:harmony_knight/providers/scaffolding_provider.dart';
 import 'package:harmony_knight/screens/practice_screen.dart';
@@ -190,5 +191,81 @@ void main() {
 
     final questState = container.read(questProvider);
     expect(questState.dailyQuests.first.progressCount, 1);
+  });
+
+  testWidgets('correct practice answer records note-reading mastery',
+      (WidgetTester tester) async {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(home: PracticeScreen()),
+      ),
+    );
+    await tester.pump();
+
+    final target = tester
+        .widget<ScaffoldedNote>(
+          find.byWidgetPredicate(
+            (widget) => widget is ScaffoldedNote && widget.size == 50,
+          ),
+        )
+        .note
+        .name;
+
+    await tester.tap(find.text(target).last);
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final mastery = container.read(masteryProvider)['note-reading-c4-b4'];
+    expect(mastery, isNotNull);
+    expect(mastery!.attempts, 1);
+    expect(mastery.correct, 1);
+    expect(mastery.totalResponseMs, greaterThanOrEqualTo(0));
+  });
+
+  testWidgets('incorrect practice answer records mastery miss',
+      (WidgetTester tester) async {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(home: PracticeScreen()),
+      ),
+    );
+    await tester.pump();
+
+    final target = tester
+        .widget<ScaffoldedNote>(
+          find.byWidgetPredicate(
+            (widget) => widget is ScaffoldedNote && widget.size == 50,
+          ),
+        )
+        .note
+        .name;
+    final answerLabels = find
+        .byWidgetPredicate(
+          (widget) =>
+              widget is Text &&
+              ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4'].contains(widget.data),
+        )
+        .evaluate()
+        .map((element) => (element.widget as Text).data!)
+        .where((label) => label != target)
+        .toList();
+
+    expect(answerLabels, isNotEmpty);
+
+    await tester.tap(find.text(answerLabels.first).last);
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final mastery = container.read(masteryProvider)['note-reading-c4-b4'];
+    expect(mastery, isNotNull);
+    expect(mastery!.attempts, 1);
+    expect(mastery.correct, 0);
+    expect(mastery.recentCorrect, [false]);
   });
 }

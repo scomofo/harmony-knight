@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:harmony_knight/models/note.dart';
 import 'package:harmony_knight/models/quest.dart';
+import 'package:harmony_knight/providers/mastery_provider.dart';
 import 'package:harmony_knight/providers/scaffolding_provider.dart';
 import 'package:harmony_knight/providers/fever_provider.dart';
 import 'package:harmony_knight/providers/quest_provider.dart';
@@ -31,10 +32,13 @@ class PracticeScreen extends ConsumerStatefulWidget {
 
 class _PracticeScreenState extends ConsumerState<PracticeScreen>
     with TickerProviderStateMixin {
+  static const _noteReadingTopicId = 'note-reading-c4-b4';
+
   late Note _targetNote;
   late List<Note> _answerOptions;
   String? _feedback;
   bool _showFeedback = false;
+  late DateTime _questionStartedAt;
   late AnimationController _feedbackController;
   late AnimationController _feverController;
 
@@ -75,6 +79,7 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
     _targetNote = shuffled.first;
     // 4 answer options including the correct one.
     _answerOptions = (shuffled.take(4).toList()..shuffle()).toList();
+    _questionStartedAt = DateTime.now();
     _showFeedback = false;
     _feedback = null;
   }
@@ -83,11 +88,21 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
     if (_showFeedback) return;
 
     final isCorrect = selected.midi == _targetNote.midi;
+    final responseMs =
+        DateTime.now().difference(_questionStartedAt).inMilliseconds;
+    final confidence = ref.read(confidenceProvider);
 
     setState(() {
       _showFeedback = true;
       _feedback = isCorrect ? 'Perfect!' : 'Try ${_targetNote.name}';
     });
+
+    ref.read(masteryProvider.notifier).recordAttempt(
+          topicId: _noteReadingTopicId,
+          correct: isCorrect,
+          responseMs: responseMs,
+          confidence: confidence,
+        );
 
     if (isCorrect) {
       ref.read(playerProgressProvider.notifier).recordCorrectNote();
