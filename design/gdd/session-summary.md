@@ -33,10 +33,18 @@ The player returns to Home feeling noticed: the app can name what improved, what
 
 ## Dependencies
 
+### GDD Dependencies
+
 - `quest-reward-economy.md`
 - `mastery-progression.md`
 - `curriculum-progression.md`
-- Practice, Real-Time, Duel, and Recovery result recording.
+
+### Implementation Dependencies
+
+- Practice result recording.
+- Real-Time result recording.
+- Duel result recording.
+- Recovery result recording.
 
 ## Tuning Knobs
 

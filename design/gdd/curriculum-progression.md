@@ -47,8 +47,13 @@ The player feels guided through a musical kingdom one reliable skill at a time. 
 
 ## Dependencies
 
+### GDD Dependencies
+
 - `mastery-progression.md`
 - `quest-reward-economy.md`
+
+### Reference Documents
+
 - `design/balance/balance-check-curriculum-2026-05-27.md`
 
 ## Tuning Knobs

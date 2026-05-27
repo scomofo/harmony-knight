@@ -36,9 +36,16 @@ The player sees proof that practice is turning into musicianship. Stars should f
 
 ## Dependencies
 
+### GDD Dependencies
+
 - `curriculum-progression.md`
 - `quest-reward-economy.md`
-- Practice, Real-Time, and Duel result recording.
+
+### Implementation Dependencies
+
+- Practice result recording.
+- Real-Time result recording.
+- Duel result recording.
 
 ## Tuning Knobs
 

@@ -37,9 +37,14 @@ The exact scoring constants are initial design values. They should be tuned afte
 
 ## Dependencies
 
+### GDD Dependencies
+
 - `curriculum-progression.md`
 - `mastery-progression.md`
 - `quest-reward-economy.md`
+
+### Implementation Dependencies
+
 - Exercise modes that can accept item-specific drill parameters.
 
 ## Tuning Knobs

@@ -35,9 +35,14 @@ The player feels that each small practice action repairs, brightens, or strength
 
 ## Dependencies
 
+### GDD Dependencies
+
 - `mastery-progression.md`
 - `curriculum-progression.md`
 - `recovery-loop.md`
+
+### Implementation Dependencies
+
 - Player progress provider for Harmony points.
 
 ## Tuning Knobs

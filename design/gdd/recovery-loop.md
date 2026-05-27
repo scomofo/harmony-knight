@@ -33,8 +33,13 @@ The player feels welcomed back, not scolded. Their musical blade may need mendin
 
 ## Dependencies
 
+### GDD Dependencies
+
 - `quest-reward-economy.md`
 - `curriculum-progression.md`
+
+### Implementation Dependencies
+
 - Player progress provider for streak and recovery flags.
 
 ## Tuning Knobs
