@@ -137,6 +137,38 @@ class QuestNotifier extends StateNotifier<QuestState> {
     );
     await _persist();
   }
+
+  Future<int> claimQuest(String questId) async {
+    Quest? quest;
+    for (final candidate in state.dailyQuests) {
+      if (candidate.id == questId) {
+        quest = candidate;
+        break;
+      }
+    }
+    if (quest == null || !quest.isComplete || quest.claimed) {
+      return 0;
+    }
+
+    final updated = [
+      for (final dailyQuest in state.dailyQuests)
+        if (dailyQuest.id == questId)
+          dailyQuest.copyWith(claimed: true)
+        else
+          dailyQuest,
+    ];
+
+    final recommended = state.recommendedQuest.id == questId
+        ? state.recommendedQuest.copyWith(claimed: true)
+        : state.recommendedQuest;
+
+    state = state.copyWith(
+      recommendedQuest: recommended,
+      dailyQuests: updated,
+    );
+    await _persist();
+    return quest.rewardHarmonyPoints;
+  }
 }
 
 final questProvider = StateNotifierProvider<QuestNotifier, QuestState>(

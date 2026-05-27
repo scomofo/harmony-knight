@@ -110,4 +110,33 @@ void main() {
     final restored = QuestNotifier(prefs: prefs);
     expect(restored.state.dailyQuests.first.progressCount, 1);
   });
+
+  test('QuestNotifier does not claim incomplete quests', () async {
+    final prefs = await SharedPreferences.getInstance();
+    final notifier = QuestNotifier(prefs: prefs);
+
+    final reward = await notifier.claimQuest('daily-read-5');
+
+    expect(reward, 0);
+    expect(notifier.state.dailyQuests.first.claimed, isFalse);
+  });
+
+  test('QuestNotifier claims completed quests once', () async {
+    final prefs = await SharedPreferences.getInstance();
+    final notifier = QuestNotifier(prefs: prefs);
+
+    for (int i = 0; i < 5; i++) {
+      await notifier.recordProgress(QuestMode.practice);
+    }
+
+    final firstReward = await notifier.claimQuest('daily-read-5');
+    final secondReward = await notifier.claimQuest('daily-read-5');
+
+    expect(firstReward, 20);
+    expect(secondReward, 0);
+    expect(notifier.state.dailyQuests.first.claimed, isTrue);
+
+    final restored = QuestNotifier(prefs: prefs);
+    expect(restored.state.dailyQuests.first.claimed, isTrue);
+  });
 }

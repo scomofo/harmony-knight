@@ -15,8 +15,15 @@ import 'package:harmony_knight/providers/quest_provider.dart';
 import 'package:harmony_knight/providers/scaffolding_provider.dart';
 import 'package:harmony_knight/screens/practice_screen.dart';
 import 'package:harmony_knight/widgets/scaffolded_note.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   testWidgets('app smoke test', (WidgetTester tester) async {
     appRouter.go('/');
     await tester.pumpWidget(const ProviderScope(child: HarmonyKnightApp()));
@@ -53,6 +60,46 @@ void main() {
     expect(find.text('Daily Path'), findsOneWidget);
     expect(find.text('Hit 6 notes in Real-Time'), findsOneWidget);
     expect(find.text('Win 1 Duel turn'), findsOneWidget);
+  });
+
+  testWidgets('home claim button awards Harmony points once',
+      (WidgetTester tester) async {
+    final prefs = await SharedPreferences.getInstance();
+    final completed = QuestNotifier.initialState().copyWith(
+      recommendedQuest:
+          QuestNotifier.initialState().recommendedQuest.increment(amount: 5),
+      dailyQuests: [
+        QuestNotifier.initialState().dailyQuests[0].increment(amount: 5),
+        QuestNotifier.initialState().dailyQuests[1],
+        QuestNotifier.initialState().dailyQuests[2],
+      ],
+    );
+    await prefs.setString(QuestNotifier.storageKey, completed.toJsonString());
+
+    final container = ProviderContainer(
+      overrides: [
+        questProvider.overrideWith((ref) => QuestNotifier(prefs: prefs)),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    appRouter.go('/');
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const HarmonyKnightApp(),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Claim'), findsOneWidget);
+
+    await tester.tap(find.text('Claim'));
+    await tester.pump();
+
+    expect(container.read(playerProgressProvider).harmonyPoints, 20);
+    expect(container.read(questProvider).dailyQuests.first.claimed, isTrue);
+    expect(find.text('Claim'), findsNothing);
   });
 
   testWidgets(

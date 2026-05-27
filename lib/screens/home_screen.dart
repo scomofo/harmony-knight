@@ -332,11 +332,31 @@ class HomeScreen extends ConsumerWidget {
                   : quest.progressCount / quest.targetCount,
               minHeight: 3,
             ),
+            trailing: quest.isComplete && !quest.claimed
+                ? FilledButton(
+                    onPressed: () => _claimQuest(context, quest),
+                    child: const Text('Claim'),
+                  )
+                : quest.claimed
+                    ? const Icon(
+                        Icons.verified,
+                        color: Color(0xFFFFD54F),
+                      )
+                    : null,
             onTap: () => _goToQuest(context, quest),
           ),
         ),
       ],
     );
+  }
+
+  Future<void> _claimQuest(BuildContext context, Quest quest) async {
+    final container = ProviderScope.containerOf(context, listen: false);
+    final reward =
+        await container.read(questProvider.notifier).claimQuest(quest.id);
+    if (reward > 0) {
+      container.read(playerProgressProvider.notifier).addHarmonyPoints(reward);
+    }
   }
 
   void _goToQuest(BuildContext context, Quest quest) {
