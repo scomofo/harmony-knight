@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:equatable/equatable.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:harmony_knight/models/quest.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class QuestState extends Equatable {
   final Quest recommendedQuest;
@@ -23,12 +26,43 @@ class QuestState extends Equatable {
 
   @override
   List<Object?> get props => [recommendedQuest, dailyQuests];
+
+  factory QuestState.fromJson(Map<String, dynamic> json) {
+    return QuestState(
+      recommendedQuest:
+          Quest.fromJson(json['recommendedQuest'] as Map<String, dynamic>),
+      dailyQuests: (json['dailyQuests'] as List<dynamic>)
+          .map((quest) => Quest.fromJson(quest as Map<String, dynamic>))
+          .toList(growable: false),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'recommendedQuest': recommendedQuest.toJson(),
+      'dailyQuests': dailyQuests.map((quest) => quest.toJson()).toList(),
+    };
+  }
+
+  String toJsonString() => jsonEncode(toJson());
 }
 
 class QuestNotifier extends StateNotifier<QuestState> {
-  QuestNotifier() : super(_initialState());
+  static const storageKey = 'quests.state';
 
-  static QuestState _initialState() {
+  SharedPreferences? _prefs;
+
+  QuestNotifier({SharedPreferences? prefs})
+      : _prefs = prefs,
+        super(initialState()) {
+    if (prefs == null) {
+      loadSavedState();
+    } else {
+      _loadFromPrefs(prefs);
+    }
+  }
+
+  static QuestState initialState() {
     const readNotes = Quest(
       id: 'daily-read-5',
       title: 'Read 5 notes',
@@ -59,7 +93,31 @@ class QuestNotifier extends StateNotifier<QuestState> {
     );
   }
 
-  void recordProgress(QuestMode mode) {
+  Future<SharedPreferences> get _store async {
+    return _prefs ??= await SharedPreferences.getInstance();
+  }
+
+  Future<void> loadSavedState() async {
+    _loadFromPrefs(await _store);
+  }
+
+  void _loadFromPrefs(SharedPreferences prefs) {
+    final saved = prefs.getString(storageKey);
+    if (saved == null) return;
+
+    try {
+      state = QuestState.fromJson(jsonDecode(saved) as Map<String, dynamic>);
+    } catch (_) {
+      state = initialState();
+    }
+  }
+
+  Future<void> _persist() async {
+    final prefs = await _store;
+    await prefs.setString(storageKey, state.toJsonString());
+  }
+
+  Future<void> recordProgress(QuestMode mode) async {
     final updated = [
       for (final quest in state.dailyQuests)
         if (quest.mode == mode && !quest.isComplete)
@@ -77,6 +135,7 @@ class QuestNotifier extends StateNotifier<QuestState> {
       recommendedQuest: recommended,
       dailyQuests: updated,
     );
+    await _persist();
   }
 }
 

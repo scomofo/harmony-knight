@@ -17,6 +17,19 @@ class SkillMastery extends Equatable {
     this.recentCorrect = const [],
   });
 
+  factory SkillMastery.fromJson(Map<String, dynamic> json) {
+    return SkillMastery(
+      topicId: json['topicId'] as String,
+      attempts: json['attempts'] as int? ?? 0,
+      correct: json['correct'] as int? ?? 0,
+      totalResponseMs: json['totalResponseMs'] as int? ?? 0,
+      bestConfidence: (json['bestConfidence'] as num?)?.toDouble() ?? 0,
+      recentCorrect: (json['recentCorrect'] as List<dynamic>? ?? const [])
+          .map((value) => value as bool)
+          .toList(growable: false),
+    );
+  }
+
   double get accuracy => attempts == 0 ? 0 : correct / attempts;
 
   double get recentAccuracy {
@@ -69,6 +82,17 @@ class SkillMastery extends Equatable {
       bestConfidence: bestConfidence ?? this.bestConfidence,
       recentCorrect: recentCorrect ?? this.recentCorrect,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'topicId': topicId,
+      'attempts': attempts,
+      'correct': correct,
+      'totalResponseMs': totalResponseMs,
+      'bestConfidence': bestConfidence,
+      'recentCorrect': recentCorrect,
+    };
   }
 
   @override

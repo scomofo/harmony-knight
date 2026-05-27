@@ -21,6 +21,18 @@ class Quest extends Equatable {
     this.claimed = false,
   });
 
+  factory Quest.fromJson(Map<String, dynamic> json) {
+    return Quest(
+      id: json['id'] as String,
+      title: json['title'] as String,
+      mode: QuestMode.values.byName(json['mode'] as String),
+      targetCount: json['targetCount'] as int,
+      progressCount: json['progressCount'] as int? ?? 0,
+      rewardHarmonyPoints: json['rewardHarmonyPoints'] as int,
+      claimed: json['claimed'] as bool? ?? false,
+    );
+  }
+
   bool get isComplete => progressCount >= targetCount;
 
   Quest increment({int amount = 1}) {
@@ -42,6 +54,18 @@ class Quest extends Equatable {
       rewardHarmonyPoints: rewardHarmonyPoints,
       claimed: claimed ?? this.claimed,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'mode': mode.name,
+      'targetCount': targetCount,
+      'progressCount': progressCount,
+      'rewardHarmonyPoints': rewardHarmonyPoints,
+      'claimed': claimed,
+    };
   }
 
   @override
