@@ -192,6 +192,21 @@ When adaptive recommendation is added, Home must choose the first matching rule:
 
 The recommendation engine must never advance a player to a faster or more abstract task solely from total correct answer count. It must use topic mastery, current quest state, and scaffold confidence.
 
+### Curriculum Appropriateness Rules
+
+Recommended quests must stay inside the player's current pedagogical band unless the player has met the prerequisite mastery evidence for a fluency extension.
+
+| Rule | Requirement |
+|---|---|
+| Recognition before speed | Do not recommend Real-Time until the related reading topic has at least 2 mastery stars or the player explicitly taps the Real-Time mode card. |
+| Accuracy before abstraction | Do not recommend Duel/counterpoint tasks until the related note-reading or interval topic has at least 2 mastery stars. |
+| Scaffold honesty | A 3-star or advancement recommendation requires evidence at confidence `>= 0.8`; full-scaffold success alone is not enough. |
+| Topic locality | Home should recommend the current topic or the nearest prerequisite gap, not a later curriculum label with no playable exercise coverage. |
+| No trivia drift | A quest must ask the player to read, hear, tap, play, or reason from musical material. Text-only labels are acceptable only as feedback, not as the whole task for a new concept. |
+| Recovery before challenge | If the player is in a return-after-absence state, recovery/warmup recommendations outrank challenge recommendations. |
+
+For the current app slice, `note-reading-c4-b4` is the only fully wired mastery topic. Other topics must not be used as hard gates until their mastery records are implemented.
+
 ### First Session Rules
 
 First-session Home is active when all are true:
@@ -220,6 +235,62 @@ This line is feedback only. It must not change the recommended quest until adapt
 Quest rewards are granted only through the quest provider claim flow. Home may call the claim action, but it must not directly mark quests complete or mutate mastery.
 
 Rewards are one-time per daily quest instance. Claimed state must persist so reopening the app cannot duplicate Harmony points.
+
+---
+
+## Data Contracts
+
+These contracts describe the data Home may consume or emit. Field names should stay stable once implemented so UI, tests, and analytics can reason about the loop consistently.
+
+### Quest
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `id` | string | Yes | Stable daily quest identifier, such as `daily-note-reading`. |
+| `title` | string | Yes | Player-facing short label. |
+| `mode` | enum | Yes | One of `practice`, `realtime`, `duel`, `recovery`. |
+| `targetCount` | int | Yes | Must be greater than zero for progress quests. |
+| `progressCount` | int | Yes | Clamped between `0` and `targetCount` for display. |
+| `rewardHarmonyPoints` | int | Yes | Awarded only through claim flow. |
+| `claimed` | bool | Yes | Prevents duplicate rewards. |
+
+### Skill Mastery
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `topicId` | string | Yes | Current Home slice uses `note-reading-c4-b4`. |
+| `attempts` | int | Yes | Total recorded first attempts for the topic. |
+| `correct` | int | Yes | Total correct first attempts. |
+| `totalResponseMs` | int | Yes | Sum used for average response time. |
+| `bestConfidence` | double | Yes | Highest confidence value recorded with an attempt. |
+| `recentCorrect` | list<bool> | Yes | Latest attempts, capped at 10. |
+| `stars` | derived int | Yes | Derived from recent accuracy and confidence thresholds. |
+
+### Quest Completion Event
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `questId` | string | Yes | Quest being progressed or completed. |
+| `mode` | enum | Yes | Source mode. |
+| `topicId` | string | When applicable | Required for mastery-linked quests. |
+| `correctDelta` | int | When applicable | Number of newly correct first attempts. |
+| `accuracy` | double | When available | Session accuracy, not lifetime accuracy. |
+| `durationMs` | int | When available | Session duration. |
+| `completedAt` | ISO-8601 string | Yes | Used for daily rollover and summaries. |
+
+### Session Summary
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `sourceMode` | enum | Yes | Practice, Real-Time, Duel, or Recovery. |
+| `topicId` | string | When applicable | Links summary to mastery and curriculum copy. |
+| `headline` | string | Yes | Short player-facing result, such as `You improved note reading`. |
+| `masteryBeforeStars` | int | When applicable | Used to show visible growth. |
+| `masteryAfterStars` | int | When applicable | Used to show visible growth. |
+| `questCompletedIds` | list<string> | Yes | Drives claim prompts. |
+| `recommendedNextQuestId` | string | When available | Lets Home explain the next step. |
+
+Home should tolerate missing future-only fields by hiding the dependent UI, not by showing placeholder copy.
 
 ---
 
