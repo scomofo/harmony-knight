@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:harmony_knight/models/curriculum.dart';
 import 'package:harmony_knight/models/quest.dart';
+import 'package:harmony_knight/models/skill_mastery.dart';
+import 'package:harmony_knight/providers/mastery_provider.dart';
 import 'package:harmony_knight/providers/quest_provider.dart';
 import 'package:harmony_knight/providers/scaffolding_provider.dart';
 import 'package:harmony_knight/widgets/confidence_slider.dart';
@@ -19,6 +21,9 @@ class HomeScreen extends ConsumerWidget {
     final progress = ref.watch(playerProgressProvider);
     final currentLevel = Curriculum.forLevel(progress.gradeLevel);
     final quests = ref.watch(questProvider);
+    final noteReadingMastery = ref.watch(
+      masteryProvider.select((mastery) => mastery['note-reading-c4-b4']),
+    );
 
     return Scaffold(
       backgroundColor: const Color(0xFF0D1117),
@@ -52,6 +57,7 @@ class HomeScreen extends ConsumerWidget {
                             _buildRecommendedQuest(
                               context,
                               quests.recommendedQuest,
+                              noteReadingMastery,
                             ),
                             const SizedBox(height: 16),
                             _buildDailyPath(context, quests.dailyQuests),
@@ -255,7 +261,11 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildRecommendedQuest(BuildContext context, Quest quest) {
+  Widget _buildRecommendedQuest(
+    BuildContext context,
+    Quest quest,
+    SkillMastery? mastery,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -288,6 +298,15 @@ class HomeScreen extends ConsumerWidget {
             '+${quest.rewardHarmonyPoints} Harmony - about 2 min',
             style: TextStyle(color: Colors.white.withAlpha(150), fontSize: 13),
           ),
+          const SizedBox(height: 6),
+          Text(
+            _noteReadingMasteryLabel(mastery),
+            style: const TextStyle(
+              color: Color(0xFF80CBC4),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const SizedBox(height: 12),
           FilledButton.icon(
             onPressed: () => _goToQuest(context, quest),
@@ -297,6 +316,13 @@ class HomeScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  String _noteReadingMasteryLabel(SkillMastery? mastery) {
+    if (mastery == null || mastery.attempts == 0) {
+      return 'Note reading: start your first attempt';
+    }
+    return 'Note reading: ${mastery.stars}/3 stars';
   }
 
   Widget _buildDailyPath(BuildContext context, List<Quest> quests) {

@@ -63,6 +63,39 @@ void main() {
     expect(find.text('Win 1 Duel turn'), findsOneWidget);
   });
 
+  testWidgets('home prompts new players to start note-reading mastery',
+      (WidgetTester tester) async {
+    appRouter.go('/');
+    await tester.pumpWidget(const ProviderScope(child: HarmonyKnightApp()));
+    await tester.pump();
+
+    expect(find.text('Note reading: start your first attempt'), findsOneWidget);
+  });
+
+  testWidgets('home shows note-reading mastery stars',
+      (WidgetTester tester) async {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+
+    await container.read(masteryProvider.notifier).recordAttempt(
+          topicId: 'note-reading-c4-b4',
+          correct: true,
+          responseMs: 1200,
+          confidence: 0.7,
+        );
+
+    appRouter.go('/');
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const HarmonyKnightApp(),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Note reading: 2/3 stars'), findsOneWidget);
+  });
+
   testWidgets('home claim button awards Harmony points once',
       (WidgetTester tester) async {
     final prefs = await SharedPreferences.getInstance();
