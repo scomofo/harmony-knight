@@ -6,3 +6,5 @@
 | 2 | Mastery Progression | `mastery-progression.md` | Draft |
 | 3 | Quest Reward Economy | `quest-reward-economy.md` | Draft |
 | 4 | Recovery Loop | `recovery-loop.md` | Draft |
+| 5 | Spaced Review | `spaced-review.md` | Draft |
+| 6 | Session Summary | `session-summary.md` | Draft |

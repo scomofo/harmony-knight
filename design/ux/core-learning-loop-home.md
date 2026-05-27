@@ -394,11 +394,11 @@ New systems implied by this UX:
 | Practice screen result recording | Partially exists | `lib/screens/practice_screen.dart` | Quest and mastery progress for note-reading attempts. |
 | Real-Time result recording | Partially exists | `lib/screens/gameplay_screen.dart` | Quest progress for fluency task. |
 | Duel result recording | Partially exists | `lib/screens/duel_screen.dart` | Quest progress for duel task. |
-| Spaced review system | Not started | No implementation yet | Weak-note scheduling and generated daily quests. |
-| Session summary system | Not started | No implementation yet | Post-session "You improved X" chip. |
+| Spaced review system | Draft GDD exists | `design/gdd/spaced-review.md`; no implementation yet | Weak-note scheduling and generated daily quests. |
+| Session summary system | Draft GDD exists | `design/gdd/session-summary.md`; no implementation yet | Post-session "You improved X" chip. |
 | Broken Blade recovery task | Draft GDD exists | `design/gdd/recovery-loop.md`; progress flags exist, no recovery quest flow yet | Shame-free return after absence. |
 
-Supporting GDDs now exist for curriculum progression, quest/reward economy, mastery/progression, and recovery. Spaced review and session summary still need dedicated GDDs before implementation.
+Supporting GDDs now exist for curriculum progression, quest/reward economy, mastery/progression, recovery, spaced review, and session summary. Any system should still pass `design-review` before implementation begins.
 
 ---
 
