@@ -22,6 +22,9 @@ class DuelState extends Equatable {
   /// Ghost note suggestion from the AI (shown when user makes an error).
   final Note? ghostSuggestion;
 
+  /// Explanation for the current ghost note suggestion.
+  final String? ghostReason;
+
   /// History of interval qualities for each completed turn.
   final List<TurnResult> turnHistory;
 
@@ -31,7 +34,8 @@ class DuelState extends Equatable {
     this.currentTurn = 0,
     this.harmonyMeter = 0.0,
     this.isComplete = false,
-    this.ghostSuggestion = null,
+    this.ghostSuggestion,
+    this.ghostReason,
     this.turnHistory = const [],
   });
 
@@ -52,6 +56,7 @@ class DuelState extends Equatable {
     double? harmonyMeter,
     bool? isComplete,
     Note? ghostSuggestion,
+    String? ghostReason,
     List<TurnResult>? turnHistory,
     bool clearGhost = false,
   }) {
@@ -62,6 +67,7 @@ class DuelState extends Equatable {
       harmonyMeter: harmonyMeter ?? this.harmonyMeter,
       isComplete: isComplete ?? this.isComplete,
       ghostSuggestion: clearGhost ? null : (ghostSuggestion ?? this.ghostSuggestion),
+      ghostReason: clearGhost ? null : (ghostReason ?? this.ghostReason),
       turnHistory: turnHistory ?? this.turnHistory,
     );
   }
@@ -69,7 +75,7 @@ class DuelState extends Equatable {
   @override
   List<Object?> get props => [
         cantusFirmus, userCounterpoint, currentTurn,
-        harmonyMeter, isComplete, ghostSuggestion, turnHistory,
+        harmonyMeter, isComplete, ghostSuggestion, ghostReason, turnHistory,
       ];
 }
 

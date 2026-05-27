@@ -113,7 +113,7 @@ class _CircleOfFifthsScreenState extends ConsumerState<CircleOfFifthsScreen>
     return Stack(
       children: List.generate(_keys.length, (i) {
         final angle = (i * 30 - 90) * math.pi / 180;
-        final radius = 130.0;
+        const radius = 130.0;
         final x = 160 + radius * math.cos(angle);
         final y = 160 + radius * math.sin(angle);
 

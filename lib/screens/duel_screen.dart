@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:harmony_knight/models/note.dart';
+import 'package:harmony_knight/models/quest.dart';
 import 'package:harmony_knight/providers/duel_provider.dart';
+import 'package:harmony_knight/providers/quest_provider.dart';
 import 'package:harmony_knight/providers/scaffolding_provider.dart';
 import 'package:harmony_knight/widgets/confidence_slider.dart';
 import 'package:harmony_knight/widgets/scaffolded_note.dart';
@@ -22,7 +24,6 @@ class DuelScreen extends ConsumerStatefulWidget {
 
 class _DuelScreenState extends ConsumerState<DuelScreen> {
   bool _showGhostReason = false;
-  String? _ghostReason;
 
   // Note input palette (C4 to C5 chromatic).
   final _inputNotes = List.generate(13, (i) => Note(midi: 60 + i));
@@ -43,13 +44,11 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
       // Show ghost resolution reason.
       setState(() {
         _showGhostReason = true;
-        _ghostReason =
-            'That creates a forbidden motion. Tap the ghost note to see a better option.';
       });
     } else {
+      ref.read(questProvider.notifier).recordProgress(QuestMode.duel);
       setState(() {
         _showGhostReason = false;
-        _ghostReason = null;
       });
     }
   }
@@ -58,7 +57,6 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
     ref.read(duelProvider.notifier).acceptGhostSuggestion();
     setState(() {
       _showGhostReason = false;
-      _ghostReason = null;
     });
   }
 
@@ -109,40 +107,13 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
                   // Cantus Firmus row.
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Discord Sentinel\'s Cantus Firmus:',
-                          style: TextStyle(
-                            color: Colors.white.withAlpha(150),
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: ScaffoldedNoteRow(
-                            notes: duel.cantusFirmus,
-                            highlightIndex: duel.isComplete ? null : duel.currentTurn,
-                            noteSize: 36,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // User's counterpoint row.
-                  if (duel.userCounterpoint.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: SizedBox(
+                      width: double.infinity,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Your Counterpoint:',
+                            'Discord Sentinel\'s Cantus Firmus:',
                             style: TextStyle(
                               color: Colors.white.withAlpha(150),
                               fontSize: 12,
@@ -152,11 +123,45 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
                           SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
                             child: ScaffoldedNoteRow(
-                              notes: duel.userCounterpoint,
+                              notes: duel.cantusFirmus,
+                              highlightIndex:
+                                  duel.isComplete ? null : duel.currentTurn,
                               noteSize: 36,
                             ),
                           ),
                         ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // User's counterpoint row.
+                  if (duel.userCounterpoint.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Your Counterpoint:',
+                              style: TextStyle(
+                                color: Colors.white.withAlpha(150),
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: ScaffoldedNoteRow(
+                                notes: duel.userCounterpoint,
+                                noteSize: 36,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
 
@@ -198,11 +203,11 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
                     ),
 
                   // Ghost reason feedback.
-                  if (_showGhostReason && _ghostReason != null)
+                  if (_showGhostReason && duel.ghostReason != null)
                     Padding(
                       padding: const EdgeInsets.all(16),
                       child: Text(
-                        _ghostReason!,
+                        duel.ghostReason!,
                         style: TextStyle(
                           color: const Color(0xFFFF6F00).withAlpha(200),
                           fontSize: 13,
@@ -246,8 +251,11 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
                           ElevatedButton(
                             onPressed: () {
                               ref.read(duelProvider.notifier).reset();
-                              final grade = ref.read(playerProgressProvider).gradeLevel;
-                              ref.read(duelProvider.notifier).startDuel(gradeLevel: grade);
+                              final grade =
+                                  ref.read(playerProgressProvider).gradeLevel;
+                              ref
+                                  .read(duelProvider.notifier)
+                                  .startDuel(gradeLevel: grade);
                             },
                             child: const Text('New Duel'),
                           ),
@@ -257,54 +265,74 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
 
                   // Note input palette (only show if duel is active).
                   if (!duel.isComplete)
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      color: Colors.grey.shade900.withAlpha(150),
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        alignment: WrapAlignment.center,
-                        children: _inputNotes.map((note) {
-                          return GestureDetector(
-                            onTap: () => _submitNote(note),
-                            child: Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: confidence < 0.5
-                                    ? note.figureNoteColor.withAlpha(40)
-                                    : Colors.grey.shade800,
-                                border: Border.all(
-                                  color: confidence < 0.5
-                                      ? note.figureNoteColor.withAlpha(120)
-                                      : Colors.grey.shade600,
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isCompact = constraints.maxWidth < 480;
+                        final tiles = _inputNotes
+                            .map((note) => _buildNoteTile(note, confidence))
+                            .toList();
+
+                        return Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          color: Colors.grey.shade900.withAlpha(150),
+                          child: isCompact
+                              ? SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: Row(children: tiles),
+                                )
+                              : Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  alignment: WrapAlignment.center,
+                                  children: tiles,
                                 ),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  ScaffoldedNote(note: note, size: 24),
-                                  if (confidence < 0.7)
-                                    Text(
-                                      note.name,
-                                      style: TextStyle(
-                                        color: Colors.white.withAlpha(150),
-                                        fontSize: 9,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
+                        );
+                      },
                     ),
 
                   // Confidence slider.
                   const ConfidenceSlider(),
                 ],
               ),
+      ),
+    );
+  }
+
+  Widget _buildNoteTile(Note note, double confidence) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: GestureDetector(
+        onTap: () => _submitNote(note),
+        child: Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: confidence < 0.5
+                ? note.figureNoteColor.withAlpha(40)
+                : Colors.grey.shade800,
+            border: Border.all(
+              color: confidence < 0.5
+                  ? note.figureNoteColor.withAlpha(120)
+                  : Colors.grey.shade600,
+            ),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ScaffoldedNote(note: note, size: 24),
+              if (confidence < 0.7)
+                Text(
+                  note.name,
+                  style: TextStyle(
+                    color: Colors.white.withAlpha(150),
+                    fontSize: 9,
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }

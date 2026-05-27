@@ -75,7 +75,7 @@ class FullStaffPainter extends CustomPainter {
 
   void _drawTrebleClef(Canvas canvas, double staffTop, Paint paint) {
     // Simplified treble clef shape using a path.
-    final x = 20.0;
+    const x = 20.0;
     final centerY = staffTop + lineSpacing * 3; // G line (line 2 from bottom).
 
     // Main spiral curve.
@@ -108,7 +108,7 @@ class FullStaffPainter extends CustomPainter {
   }
 
   void _drawBassClef(Canvas canvas, double staffTop, Paint paint) {
-    final x = 18.0;
+    const x = 18.0;
     final centerY = staffTop + lineSpacing; // F line (line 4 from bottom).
 
     // Simplified bass clef: curved body + two dots.
@@ -131,7 +131,7 @@ class FullStaffPainter extends CustomPainter {
   }
 
   void _drawAltoClef(Canvas canvas, double staffTop, Paint paint) {
-    final x = 16.0;
+    const x = 16.0;
     final centerY = staffTop + lineSpacing * 2; // Middle C line.
 
     // Simplified alto clef: two vertical bars + brackets.

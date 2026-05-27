@@ -69,29 +69,12 @@ class _ConfidenceSliderState extends ConsumerState<ConfidenceSlider>
           AnimatedBuilder(
             animation: _breatheAnimation,
             builder: (context, child) {
-              return SliderTheme(
-                data: SliderTheme.of(context).copyWith(
-                  thumbShape: _BreathingThumbShape(
-                    scale: shouldBreathe ? _breatheAnimation.value : 1.0,
-                  ),
-                  activeTrackColor: Color.lerp(
-                    const Color(0xFF4FC3F7),
-                    const Color(0xFFFFD54F),
-                    confidence,
-                  ),
-                  inactiveTrackColor: Colors.grey.shade700,
-                  thumbColor: Colors.white,
-                  overlayColor: Colors.white.withAlpha(30),
-                ),
-                child: Slider(
-                  value: confidence,
-                  min: 0.0,
-                  max: 1.0,
-                  divisions: 100,
-                  onChanged: (value) {
-                    ref.read(confidenceProvider.notifier).setConfidence(value);
-                  },
-                ),
+              return _ConfidenceTrack(
+                value: confidence,
+                thumbScale: shouldBreathe ? _breatheAnimation.value : 1.0,
+                onChanged: (value) {
+                  ref.read(confidenceProvider.notifier).setConfidence(value);
+                },
               );
             },
           ),
@@ -120,60 +103,98 @@ class _ConfidenceSliderState extends ConsumerState<ConfidenceSlider>
   }
 }
 
-/// Custom thumb shape that scales for the "breathing" effect.
-class _BreathingThumbShape extends SliderComponentShape {
-  final double scale;
+class _ConfidenceTrack extends StatelessWidget {
+  final double value;
+  final double thumbScale;
+  final ValueChanged<double> onChanged;
 
-  const _BreathingThumbShape({this.scale = 1.0});
+  const _ConfidenceTrack({
+    required this.value,
+    required this.thumbScale,
+    required this.onChanged,
+  });
+
+  void _updateFromLocalPosition(double dx, double width) {
+    if (width <= 0) return;
+    onChanged((dx / width).clamp(0.0, 1.0));
+  }
 
   @override
-  Size getPreferredSize(bool isEnabled, bool isDiscrete) =>
-      Size(24 * scale, 24 * scale);
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final thumbSize = 24.0 * thumbScale;
+        final thumbLeft = (width - thumbSize) * value;
 
-  @override
-  void paint(
-    PaintingContext context,
-    Offset center, {
-    required Animation<double> activationAnimation,
-    required Animation<double> enableAnimation,
-    required bool isDiscrete,
-    required TextPainter labelPainter,
-    required RenderBox parentBox,
-    required SliderThemeData sliderTheme,
-    required TextDirection textDirection,
-    required double value,
-    required double textScaleFactor,
-    required Size sizeWithOverflow,
-  }) {
-    final canvas = context.canvas;
-    final radius = 12.0 * scale;
-
-    // Glow when breathing.
-    if (scale > 1.0) {
-      final glowPaint = Paint()
-        ..color = Colors.white.withAlpha(40)
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, radius * 0.5);
-      canvas.drawCircle(center, radius * 1.3, glowPaint);
-    }
-
-    // Main thumb.
-    final paint = Paint()
-      ..color = sliderTheme.thumbColor ?? Colors.white
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(center, radius, paint);
-
-    // Shield icon hint at center.
-    final iconPaint = Paint()
-      ..color = Colors.grey.shade800
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-    // Small shield/chevron shape.
-    final path = Path()
-      ..moveTo(center.dx, center.dy - 4 * scale)
-      ..lineTo(center.dx + 4 * scale, center.dy)
-      ..lineTo(center.dx, center.dy + 4 * scale)
-      ..lineTo(center.dx - 4 * scale, center.dy)
-      ..close();
-    canvas.drawPath(path, iconPaint);
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapDown: (details) {
+            _updateFromLocalPosition(details.localPosition.dx, width);
+          },
+          onHorizontalDragUpdate: (details) {
+            _updateFromLocalPosition(details.localPosition.dx, width);
+          },
+          child: SizedBox(
+            height: 40,
+            child: Stack(
+              alignment: Alignment.centerLeft,
+              children: [
+                Container(
+                  height: 4,
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade700,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                FractionallySizedBox(
+                  widthFactor: value,
+                  child: Container(
+                    height: 4,
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      color: Color.lerp(
+                        const Color(0xFF4FC3F7),
+                        const Color(0xFFFFD54F),
+                        value,
+                      ),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: thumbLeft,
+                  child: Container(
+                    width: thumbSize,
+                    height: thumbSize,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: thumbScale > 1.0
+                          ? [
+                              BoxShadow(
+                                color: Colors.white.withAlpha(40),
+                                blurRadius: 10,
+                                spreadRadius: 3,
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Center(
+                      child: Icon(
+                        Icons.shield_outlined,
+                        size: 12 * thumbScale,
+                        color: Colors.grey.shade800,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 }

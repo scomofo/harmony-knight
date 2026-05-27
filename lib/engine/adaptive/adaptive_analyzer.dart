@@ -1,4 +1,3 @@
-import '../core/chart_note.dart';
 import '../core/hit_result.dart';
 import '../scoring/scoring_engine.dart';
 

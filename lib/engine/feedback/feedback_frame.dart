@@ -102,7 +102,7 @@ class FeedbackFrame {
     if (pitchDirection == PitchDirection.sharp) parts.add('a touch sharp');
 
     if (parts.isEmpty) return ratingLabel;
-    return '${ratingLabel} — ${parts.join(', ')}';
+    return '$ratingLabel — ${parts.join(', ')}';
   }
 }
 

@@ -51,6 +51,7 @@ class DuelNotifier extends StateNotifier<DuelState> {
       );
       state = state.copyWith(
         ghostSuggestion: ghost?.suggestedNote,
+        ghostReason: ghost?.reason ?? _reasonForViolations(result),
       );
       return false;
     }
@@ -121,6 +122,25 @@ class DuelNotifier extends StateNotifier<DuelState> {
   /// Reset the duel state.
   void reset() {
     state = const DuelState(cantusFirmus: []);
+  }
+
+  String _reasonForViolations(DuelMoveResult result) {
+    if (result.quality == IntervalQuality.dissonance) {
+      return 'That note creates a dissonance against the cantus. Try a consonant third, sixth, fifth, or octave.';
+    }
+    if (result.violations.contains(CounterpointViolation.parallelFifths)) {
+      return 'That move creates parallel fifths. Counterpoint sounds stronger when the voices avoid moving in lockstep to perfect fifths.';
+    }
+    if (result.violations.contains(CounterpointViolation.parallelOctaves)) {
+      return 'That move creates parallel octaves. Try contrary or oblique motion to keep the voices independent.';
+    }
+    if (result.violations.contains(CounterpointViolation.hiddenFifthsOrOctaves)) {
+      return 'Both voices move into a perfect consonance together. Approach it with gentler or contrary motion.';
+    }
+    if (result.violations.contains(CounterpointViolation.voiceCrossing)) {
+      return 'That note crosses too far below the cantus. Keep your counterpoint voice in its own range.';
+    }
+    return 'That move needs a smoother resolution. The ghost note shows one consonant option.';
   }
 }
 

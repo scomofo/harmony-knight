@@ -1,7 +1,6 @@
 import 'dart:math';
 import 'package:harmony_knight/core/constants.dart';
 import 'package:harmony_knight/models/note.dart';
-import 'package:harmony_knight/models/duel_state.dart';
 
 /// The Collaborative Counterpoint Duel engine.
 ///

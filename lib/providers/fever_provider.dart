@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:harmony_knight/engine/fever_mode_engine.dart';
-import 'package:harmony_knight/providers/scaffolding_provider.dart';
 
 /// Provider for Fever Mode and Broken Blade streak recovery state.
 class FeverNotifier extends StateNotifier<FeverModeStatus> {

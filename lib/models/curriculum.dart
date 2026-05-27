@@ -2,6 +2,7 @@
 ///
 /// Three phases: Foundation (Levels Prep-4), Intermediate (5-8), Advanced (9-10+).
 /// Each level has ADHD-specific engagement triggers and multisensory bridges.
+library;
 
 enum CurriculumPhase { foundation, intermediate, advanced }
 

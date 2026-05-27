@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:harmony_knight/models/note.dart';
+import 'package:harmony_knight/models/quest.dart';
 import 'package:harmony_knight/providers/scaffolding_provider.dart';
 import 'package:harmony_knight/providers/fever_provider.dart';
+import 'package:harmony_knight/providers/quest_provider.dart';
 import 'package:harmony_knight/painters/staff_painter.dart';
 import 'package:harmony_knight/widgets/confidence_slider.dart';
 import 'package:harmony_knight/widgets/scaffolded_note.dart';
@@ -78,6 +80,8 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
   }
 
   void _handleAnswer(Note selected) {
+    if (_showFeedback) return;
+
     final isCorrect = selected.midi == _targetNote.midi;
 
     setState(() {
@@ -87,6 +91,7 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
 
     if (isCorrect) {
       ref.read(playerProgressProvider.notifier).recordCorrectNote();
+      ref.read(questProvider.notifier).recordProgress(QuestMode.practice);
       _feedbackController.forward(from: 0.0).then((_) {
         if (mounted) {
           setState(() => _generateQuestion());
@@ -101,9 +106,9 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
     // Update Fever Mode.
     final progress = ref.read(playerProgressProvider);
     ref.read(feverProvider.notifier).evaluate(
-      currentStreak: progress.currentStreak,
-      lastActiveAt: progress.lastActiveAt,
-    );
+          currentStreak: progress.currentStreak,
+          lastActiveAt: progress.lastActiveAt,
+        );
   }
 
   @override
@@ -202,21 +207,7 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
               ),
             ),
 
-            // Note name hint (fades with confidence).
-            if (confidence < 0.5)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  _targetNote.name,
-                  style: TextStyle(
-                    color: Colors.white.withAlpha(
-                      (255 * (1.0 - confidence * 2)).round().clamp(0, 255),
-                    ),
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
+            const SizedBox(height: 8),
 
             const SizedBox(height: 32),
 
@@ -276,7 +267,7 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: _showFeedback && !isCorrect ? null : () => _handleAnswer(note),
+        onTap: _showFeedback ? null : () => _handleAnswer(note),
         borderRadius: BorderRadius.circular(16),
         child: Container(
           width: 80,

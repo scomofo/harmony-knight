@@ -1,6 +1,8 @@
 /// Barrel export for all screens.
+library;
 export 'home_screen.dart';
 export 'practice_screen.dart';
+export 'gameplay_screen.dart';
 export 'duel_screen.dart';
 export 'curriculum_screen.dart';
 export 'circle_of_fifths_screen.dart';

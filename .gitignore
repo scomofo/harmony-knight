@@ -17,6 +17,8 @@ build/
 *.g.dart
 *.freezed.dart
 *.gen.dart
+.codegraph/
+.playtest-artifacts/
 
 # OS
 .DS_Store

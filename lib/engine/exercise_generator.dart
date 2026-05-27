@@ -1,6 +1,5 @@
 import 'dart:math';
 import 'package:harmony_knight/models/note.dart';
-import 'package:harmony_knight/core/constants.dart';
 
 /// Exercise generator for all 11 curriculum levels.
 ///
@@ -111,12 +110,12 @@ class ExerciseGenerator {
 
   Exercise _level2RhythmBasics() {
     final rhythms = [
-      RhythmPattern('Whole Note', [4.0]),
-      RhythmPattern('Half Notes', [2.0, 2.0]),
-      RhythmPattern('Quarter Notes', [1.0, 1.0, 1.0, 1.0]),
-      RhythmPattern('Eighth Notes', [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]),
-      RhythmPattern('Dotted Half + Quarter', [3.0, 1.0]),
-      RhythmPattern('Dotted Quarter + Eighth', [1.5, 0.5, 1.5, 0.5]),
+      const RhythmPattern('Whole Note', [4.0]),
+      const RhythmPattern('Half Notes', [2.0, 2.0]),
+      const RhythmPattern('Quarter Notes', [1.0, 1.0, 1.0, 1.0]),
+      const RhythmPattern('Eighth Notes', [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]),
+      const RhythmPattern('Dotted Half + Quarter', [3.0, 1.0]),
+      const RhythmPattern('Dotted Quarter + Eighth', [1.5, 0.5, 1.5, 0.5]),
     ];
     final correct = rhythms[_rng.nextInt(rhythms.length)];
     final options = (List<RhythmPattern>.from(rhythms)..shuffle(_rng))
@@ -142,14 +141,14 @@ class ExerciseGenerator {
 
   Exercise _level3ScalesAndKeys() {
     final keys = [
-      KeyInfo('C Major', 0, true),
-      KeyInfo('G Major', 1, true),
-      KeyInfo('D Major', 2, true),
-      KeyInfo('F Major', 1, true),
-      KeyInfo('Bb Major', 2, true),
-      KeyInfo('A Minor', 0, false),
-      KeyInfo('E Minor', 1, false),
-      KeyInfo('D Minor', 1, false),
+      const KeyInfo('C Major', 0, true),
+      const KeyInfo('G Major', 1, true),
+      const KeyInfo('D Major', 2, true),
+      const KeyInfo('F Major', 1, true),
+      const KeyInfo('Bb Major', 2, true),
+      const KeyInfo('A Minor', 0, false),
+      const KeyInfo('E Minor', 1, false),
+      const KeyInfo('D Minor', 1, false),
     ];
     final correct = keys[_rng.nextInt(keys.length)];
     final options = (List<KeyInfo>.from(keys)..shuffle(_rng)).take(4).toList();
@@ -217,10 +216,10 @@ class ExerciseGenerator {
 
   Exercise _triadExercise() {
     final triads = [
-      TriadInfo('Major', [0, 4, 7]),
-      TriadInfo('Minor', [0, 3, 7]),
-      TriadInfo('Augmented', [0, 4, 8]),
-      TriadInfo('Diminished', [0, 3, 6]),
+      const TriadInfo('Major', [0, 4, 7]),
+      const TriadInfo('Minor', [0, 3, 7]),
+      const TriadInfo('Augmented', [0, 4, 8]),
+      const TriadInfo('Diminished', [0, 3, 6]),
     ];
     final correct = triads[_rng.nextInt(triads.length)];
     final root = 60 + _rng.nextInt(8);
@@ -343,12 +342,12 @@ class ExerciseGenerator {
   // ── Level 9: Counterpoint ──
 
   Exercise _level9Counterpoint() {
-    return Exercise(
+    return const Exercise(
       type: ExerciseType.counterpointDuel,
       prompt: 'Complete the counterpoint against the cantus firmus.',
-      notes: const [],
+      notes: [],
       correctAnswer: 'duel_mode',
-      options: const [],
+      options: [],
       metadata: {'redirectToDuel': true},
       level: 9,
     );

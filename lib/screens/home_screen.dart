@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:harmony_knight/models/curriculum.dart';
+import 'package:harmony_knight/models/quest.dart';
+import 'package:harmony_knight/providers/quest_provider.dart';
 import 'package:harmony_knight/providers/scaffolding_provider.dart';
 import 'package:harmony_knight/widgets/confidence_slider.dart';
 
 /// The home screen — designed for the 10-Second Rule.
 ///
 /// Primary objective (start practicing) is clear within 10 seconds.
-/// Shows current level, streak, and the three main action paths:
-/// Practice, Duel, and Curriculum Map.
+/// Shows current level, streak, and the main action paths.
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
@@ -17,6 +18,7 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final progress = ref.watch(playerProgressProvider);
     final currentLevel = Curriculum.forLevel(progress.gradeLevel);
+    final quests = ref.watch(questProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xFF0D1117),
@@ -27,7 +29,8 @@ class HomeScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Header with streak, points, and settings.
-              _buildHeader(context, progress.currentStreak, progress.harmonyPoints),
+              _buildHeader(
+                  context, progress.currentStreak, progress.harmonyPoints),
               const SizedBox(height: 16),
 
               // Current quest banner.
@@ -36,36 +39,63 @@ class HomeScreen extends ConsumerWidget {
 
               // Quick-action cards (the 10-Second Rule: pick an action fast).
               Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildActionCard(
-                      context,
-                      icon: Icons.music_note,
-                      title: 'Practice',
-                      subtitle: 'Train your ear and notation skills',
-                      color: const Color(0xFF4FC3F7),
-                      onTap: () => context.go('/practice'),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildActionCard(
-                      context,
-                      icon: Icons.shield,
-                      title: 'Duel',
-                      subtitle: 'Challenge the Discord Sentinel',
-                      color: const Color(0xFF7C4DFF),
-                      onTap: () => context.go('/duel'),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildActionCard(
-                      context,
-                      icon: Icons.map,
-                      title: 'Curriculum Map',
-                      subtitle: 'Explore the Musical World',
-                      color: const Color(0xFFFFD54F),
-                      onTap: () => context.go('/curriculum'),
-                    ),
-                  ],
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return SingleChildScrollView(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight,
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _buildRecommendedQuest(
+                              context,
+                              quests.recommendedQuest,
+                            ),
+                            const SizedBox(height: 16),
+                            _buildDailyPath(context, quests.dailyQuests),
+                            const SizedBox(height: 16),
+                            _buildActionCard(
+                              context,
+                              icon: Icons.music_note,
+                              title: 'Practice',
+                              subtitle: 'Train your ear and notation skills',
+                              color: const Color(0xFF4FC3F7),
+                              onTap: () => context.go('/practice'),
+                            ),
+                            const SizedBox(height: 16),
+                            _buildActionCard(
+                              context,
+                              icon: Icons.speed,
+                              title: 'Real-Time',
+                              subtitle: 'Play the note highway',
+                              color: const Color(0xFF26A69A),
+                              onTap: () => context.go('/gameplay'),
+                            ),
+                            const SizedBox(height: 16),
+                            _buildActionCard(
+                              context,
+                              icon: Icons.shield,
+                              title: 'Duel',
+                              subtitle: 'Challenge the Discord Sentinel',
+                              color: const Color(0xFF7C4DFF),
+                              onTap: () => context.go('/duel'),
+                            ),
+                            const SizedBox(height: 16),
+                            _buildActionCard(
+                              context,
+                              icon: Icons.map,
+                              title: 'Curriculum Map',
+                              subtitle: 'Explore the Musical World',
+                              color: const Color(0xFFFFD54F),
+                              onTap: () => context.go('/curriculum'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
 
@@ -89,7 +119,8 @@ class HomeScreen extends ConsumerWidget {
         // Streak.
         Row(
           children: [
-            const Icon(Icons.local_fire_department, color: Color(0xFFFF6F00), size: 24),
+            const Icon(Icons.local_fire_department,
+                color: Color(0xFFFF6F00), size: 24),
             const SizedBox(width: 4),
             Text(
               '$streak',
@@ -127,7 +158,8 @@ class HomeScreen extends ConsumerWidget {
             const SizedBox(width: 12),
             GestureDetector(
               onTap: () => context.go('/settings'),
-              child: Icon(Icons.settings, color: Colors.white.withAlpha(120), size: 22),
+              child: Icon(Icons.settings,
+                  color: Colors.white.withAlpha(120), size: 22),
             ),
           ],
         ),
@@ -140,9 +172,8 @@ class HomeScreen extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1A237E), Color(0xFF4A148C)],
-        ),
+        color: const Color(0xFF241A65),
+        border: Border.all(color: const Color(0xFF7C4DFF).withAlpha(120)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -224,6 +255,107 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
+  Widget _buildRecommendedQuest(BuildContext context, Quest quest) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF12322F),
+        border: Border.all(color: const Color(0xFF26A69A).withAlpha(110)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Next Quest',
+            style: TextStyle(
+              color: Colors.white.withAlpha(150),
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            quest.title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '+${quest.rewardHarmonyPoints} Harmony - about 2 min',
+            style: TextStyle(color: Colors.white.withAlpha(150), fontSize: 13),
+          ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: () => _goToQuest(context, quest),
+            icon: const Icon(Icons.play_arrow),
+            label: const Text('Start Quest'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDailyPath(BuildContext context, List<Quest> quests) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Daily Path',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        ...quests.map(
+          (quest) => ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(
+              quest.isComplete ? Icons.check_circle : Icons.circle_outlined,
+              color: quest.isComplete
+                  ? const Color(0xFF26A69A)
+                  : Colors.white.withAlpha(120),
+            ),
+            title: Text(
+              quest.title,
+              style: const TextStyle(color: Colors.white, fontSize: 13),
+            ),
+            subtitle: LinearProgressIndicator(
+              value: quest.targetCount == 0
+                  ? 0
+                  : quest.progressCount / quest.targetCount,
+              minHeight: 3,
+            ),
+            onTap: () => _goToQuest(context, quest),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _goToQuest(BuildContext context, Quest quest) {
+    switch (quest.mode) {
+      case QuestMode.practice:
+        context.go('/practice');
+        break;
+      case QuestMode.realtime:
+        context.go('/gameplay');
+        break;
+      case QuestMode.duel:
+        context.go('/duel');
+        break;
+      case QuestMode.recovery:
+        context.go('/practice?mode=broken_blade');
+        break;
+    }
+  }
+
   Widget _buildBrokenBladePrompt(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -245,7 +377,8 @@ class HomeScreen extends ConsumerWidget {
           ),
           TextButton(
             onPressed: () => context.go('/practice?mode=broken_blade'),
-            child: const Text('Restore', style: TextStyle(color: Color(0xFFFF6F00))),
+            child: const Text('Restore',
+                style: TextStyle(color: Color(0xFFFF6F00))),
           ),
         ],
       ),
