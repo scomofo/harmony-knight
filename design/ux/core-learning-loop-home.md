@@ -386,19 +386,19 @@ New systems implied by this UX:
 
 | Dependency | Status | Owner / File | Required For |
 |---|---|---|---|
-| Curriculum model | Exists | `lib/models/curriculum.dart` | Level banner and topic identity. |
+| Curriculum model | Draft GDD + implementation exist | `design/gdd/curriculum-progression.md`, `lib/models/curriculum.dart` | Level banner and topic identity. |
 | Player progress provider | Exists | `lib/providers/scaffolding_provider.dart` | Streak, Harmony points, grade level, recovery flags. |
 | Confidence/scaffolding provider | Exists | `lib/providers/scaffolding_provider.dart` | Global scaffold setting and mastery independence signal. |
-| Quest model/provider | Exists | `lib/models/quest.dart`, `lib/providers/quest_provider.dart` | Recommended quest, daily path, claim state, reward flow. |
-| Skill mastery model/provider | Exists | `lib/models/skill_mastery.dart`, `lib/providers/mastery_provider.dart` | Note-reading mastery feedback and future adaptive recommendations. |
+| Quest model/provider | Draft GDD + implementation exist | `design/gdd/quest-reward-economy.md`, `lib/models/quest.dart`, `lib/providers/quest_provider.dart` | Recommended quest, daily path, claim state, reward flow. |
+| Skill mastery model/provider | Draft GDD + implementation exist | `design/gdd/mastery-progression.md`, `lib/models/skill_mastery.dart`, `lib/providers/mastery_provider.dart` | Note-reading mastery feedback and future adaptive recommendations. |
 | Practice screen result recording | Partially exists | `lib/screens/practice_screen.dart` | Quest and mastery progress for note-reading attempts. |
 | Real-Time result recording | Partially exists | `lib/screens/gameplay_screen.dart` | Quest progress for fluency task. |
 | Duel result recording | Partially exists | `lib/screens/duel_screen.dart` | Quest progress for duel task. |
-| Spaced review system | Not started | No GDD or implementation yet | Weak-note scheduling and generated daily quests. |
-| Session summary system | Not started | No GDD or implementation yet | Post-session "You improved X" chip. |
-| Broken Blade recovery task | Not started | Progress flags exist; no recovery quest flow yet | Shame-free return after absence. |
+| Spaced review system | Not started | No implementation yet | Weak-note scheduling and generated daily quests. |
+| Session summary system | Not started | No implementation yet | Post-session "You improved X" chip. |
+| Broken Blade recovery task | Draft GDD exists | `design/gdd/recovery-loop.md`; progress flags exist, no recovery quest flow yet | Shame-free return after absence. |
 
-No matching `design/gdd/` documents exist yet for these systems. Before broad implementation, create GDDs for curriculum progression, quest/reward economy, mastery/progression, and recovery.
+Supporting GDDs now exist for curriculum progression, quest/reward economy, mastery/progression, and recovery. Spaced review and session summary still need dedicated GDDs before implementation.
 
 ---
 
