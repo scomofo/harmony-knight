@@ -1,6 +1,6 @@
 # UX Spec: Core Learning Loop + Home
 
-> **Status**: In Design
+> **Status**: Revised after design review
 > **Author**: Scott + Codex UX Designer
 > **Last Updated**: May 27, 2026
 > **Journey Phase(s)**: First session, daily return, post-session continuation
@@ -25,6 +25,28 @@ The core loop this screen supports is:
 3. Receive immediate feedback and mastery progress.
 4. Unlock or repair something meaningful.
 5. Return to Home with one clear next step.
+
+---
+
+## Player Fantasy
+
+The player should feel like a young musician-knight returning to a familiar training hall where the next useful practice step is already prepared. Home should feel supportive and purposeful rather than evaluative: the app notices what the player has practiced, celebrates visible mastery progress, and offers one achievable next quest without making the player navigate a syllabus.
+
+Success is not "the player maximizes points." Success is "the player trusts the app to choose a musically appropriate next step, completes a short practice action, and sees proof that their musicianship improved."
+
+---
+
+## Implementation Scope
+
+This spec separates the current shippable slice from future systems so implementation can proceed without over-promising.
+
+| Scope | Included |
+|---|---|
+| Implemented foundation | Recommended quest card, three daily quests, quest progress persistence, reward claiming, note-reading mastery persistence, Home mastery feedback line. |
+| Next shippable slice | First-session daily path reduction, post-session summary chip, explicit accessibility labels, and recommendation copy that explains why a quest is useful. |
+| Future systems | Spaced review of weak notes, adaptive quest generation, Broken Blade recovery task, curriculum level advancement, full session summary payloads. |
+
+The Home UI may display data from future systems only after the owning provider/model exists. Placeholder UI text must not imply a system is active before it is implemented.
 
 ---
 
@@ -141,13 +163,83 @@ Home is a top-level destination and the default return point after most short se
 
 | State / Variant | Trigger | What Changes |
 |---|---|---|
-| First session | No meaningful progress yet | Recommended quest is "Start with C, D, E"; daily path has one task only. |
+| First session | No completed quest and no mastery attempts | Recommended quest is "Read 5 notes"; daily path shows only the first note-reading task. |
 | Daily return | Player active within 48 hours | Show daily path, current quest, and streak continuity. |
 | Broken Blade | Last active 48+ hours ago | Replace daily path top row with a 60-second recovery quest. |
 | Post-session success | Returning from completed task | Show "You improved X" and next recommended task. |
-| Stuck/low accuracy | Recent accuracy below threshold | Recommend easier drill and lower confidence expectation. |
-| High confidence | Strong recent performance | Recommend Real-Time or lower-scaffold version of same skill. |
+| Stuck/low accuracy | Recent accuracy below 80% over the last 10 attempts | Keep Practice recommended and display mastery feedback without shame language. |
+| High confidence | At least 2 note-reading stars and the Practice daily quest is complete or claimed | Recommend Real-Time as a fluency extension after the current quest model supports adaptive recommendations. |
 | Curriculum browsing | Player taps map | Show all levels, but mark exact current topic and prerequisites. |
+
+---
+
+## Detailed Rules
+
+### Recommendation Rules
+
+Home always shows exactly one primary recommended quest. Until adaptive quest generation exists, the static recommended quest is `Read 5 notes` in Practice.
+
+When adaptive recommendation is added, Home must choose the first matching rule:
+
+| Priority | Condition | Recommended Quest | Rationale |
+|---|---|---|---|
+| 1 | `isStreakLapsed == true` and `inBrokenBladeRecovery == false` | 60-second recovery Practice quest | Repair return friction before adding challenge. |
+| 2 | No mastery attempts for `note-reading-c4-b4` | Practice: Read 5 notes | Establish the first note-reading evidence. |
+| 3 | Recent accuracy below 80% over last 10 attempts | Practice: Read 5 notes with current scaffolding | Reinforce accuracy before speed. |
+| 4 | Note-reading mastery has at least 2 stars and Practice quest is complete or claimed | Real-Time: Hit 6 notes | Move from recognition to fluency only after evidence. |
+| 5 | Duel prerequisite topic has at least 2 stars and Real-Time daily quest is complete or claimed | Duel: Win 1 turn | Save counterpoint challenge for prepared players. |
+| 6 | No higher-priority rule matches | First incomplete daily quest | Keep the next action clear. |
+
+The recommendation engine must never advance a player to a faster or more abstract task solely from total correct answer count. It must use topic mastery, current quest state, and scaffold confidence.
+
+### First Session Rules
+
+First-session Home is active when all are true:
+
+1. No daily quest has been completed.
+2. `note-reading-c4-b4` has zero mastery attempts.
+3. The player has not claimed any daily quest reward.
+
+In this state, Home shows one daily task: `Read 5 notes`. The mode cards remain available below the recommended quest.
+
+After the player completes or claims the first quest, Home may show the full three-task daily path on the next Home render.
+
+### Mastery Feedback Rules
+
+The Recommended Quest card shows a compact note-reading line:
+
+| Mastery State | Display Text |
+|---|---|
+| No record or zero attempts | `Note reading: start your first attempt` |
+| One or more attempts | `Note reading: X/3 stars` |
+
+This line is feedback only. It must not change the recommended quest until adaptive recommendation rules are implemented.
+
+### Reward Rules
+
+Quest rewards are granted only through the quest provider claim flow. Home may call the claim action, but it must not directly mark quests complete or mutate mastery.
+
+Rewards are one-time per daily quest instance. Claimed state must persist so reopening the app cannot duplicate Harmony points.
+
+---
+
+## Formulas and Thresholds
+
+| Formula / Threshold | Definition | Notes |
+|---|---|---|
+| Recent accuracy | `recentCorrectCount / recentAttemptCount` over the latest capped mastery window | Current implementation caps recent attempts at 10. |
+| 1 mastery star | `recentAccuracy >= 0.8` | Accurate with current scaffolding. |
+| 2 mastery stars | `recentAccuracy >= 0.8 && bestConfidence >= 0.6` | Accurate with partial scaffolding. |
+| 3 mastery stars | `recentAccuracy >= 0.8 && bestConfidence >= 0.8` | Accurate with low scaffolding. |
+| Average response time | `totalResponseMs / attempts`, rounded | Tracked now; not yet used as a gate. |
+| Daily quest progress | `progressCount / targetCount`, clamped to `0.0..1.0` | Avoid overfilled progress bars. |
+| First-session daily count | `1` visible task | Reduces cognitive load. |
+| Return-session daily count | `3` visible tasks | Supports a short habit loop. |
+| Broken Blade lapse | `lastActiveAge >= 48 hours` | Future recovery system threshold. |
+| Recovery duration target | `60 seconds` | Future recovery task budget. |
+| Recommended quest duration target | `60-180 seconds` | Keeps sessions short. |
+
+Response-time fluency gates are intentionally deferred until playtests produce per-topic timing data. Do not block progression on response time before those thresholds are validated.
 
 ---
 
@@ -205,17 +297,58 @@ Persistent state changes must be owned by progress/session providers, not by Hom
 | Current streak | Progress system | Header and Broken Blade state. |
 | Harmony points | Progress/economy system | Rewards and unlocks. |
 | Confidence value | Scaffolding system | Global hint/scaffold behavior. |
-| Recent accuracy by skill | Mastery system to add | Next-best lesson selection. |
-| Weak notes/intervals/rhythms | Spaced repetition system to add | Daily quest generation. |
-| Daily quest completion | Quest system to add | Stickiness and session goals. |
-| Last session result | Session summary system to add | Post-session feedback. |
+| Recent accuracy by skill | Mastery system | Mastery feedback and future next-best lesson selection. |
+| Weak notes/intervals/rhythms | Future spaced repetition system | Daily quest generation. |
+| Daily quest completion | Quest system | Stickiness and session goals. |
+| Last session result | Future session summary system | Post-session feedback. |
 
 New systems implied by this UX:
 
-1. `Quest` model for daily/recommended tasks.
-2. `SkillMastery` model for per-topic progress.
-3. `SpacedReview` model for weak-item scheduling.
-4. Session summary payload returned by Practice, Real-Time, and Duel.
+1. `Quest` model for daily/recommended tasks. Exists and needs first-session filtering.
+2. `SkillMastery` model for per-topic progress. Exists for note-reading and needs more topic coverage.
+3. `SpacedReview` model for weak-item scheduling. Not started.
+4. Session summary payload returned by Practice, Real-Time, and Duel. Not started.
+
+---
+
+## Dependencies
+
+| Dependency | Status | Owner / File | Required For |
+|---|---|---|---|
+| Curriculum model | Exists | `lib/models/curriculum.dart` | Level banner and topic identity. |
+| Player progress provider | Exists | `lib/providers/scaffolding_provider.dart` | Streak, Harmony points, grade level, recovery flags. |
+| Confidence/scaffolding provider | Exists | `lib/providers/scaffolding_provider.dart` | Global scaffold setting and mastery independence signal. |
+| Quest model/provider | Exists | `lib/models/quest.dart`, `lib/providers/quest_provider.dart` | Recommended quest, daily path, claim state, reward flow. |
+| Skill mastery model/provider | Exists | `lib/models/skill_mastery.dart`, `lib/providers/mastery_provider.dart` | Note-reading mastery feedback and future adaptive recommendations. |
+| Practice screen result recording | Partially exists | `lib/screens/practice_screen.dart` | Quest and mastery progress for note-reading attempts. |
+| Real-Time result recording | Partially exists | `lib/screens/gameplay_screen.dart` | Quest progress for fluency task. |
+| Duel result recording | Partially exists | `lib/screens/duel_screen.dart` | Quest progress for duel task. |
+| Spaced review system | Not started | No GDD or implementation yet | Weak-note scheduling and generated daily quests. |
+| Session summary system | Not started | No GDD or implementation yet | Post-session "You improved X" chip. |
+| Broken Blade recovery task | Not started | Progress flags exist; no recovery quest flow yet | Shame-free return after absence. |
+
+No matching `design/gdd/` documents exist yet for these systems. Before broad implementation, create GDDs for curriculum progression, quest/reward economy, mastery/progression, and recovery.
+
+---
+
+## Tuning Knobs
+
+| Knob | Initial Value | Why It Exists |
+|---|---|---|
+| First-session daily quest count | 1 | Prevents new-player overload. |
+| Normal daily quest count | 3 | Gives a short, sticky session loop. |
+| Note-reading quest target | 5 correct attempts | Short enough for a first quest. |
+| Real-Time quest target | 6 hits | Small fluency challenge after recognition. |
+| Duel quest target | 1 won turn | Keeps duel as a lightweight capstone. |
+| Recommended quest reward | 20 Harmony points | Meaningful without inflating economy. |
+| Warmup/recovery reward | 10 Harmony points | Encourages return without overpaying. |
+| Hard/low-scaffold reward | 30 Harmony points | Future incentive for harder practice. |
+| Mastery accuracy threshold | 80% | Standard enough to indicate reliability without demanding perfection. |
+| Mastery recent window | 10 attempts | Smooths luck while staying responsive. |
+| 2-star confidence threshold | 0.6 | Indicates partial scaffold independence. |
+| 3-star confidence threshold | 0.8 | Indicates low-scaffold confidence. |
+| Broken Blade lapse threshold | 48 hours | Treats absence as a recovery moment, not failure. |
+| Animation max duration | 150 ms for page entry | Keeps Home responsive. |
 
 ---
 
@@ -244,8 +377,8 @@ Known gap: Flutter web currently exposes sparse semantics in browser automation.
 ## Acceptance Criteria
 
 1. Home shows exactly one primary recommended quest.
-2. Home shows 2-3 daily tasks after the first session.
-3. New players see a one-task first session path, not the full daily system.
+2. Home shows one daily task during the first-session state.
+3. Home shows three daily tasks after the first quest is completed or claimed.
 4. Broken Blade recovery appears after a lapse and offers a short repair task.
 5. Mode cards remain available below the recommendation for player autonomy.
 6. Confidence slider remains reachable on Home and does not overlap content.
@@ -255,13 +388,15 @@ Known gap: Flutter web currently exposes sparse semantics in browser automation.
 10. Flutter analyze and widget tests pass after implementation.
 11. Browser playtest confirms no horizontal overflow on mobile.
 12. Accessibility labels exist for primary quest, daily tasks, mode cards, and confidence slider.
+13. The Recommended Quest card shows note-reading mastery feedback in the specified empty and starred states.
+14. Adaptive recommendations, once implemented, follow the priority order in Recommendation Rules.
 
 ---
 
 ## Open Questions
 
 1. Player journey map does not yet exist at `design/player-journey.md`; this spec assumes first session, daily return, and post-session continuation phases.
-2. No formal GDD exists yet for curriculum, mastery, or economy. The curriculum should be validated in a separate design pass before advanced levels are expanded.
-3. The reward economy needs a tuning pass: how many harmony points should a daily quest award, and what do points buy or unlock?
-4. We need to decide whether Real-Time Training is a core required mode or an optional fluency mode for players who are ready.
-5. We need to decide whether the app should support keyboard/gamepad controls beyond basic web accessibility.
+2. No formal GDD exists yet for curriculum, mastery/progression, quest/reward economy, or recovery. The curriculum should be validated in a separate design pass before advanced levels are expanded.
+3. What do Harmony points buy or unlock beyond short-term reward feedback?
+4. Should Real-Time Training become required for level advancement, or remain an optional fluency path until stronger timing calibration exists?
+5. Should keyboard/gamepad controls be supported beyond basic web accessibility?
