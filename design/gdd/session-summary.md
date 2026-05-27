@@ -57,8 +57,8 @@ The player returns to Home feeling noticed: the app can name what improved, what
 
 ## Acceptance Criteria
 
-1. Completing a meaningful session creates a summary payload.
-2. Exiting without an attempt creates no summary.
-3. Home displays at most one summary.
-4. Summary payload can identify claimable quests without granting rewards.
-5. Summary copy uses concrete progress language.
+1. Given `sessionAttempts > 0`, `questCompletedIds.isNotEmpty`, or `masteryStarDelta > 0`, the mode creates a summary payload.
+2. Given `sessionAttempts == 0`, `questCompletedIds.isEmpty`, and `masteryStarDelta == 0`, the mode creates no summary payload.
+3. Given multiple stored summaries, Home renders only the newest summary.
+4. Given a summary with complete unclaimed quest ids, Home can show a claim prompt without increasing Harmony points until the player claims.
+5. Summary headline text includes at least one concrete progress noun: `quest`, `star`, `note`, `rhythm`, `duel`, or `recovery`.

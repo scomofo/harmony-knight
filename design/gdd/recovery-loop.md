@@ -53,8 +53,8 @@ The player feels welcomed back, not scolded. Their musical blade may need mendin
 
 ## Acceptance Criteria
 
-1. Recovery prompt appears after the lapse threshold.
-2. Recovery does not appear for active players.
-3. Recovery task is shorter than a normal session target.
-4. Recovery completion returns Home to normal quest display.
-5. Recovery copy is restorative rather than punitive.
+1. Given `lastActiveAge >= 48 hours` and `inBrokenBladeRecovery == false`, Home shows the recovery prompt.
+2. Given `lastActiveAge < 48 hours`, Home does not show the recovery prompt.
+3. Given a generated recovery quest, its target duration is `<= 60 seconds` and its reward is `10 Harmony`.
+4. Given a completed recovery quest, Home returns to the normal recommended quest and daily path display.
+5. Recovery UI copy does not contain punitive terms: `lost`, `failed`, `punished`, `penalty`, or `bad`.

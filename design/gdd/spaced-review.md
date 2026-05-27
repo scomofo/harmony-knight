@@ -59,8 +59,8 @@ The exact scoring constants are initial design values. They should be tuned afte
 
 ## Acceptance Criteria
 
-1. Incorrect attempts increase review priority.
-2. Correct attempts lower review priority without deleting the item.
-3. Locked or unplayable topics are not recommended.
-4. Empty review state falls back to normal quest recommendation.
-5. Review selection is deterministic for the same saved state.
+1. Given one additional incorrect attempt for an item, its computed review priority increases by `2`.
+2. Given one additional correct attempt for an item, its computed review priority decreases by `1` and the item remains in review state.
+3. Given `topicUnlocked == false` or `playableExerciseExists == false`, the item is excluded from review recommendations.
+4. Given no eligible review items, recommendation falls back to the current normal quest recommendation.
+5. Given identical saved review state, review selection returns the same ordered item list.

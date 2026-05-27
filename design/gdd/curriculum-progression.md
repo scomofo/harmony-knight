@@ -67,8 +67,8 @@ The player feels guided through a musical kingdom one reliable skill at a time. 
 
 ## Acceptance Criteria
 
-1. Recommendation logic never selects a topic with unmet prerequisites.
-2. Real-Time is recommended only after note-reading readiness.
-3. Duel is recommended only after prerequisite mastery exists.
-4. Topics without playable exercise coverage are not auto-recommended.
-5. Curriculum progression can be tested from topic state alone.
+1. Given a topic with `prerequisiteStars < 2`, recommendation logic does not return that topic.
+2. Given `noteReadingStars < 2`, Real-Time is not returned as the recommended quest.
+3. Given a Duel prerequisite topic with `< 2` stars, Duel is not returned as the recommended quest.
+4. Given `playableExerciseExists == false`, the topic is excluded from auto-recommendation results.
+5. Given the same topic state input, curriculum progression returns the same recommendation result without reading UI state.
