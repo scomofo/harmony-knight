@@ -42,6 +42,12 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
     ref.read(duelProvider.notifier).acceptGhostSuggestion();
   }
 
+  static const _sentinelQuotes = [
+    '"Hmm. Your intervals are… acceptable."',
+    '"Perhaps you are not entirely without potential."',
+    '"I was not expecting that. Well played — this time."',
+  ];
+
   @override
   Widget build(BuildContext context) {
     final duel = ref.watch(duelProvider);
@@ -74,6 +80,25 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
                     triggerBigWin: duel.turnHistory.isNotEmpty &&
                         duel.turnHistory.last.grantsBigWinBonus,
                   ),
+
+                  // Discord Sentinel grudging-respect toast when meter is full.
+                  if (duel.harmonyMeter >= 1.0)
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 400),
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 8, horizontal: 16),
+                      color: const Color(0xFF1A003A),
+                      child: Text(
+                        _sentinelQuotes[duel.currentTurn % 3],
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Color(0xFFCE93D8),
+                          fontSize: 13,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ),
 
                   const SizedBox(height: 8),
                   Text(
