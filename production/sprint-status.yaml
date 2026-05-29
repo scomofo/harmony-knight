@@ -2,7 +2,7 @@ version: 1
 last_updated: "2026-05-29"
 review_mode: solo
 
-current_sprint: 2
+current_sprint: 3
 
 sprints:
   - id: 1
@@ -134,3 +134,58 @@ sprints:
         status: done
         owner: solo
         notes: "_showSRResetDialog(context, ref); calls srItemsProvider.notifier.clearAll(); keeps grade/streak"
+
+  - id: 3
+    goal: "Feedback loop closure — session recording, ghost tone audio, weak-note focus mode"
+    started: "2026-05-29"
+    status: in-progress
+
+    tasks:
+      - id: S3-M1
+        title: "Session Recording in PracticeScreen"
+        priority: must
+        status: todo
+        owner: solo
+        notes: "_sessionStartTime in initState; recordSession() in _onExit(); exerciseType/durationSeconds/accuracy"
+
+      - id: S3-M2
+        title: "Ghost Tone Audio on Duel Ghost Suggestion"
+        priority: must
+        status: todo
+        owner: solo
+        notes: "ref.listen(duelProvider); playGhostTone on suggestion; stopCurrentTone on clear"
+
+      - id: S3-M3
+        title: "Weak-Note Focus Session"
+        priority: must
+        status: todo
+        owner: solo
+        notes: "GestureDetector on hint → /practice?mode=focus; pool from weakNotesMidi; AppBar title"
+
+      - id: S3-S1
+        title: "Ghost Tone Toggle Persistence"
+        priority: should
+        status: todo
+        owner: solo
+        notes: "ghost_tones_enabled in shared_prefs; Settings toggle wired; DuelScreen guards call"
+
+      - id: S3-S2
+        title: "Update duel-system.md"
+        priority: should
+        status: todo
+        owner: solo
+        notes: "Strike completed Follow-Up items; document ghost tone wiring"
+
+      - id: S3-N1
+        title: "Onboarding for New Users"
+        priority: nice
+        status: todo
+        owner: solo
+        notes: "Check onboarding_screen.dart routing; wire for totalNotesPlayed==0 first launch"
+
+      - id: S3-N2
+        title: "Widget Test for Focus Session"
+        priority: nice
+        status: todo
+        owner: solo
+        notes: "Verify mode=focus uses weakNotesMidi pool; override playerProgressProvider in test"
