@@ -2,7 +2,7 @@ version: 1
 last_updated: "2026-05-29"
 review_mode: solo
 
-current_sprint: 3
+current_sprint: 4
 
 sprints:
   - id: 1
@@ -189,3 +189,58 @@ sprints:
         status: done
         owner: solo
         notes: "4 focus-mode tests: AppBar title, normal-mode title, fallback to grade pool, note prompt shown"
+
+  - id: 4
+    goal: "Settings come alive — session length timer, warm-up count, new-items cap, rhythm GDD"
+    started: "2026-05-29"
+    status: in-progress
+
+    tasks:
+      - id: S4-M1
+        title: "Session Length Timer in PracticeScreen"
+        priority: must
+        status: todo
+        owner: solo
+        notes: "session_length SharedPrefs; MM:SS in AppBar; auto-exit at limit; SessionPrefsNotifier (new)"
+
+      - id: S4-M2
+        title: "Warm-Up Count Setting"
+        priority: must
+        status: todo
+        owner: solo
+        notes: "warm_up_notes SharedPrefs; _rebuildSRQueue front-loads interval<=1 items first"
+
+      - id: S4-M3
+        title: "New Items Per Session Cap"
+        priority: must
+        status: todo
+        owner: solo
+        notes: "new_items_per_session SharedPrefs; _rebuildSRQueue caps new-item count; due reviews uncapped"
+
+      - id: S4-S1
+        title: "Rhythm System GDD"
+        priority: should
+        status: todo
+        owner: solo
+        notes: "design/gdd/rhythm-system.md; 8 sections; Body Base-10, time sigs, metronome, haptics; systems-index updated"
+
+      - id: S4-S2
+        title: "Metronome and Haptic Feedback Toggle Persistence"
+        priority: should
+        status: todo
+        owner: solo
+        notes: "metronome_enabled + haptic_enabled SharedPrefs; Settings toggles wired; audio/haptics deferred to Sprint 5"
+
+      - id: S4-N1
+        title: "Reduce Motion Persistence and Use"
+        priority: nice
+        status: todo
+        owner: solo
+        notes: "reduce_motion SharedPrefs; level-up fanfare + sentinel toast skip animation when true"
+
+      - id: S4-N2
+        title: "Circle of Fifths Grade-Gating"
+        priority: nice
+        status: todo
+        owner: solo
+        notes: "redirect to / if gradeLevel<3; Level 3 Curriculum Map card gets Explore button"
