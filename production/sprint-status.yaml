@@ -1,5 +1,5 @@
 version: 1
-last_updated: "2026-05-29"
+last_updated: "2026-05-29"  # M1, M2, M3, S1 completed
 review_mode: solo
 
 current_sprint: 1
@@ -16,32 +16,32 @@ sprints:
       - id: S1-M1
         title: "Grade Advancement Thresholds"
         priority: must
-        status: todo   # todo | in_progress | done | blocked
+        status: done
         owner: solo
-        notes: ""
+        notes: "grade_thresholds.dart; checkAndAdvanceGrade() on notifier; called on back-button"
 
       - id: S1-M2
         title: "Broken Blade Auto-Exit"
         priority: must
-        status: todo
+        status: done
         owner: solo
-        notes: ""
+        notes: "5-correct cap in PracticeScreen; completeBrokenBladeRecovery() + dialog"
 
       - id: S1-M3
         title: "Harmony Points Awarded on Duel Completion"
         priority: must
-        status: todo
+        status: done
         owner: solo
-        notes: ""
+        notes: "DuelNotifier(ref); _awardDuelRewards() on isComplete; points shown in banner"
 
       # ── Should-Have ───────────────────────────────────────────────────────────
 
       - id: S1-S1
         title: "Level-Up Fanfare"
         priority: should
-        status: todo
+        status: done
         owner: solo
-        notes: ""
+        notes: "AnimatedOpacity overlay in PracticeScreen; 2.5s then navigates home"
 
       - id: S1-S2
         title: "Ghost Note Visual Treatment"
