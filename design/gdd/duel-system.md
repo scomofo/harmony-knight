@@ -133,10 +133,17 @@ it suggests a better option rather than simply saying "wrong."
 5. If no suggestion found: return null (extremely rare — chromatic edge case)
 
 **Ghost note display:**
-- Rendered with `isGhost: true` → displayed with a distinct visual treatment
+- Rendered with `isGhost: true` → dashed border via `PathMetrics` in `ScaffoldingNotePainter`
 - Shows the interval explanation: *"A major 3rd above the cantus creates a pleasing
   imperfect consonance, which is ideal in counterpoint."*
 - Tapping the ghost accepts it and advances the turn (Big Win bonus applied)
+
+**Ghost tone audio (wired Sprint 3):**
+- When a ghost suggestion appears, `DuelScreen` plays the suggested MIDI note via
+  `ghostToneProvider.playGhostTone(midiNote, confidence)` — volume and low-pass
+  filter are confidence-scaled (louder / richer at low confidence)
+- Tone stops automatically when the turn advances or a new duel starts
+- Respects the "Ghost Tones" toggle in Settings (`ghostTonesEnabledProvider`)
 
 The player is never forced to accept the ghost. They may keep trying other notes.
 
@@ -226,8 +233,9 @@ or is grade advancement Practice-only?
 
 ## Follow-Up Work
 
-1. **Award Harmony Points on duel completion** — formula TBD (e.g., `round(harmonyMeter × 100)` points)
-2. **Duel contribution to grade advancement** — decide if duel wins count toward promotion
-3. **Sentinel narrative moment** — brief text/animation when meter fills
-4. **Second and Third Species** — future duel modes (2:1, 4:1 note ratios)
-5. **Ghost note visual treatment** — `isGhost: true` flag exists but `ScaffoldingNotePainter` rendering TBD
+1. ~~**Award Harmony Points on duel completion**~~ — Done Sprint 1 (S1-M3); `round(harmonyMeter × 100)` points via `_awardDuelRewards()`
+2. ~~**Duel contribution to grade advancement**~~ — Decided Sprint 1 (S1-S3); Practice-only signal; documented in curriculum-system.md
+3. ~~**Sentinel narrative moment**~~ — Done Sprint 1 (S1-N2); 3 rotating grudging-respect quotes shown when `harmonyMeter >= 1.0`
+4. **Second and Third Species** — future duel modes (2:1, 4:1 note ratios); out of scope until Grade 5+ content is needed
+5. ~~**Ghost note visual treatment**~~ — Done Sprint 1 (S1-S2); dashed border via `PathMetrics` in `ScaffoldingNotePainter`
+6. ~~**Ghost tone audio**~~ — Done Sprint 3 (S3-M2, S3-S1); wired via `ghostToneProvider`; respects Settings toggle

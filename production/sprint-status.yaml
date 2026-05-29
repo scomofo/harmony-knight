@@ -165,16 +165,16 @@ sprints:
       - id: S3-S1
         title: "Ghost Tone Toggle Persistence"
         priority: should
-        status: todo
+        status: done
         owner: solo
-        notes: "ghost_tones_enabled in shared_prefs; Settings toggle wired; DuelScreen guards call"
+        notes: "GhostTonesNotifier in scaffolding_provider; ghost_tones_enabled in shared_prefs; Settings toggle + DuelScreen guard"
 
       - id: S3-S2
         title: "Update duel-system.md"
         priority: should
-        status: todo
+        status: done
         owner: solo
-        notes: "Strike completed Follow-Up items; document ghost tone wiring"
+        notes: "All completed Follow-Up items struck; ghost tone audio and visual documented"
 
       - id: S3-N1
         title: "Onboarding for New Users"

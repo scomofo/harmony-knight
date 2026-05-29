@@ -55,15 +55,18 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
     final confidence = ref.watch(confidenceProvider);
 
     // Play ghost tone when a suggestion appears; stop when it clears.
+    // Respects the ghost-tones toggle in Settings.
     ref.listen(duelProvider, (prev, next) {
       final ghostEngine = ref.read(ghostToneProvider);
       final hadGhost = prev?.ghostSuggestion != null;
       final hasGhost = next.ghostSuggestion != null;
       if (hasGhost && !hadGhost) {
-        ghostEngine.playGhostTone(
-          midiNote: next.ghostSuggestion!.midi,
-          confidence: ref.read(confidenceProvider),
-        );
+        if (ref.read(ghostTonesEnabledProvider)) {
+          ghostEngine.playGhostTone(
+            midiNote: next.ghostSuggestion!.midi,
+            confidence: ref.read(confidenceProvider),
+          );
+        }
       } else if (!hasGhost && hadGhost) {
         ghostEngine.stopCurrentTone();
       }

@@ -158,3 +158,31 @@ final playerProgressProvider =
     StateNotifierProvider<PlayerProgressNotifier, PlayerProgress>((ref) {
   return PlayerProgressNotifier();
 });
+
+/// Notifier for the ghost-tones audio preference.
+///
+/// Ghost tones are assistive audio cues that help learners find the correct
+/// pitch. Users can disable them once they no longer need the audio scaffold.
+/// Persists across sessions in shared_preferences (key: 'ghost_tones_enabled').
+class GhostTonesNotifier extends StateNotifier<bool> {
+  static const _prefKey = 'ghost_tones_enabled';
+
+  GhostTonesNotifier() : super(true) {
+    _loadFromPrefs();
+  }
+
+  Future<void> _loadFromPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) state = prefs.getBool(_prefKey) ?? true;
+  }
+
+  void toggle(bool enabled) {
+    state = enabled;
+    SharedPreferences.getInstance().then((p) => p.setBool(_prefKey, enabled));
+  }
+}
+
+final ghostTonesEnabledProvider =
+    StateNotifierProvider<GhostTonesNotifier, bool>((ref) {
+  return GhostTonesNotifier();
+});

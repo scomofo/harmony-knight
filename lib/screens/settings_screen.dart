@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:harmony_knight/providers/scaffolding_provider.dart';
 import 'package:harmony_knight/providers/sr_provider.dart';
 
+
 /// Settings screen with accessibility options and session preferences.
 ///
 /// ADHD-optimized: settings are grouped clearly with visual separators,
@@ -14,6 +15,7 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final progress = ref.watch(playerProgressProvider);
+    final ghostTonesEnabled = ref.watch(ghostTonesEnabledProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xFF0D1117),
@@ -111,8 +113,8 @@ class SettingsScreen extends ConsumerWidget {
             'Ghost Tones',
             'Assistive audio cues for pitch finding',
             Icons.music_note,
-            true,
-            (val) {},
+            ghostTonesEnabled,
+            (val) => ref.read(ghostTonesEnabledProvider.notifier).toggle(val),
           ),
           _buildToggleTile(
             'Metronome',
