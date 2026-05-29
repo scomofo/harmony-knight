@@ -8,7 +8,7 @@ sprints:
   - id: 1
     goal: "Wire core progression loop — grade advancement, Broken Blade exit, duel rewards"
     started: "2026-05-29"
-    status: active   # active | complete | blocked
+    status: complete
 
     tasks:
       # ── Must-Have ────────────────────────────────────────────────────────────
@@ -62,13 +62,13 @@ sprints:
       - id: S1-N1
         title: "Widget Tests for PracticeScreen and DuelScreen"
         priority: nice
-        status: todo
+        status: done
         owner: solo
-        notes: ""
+        notes: "5 practice tests + 4 duel tests; _PreloadedDuelNotifier pattern for provider override"
 
       - id: S1-N2
         title: "Sentinel Narrative Moment on Harmony Meter Fill"
         priority: nice
-        status: todo
+        status: done
         owner: solo
-        notes: ""
+        notes: "3 rotating quotes shown as banner when harmonyMeter >= 1.0; keyed by currentTurn % 3"
