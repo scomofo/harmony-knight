@@ -117,34 +117,44 @@ behind a paywall or discovery gate.
 
 ---
 
-## Grade Advancement **[GAP — thresholds not yet implemented]**
+## Grade Advancement
 
-**Intent** (clarified 2026-05-29): Grade level advances automatically based on
-accuracy in Practice mode. The specific numbers are a design decision.
+**Decided: 2026-05-29** (was [GAP])
 
-**Proposed mechanism:**
-1. After each Practice answer, `PlayerProgressNotifier` evaluates a rolling window
-   of recent attempts at the current grade's note pool
-2. If accuracy meets the threshold, `setGradeLevel(gradeLevel + 1)` is called
-3. A level-up fanfare plays/animates
-4. The new grade's note pool and ADHD triggers become active
+**Mechanism (implemented in Sprint 1):**
+1. At the end of each Practice session (when the player taps Back), the session's
+   total attempts and correct answers are passed to `checkAndAdvanceGrade()`
+2. If the session meets the threshold for the current grade, `gradeLevel` increments
+   by 1 and a level-up fanfare overlay shows
+3. Grade never decreases
 
-**Suggested starting thresholds for playtesting:**
+**Implemented thresholds** (`lib/engine/curriculum/grade_thresholds.dart`):
 
-| Grade range | Window | Advance threshold | Notes |
-|------------|--------|------------------|-------|
-| 0 → 1 | Last 10 | 80% | Small pool, lower bar |
-| 1 → 2 | Last 20 | 85% | |
-| 2 → 3 | Last 30 | 85% | |
-| 3 → 4 | Last 30 | 88% | |
-| 4+ | Last 40 | 90% | Higher grades need sustained mastery |
+| Grade range | Min attempts this session | Min accuracy | Notes |
+|------------|--------------------------|--------------|-------|
+| 0 → 1 | 10 | 80% | Tonic triad pool (3 notes) |
+| 1 → 2 | 20 | 85% | C major pool |
+| 2 → 3 | 20 | 85% | C major pool |
+| 3 → 4 | 20 | 85% | C + A minor pool |
+| 4 → 5 | 20 | 85% | C + A minor pool |
+| 5 → 6 | 30 | 90% | Chromatic pool |
+| 6 → 7 | 30 | 90% | Chromatic pool |
+| 7 → 8 | 30 | 90% | Chromatic pool |
+| 8+ | — | — | Ceiling; no further advancement |
 
-*Multi-session requirement (optional)*: require the threshold to be met across
-≥ 2 separate sessions to prevent lucky-run promotions. Adds friction but increases
-promotion quality.
+**Duel contribution: Practice only (decided 2026-05-29)**
 
-**Duel contribution**: whether duel wins count toward grade advancement is TBD
-(see `design/gdd/duel-system.md` § Follow-Up Work).
+Duels do NOT contribute to grade advancement. Rationale:
+- Practice mode has a controlled note pool per grade; duels use a free chromatic
+  palette regardless of grade — accuracy is not comparable across the two modes
+- This keeps the advancement signal clean: Practice accuracy reflects grade-level
+  mastery, while Duel performance is a separate creative/theory skill
+- Duels award Harmony Points instead (see `design/gdd/duel-system.md`), giving
+  them their own progression axis
+
+If playtesting shows players stall in Practice, the first mitigation is to lower
+the `minSessionAttempts` cap — not to add duel contribution, which would conflate
+two different skill signals.
 
 ---
 
@@ -199,8 +209,8 @@ Harmony Knight's journey rather than an arbitrary grade number.
 
 ## Follow-Up Work
 
-1. **Implement grade advancement logic** — wire accuracy thresholds into `PlayerProgressNotifier`
-2. **Level-up fanfare** — animation + sound + brief narrative beat on promotion
+1. ~~**Implement grade advancement logic**~~ — Done in Sprint 1 (S1-M1)
+2. ~~**Level-up fanfare**~~ — Done in Sprint 1 (S1-S1); audio hook remains for later
 3. **Rhythm and Body Base-10 exercises** — Level 2 is described but has no dedicated screen/mechanic yet
 4. **Circle of Fifths game-map integration** — Level 3 describes it as a navigable world; `/circle-of-fifths` screen exists but is not integrated with grade gating
 5. **Narrative content pipeline** — when story assets are created, decide on format (Flutter animations, static images, text) and skippability mechanism
