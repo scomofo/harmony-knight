@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:harmony_knight/engine/curriculum/grade_thresholds.dart';
+import 'package:harmony_knight/engine/persistence.dart';
 import 'package:harmony_knight/engine/spaced_repetition.dart';
 import 'package:harmony_knight/models/note.dart';
 import 'package:harmony_knight/providers/scaffolding_provider.dart';
@@ -20,10 +21,12 @@ import 'package:harmony_knight/widgets/scaffolded_note.dart';
 /// and triggers Fever Mode on 10+ streaks.
 class PracticeScreen extends ConsumerStatefulWidget {
   final bool isBrokenBladeMode;
+  final bool isFocusMode;
 
   const PracticeScreen({
     super.key,
     this.isBrokenBladeMode = false,
+    this.isFocusMode = false,
   });
 
   @override
@@ -53,6 +56,12 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
   bool _showLevelUp = false;
   int _newGradeLevel = 0;
 
+  // Session timing for heatmap recording.
+  late final DateTime _sessionStartTime;
+  double _confidenceAtStart = 0.0;
+
+  final PersistenceService _persistence = PersistenceService();
+
   // Spaced-repetition state.
   final SpacedRepetitionScheduler _srScheduler = SpacedRepetitionScheduler();
   List<SRItem> _srQueue = [];
@@ -62,6 +71,7 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
   @override
   void initState() {
     super.initState();
+    _sessionStartTime = DateTime.now();
     _feedbackController = AnimationController(
       duration: const Duration(milliseconds: 600),
       vsync: this,
@@ -72,8 +82,14 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
     );
     // Build the pool and SR queue after the first frame so providers are ready.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final grade = ref.read(playerProgressProvider).gradeLevel;
-      _notePool = _buildNotePool(grade);
+      _confidenceAtStart = ref.read(confidenceProvider);
+      final progress = ref.read(playerProgressProvider);
+      final grade = progress.gradeLevel;
+      if (widget.isFocusMode && progress.weakNotesMidi.isNotEmpty) {
+        _notePool = progress.weakNotesMidi.map((m) => Note(midi: m)).toList();
+      } else {
+        _notePool = _buildNotePool(grade);
+      }
       _rebuildSRQueue();
       _generateQuestion();
     });
@@ -258,6 +274,24 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
     }
     if (!mounted) return;
 
+    // Record session for the parent/teacher heatmap.
+    if (_sessionTotal > 0) {
+      final confidence = ref.read(confidenceProvider);
+      await _persistence.recordSession(SessionRecord(
+        startedAt: _sessionStartTime,
+        durationSeconds:
+            DateTime.now().difference(_sessionStartTime).inSeconds,
+        notesPlayed: _sessionTotal,
+        correctNotes: _sessionCorrect,
+        gradeLevel: ref.read(playerProgressProvider).gradeLevel,
+        exerciseType:
+            widget.isBrokenBladeMode ? 'broken_blade' : 'practice',
+        confidenceAtStart: _confidenceAtStart,
+        confidenceAtEnd: confidence,
+      ));
+    }
+    if (!mounted) return;
+
     final advanced = ref
         .read(playerProgressProvider.notifier)
         .checkAndAdvanceGrade(
@@ -371,7 +405,11 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
           onPressed: _onExit,
         ),
         title: Text(
-          widget.isBrokenBladeMode ? 'Blade Restoration' : 'Practice',
+          widget.isBrokenBladeMode
+              ? 'Blade Restoration'
+              : widget.isFocusMode
+                  ? 'Focus Session'
+                  : 'Practice',
           style: const TextStyle(color: Colors.white),
         ),
         actions: [

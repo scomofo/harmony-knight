@@ -26,8 +26,11 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/practice',
       builder: (context, state) {
-        final isBrokenBlade = state.uri.queryParameters['mode'] == 'broken_blade';
-        return PracticeScreen(isBrokenBladeMode: isBrokenBlade);
+        final mode = state.uri.queryParameters['mode'];
+        return PracticeScreen(
+          isBrokenBladeMode: mode == 'broken_blade',
+          isFocusMode: mode == 'focus',
+        );
       },
     ),
     GoRoute(

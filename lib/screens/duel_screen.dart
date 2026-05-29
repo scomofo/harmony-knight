@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:harmony_knight/models/note.dart';
+import 'package:harmony_knight/providers/audio_provider.dart';
 import 'package:harmony_knight/providers/duel_provider.dart';
 import 'package:harmony_knight/providers/scaffolding_provider.dart';
 import 'package:harmony_knight/widgets/confidence_slider.dart';
@@ -52,6 +53,21 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
   Widget build(BuildContext context) {
     final duel = ref.watch(duelProvider);
     final confidence = ref.watch(confidenceProvider);
+
+    // Play ghost tone when a suggestion appears; stop when it clears.
+    ref.listen(duelProvider, (prev, next) {
+      final ghostEngine = ref.read(ghostToneProvider);
+      final hadGhost = prev?.ghostSuggestion != null;
+      final hasGhost = next.ghostSuggestion != null;
+      if (hasGhost && !hadGhost) {
+        ghostEngine.playGhostTone(
+          midiNote: next.ghostSuggestion!.midi,
+          confidence: ref.read(confidenceProvider),
+        );
+      } else if (!hasGhost && hadGhost) {
+        ghostEngine.stopCurrentTone();
+      }
+    });
 
     return Scaffold(
       backgroundColor: const Color(0xFF0D1117),

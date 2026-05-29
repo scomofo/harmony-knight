@@ -87,7 +87,7 @@ class HomeScreen extends ConsumerWidget {
 
               // Weak notes hint (shown when the player has identified weak notes).
               if (progress.weakNotesMidi.isNotEmpty)
-                _buildWeakNotesHint(progress.weakNotesMidi),
+                _buildWeakNotesHint(progress.weakNotesMidi, context),
 
               // Confidence slider — always accessible.
               const ConfidenceSlider(),
@@ -283,28 +283,32 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildWeakNotesHint(List<int> midiNotes) {
+  Widget _buildWeakNotesHint(List<int> midiNotes, BuildContext context) {
     const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
     final names = midiNotes.map((m) => noteNames[m % 12]).toSet().join(', ');
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF4FC3F7).withAlpha(20),
-        border: Border.all(color: const Color(0xFF4FC3F7).withAlpha(80)),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.lightbulb_outline, color: Color(0xFF4FC3F7), size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'Focus area: $names — you tend to miss these. Try Practice!',
-              style: const TextStyle(color: Colors.white, fontSize: 13),
+    return GestureDetector(
+      onTap: () => context.go('/practice?mode=focus'),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF4FC3F7).withAlpha(20),
+          border: Border.all(color: const Color(0xFF4FC3F7).withAlpha(80)),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.lightbulb_outline, color: Color(0xFF4FC3F7), size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Focus area: $names — tap to drill these notes!',
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+              ),
             ),
-          ),
-        ],
+            Icon(Icons.chevron_right, color: const Color(0xFF4FC3F7).withAlpha(150), size: 18),
+          ],
+        ),
       ),
     );
   }

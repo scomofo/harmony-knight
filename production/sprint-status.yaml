@@ -144,23 +144,23 @@ sprints:
       - id: S3-M1
         title: "Session Recording in PracticeScreen"
         priority: must
-        status: todo
+        status: done
         owner: solo
-        notes: "_sessionStartTime in initState; recordSession() in _onExit(); exerciseType/durationSeconds/accuracy"
+        notes: "_sessionStartTime in initState; recordSession() in _onExit(); exerciseType/durationSeconds/accuracy/confidence"
 
       - id: S3-M2
         title: "Ghost Tone Audio on Duel Ghost Suggestion"
         priority: must
-        status: todo
+        status: done
         owner: solo
-        notes: "ref.listen(duelProvider); playGhostTone on suggestion; stopCurrentTone on clear"
+        notes: "ref.listen(duelProvider) in build; playGhostTone null→non-null; stopCurrentTone on clear"
 
       - id: S3-M3
         title: "Weak-Note Focus Session"
         priority: must
-        status: todo
+        status: done
         owner: solo
-        notes: "GestureDetector on hint → /practice?mode=focus; pool from weakNotesMidi; AppBar title"
+        notes: "GestureDetector on hint → /practice?mode=focus; isFocusMode param; pool from weakNotesMidi; AppBar 'Focus Session'"
 
       - id: S3-S1
         title: "Ghost Tone Toggle Persistence"
