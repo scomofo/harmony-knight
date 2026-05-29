@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:harmony_knight/engine/curriculum/grade_thresholds.dart';
 import 'package:harmony_knight/models/curriculum.dart';
+import 'package:harmony_knight/models/player_progress.dart';
 import 'package:harmony_knight/providers/scaffolding_provider.dart';
 import 'package:harmony_knight/widgets/confidence_slider.dart';
 
@@ -32,7 +34,11 @@ class HomeScreen extends ConsumerWidget {
 
               // Current quest banner.
               _buildQuestBanner(currentLevel),
-              const SizedBox(height: 24),
+              const SizedBox(height: 8),
+
+              // Grade progress bar.
+              _buildGradeProgressBar(progress),
+              const SizedBox(height: 16),
 
               // Quick-action cards (the 10-Second Rule: pick an action fast).
               Expanded(
@@ -231,6 +237,49 @@ class HomeScreen extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildGradeProgressBar(PlayerProgress progress) {
+    const maxGrade = 8;
+    final grade = progress.gradeLevel;
+    final threshold = kGradeThresholds[grade];
+    final fraction = (grade / maxGrade).clamp(0.0, 1.0);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Grade $grade',
+              style: TextStyle(color: Colors.white.withAlpha(150), fontSize: 11),
+            ),
+            if (threshold != null)
+              Text(
+                'Next: ${threshold.minSessionAttempts} notes at '
+                '${(threshold.minSessionAccuracy * 100).round()}% accuracy',
+                style: TextStyle(color: Colors.white.withAlpha(100), fontSize: 11),
+              )
+            else
+              Text(
+                'Max Grade!',
+                style: TextStyle(color: const Color(0xFFFFD54F).withAlpha(200), fontSize: 11),
+              ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: fraction,
+            minHeight: 5,
+            backgroundColor: Colors.white.withAlpha(20),
+            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF7C4DFF)),
+          ),
+        ),
+      ],
     );
   }
 

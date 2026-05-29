@@ -124,13 +124,13 @@ sprints:
       - id: S2-N1
         title: "Grade Progress Bar on Home Screen"
         priority: nice
-        status: todo
+        status: done
         owner: solo
-        notes: ""
+        notes: "_buildGradeProgressBar(); LinearProgressIndicator grade/8; threshold label from kGradeThresholds"
 
       - id: S2-N2
         title: "SR Reset Button in Settings"
         priority: nice
-        status: todo
+        status: done
         owner: solo
-        notes: ""
+        notes: "_showSRResetDialog(context, ref); calls srItemsProvider.notifier.clearAll(); keeps grade/streak"

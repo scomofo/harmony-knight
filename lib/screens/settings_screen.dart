@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:harmony_knight/providers/scaffolding_provider.dart';
+import 'package:harmony_knight/providers/sr_provider.dart';
 
 /// Settings screen with accessibility options and session preferences.
 ///
@@ -175,7 +176,19 @@ class SettingsScreen extends ConsumerWidget {
 
           const SizedBox(height: 32),
 
-          // Reset progress (with confirmation).
+          // Reset SR history (keeps grade/streak; clears spaced-repetition schedule).
+          Center(
+            child: TextButton(
+              onPressed: () => _showSRResetDialog(context, ref),
+              child: Text(
+                'Reset Practice History',
+                style: TextStyle(color: Colors.orange.shade400, fontSize: 13),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // Reset all progress (with confirmation).
           Center(
             child: TextButton(
               onPressed: () => _showResetDialog(context),
@@ -290,6 +303,35 @@ class SettingsScreen extends ConsumerWidget {
       trailing: Text(
         value,
         style: const TextStyle(color: Color(0xFF4FC3F7), fontSize: 16),
+      ),
+    );
+  }
+
+  void _showSRResetDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF161B22),
+        title: const Text('Reset Practice History?',
+            style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'This clears your spaced-repetition schedule so all notes restart '
+          'as new. Your grade, streak, and harmony points are kept.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              ref.read(srItemsProvider.notifier).clearAll();
+              Navigator.pop(ctx);
+            },
+            child: Text('Reset', style: TextStyle(color: Colors.orange.shade400)),
+          ),
+        ],
       ),
     );
   }
