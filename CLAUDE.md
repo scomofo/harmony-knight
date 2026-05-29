@@ -1,18 +1,24 @@
-# Claude Code Game Studios -- Game Studio Agent Architecture
+# Quest of the Harmony Knight — Game Studio Agent Architecture
 
-Indie game development managed through 49 coordinated Claude Code subagents.
-Each agent owns a specific domain, enforcing separation of concerns and quality.
+Music theory educational game for ADHD learners (Grade 0–8+), managed through
+49 coordinated Claude Code subagents. Each agent owns a specific domain,
+enforcing separation of concerns and quality.
 
 ## Technology Stack
 
-- **Engine**: [CHOOSE: Godot 4 / Unity / Unreal Engine 5]
-- **Language**: [CHOOSE: GDScript / C# / C++ / Blueprint]
+- **Engine**: Flutter 3.41+ (mobile + Windows desktop)
+- **Language**: Dart 3.6+
+- **State Management**: Riverpod 2.6 (StateNotifier pattern)
+- **Navigation**: go_router 14
+- **Audio**: just_audio + flutter_soloud
+- **Pitch Detection**: pitch_detector_dart + flutter_audio_capture
+- **Persistence**: path_provider (JSON files) + shared_preferences
 - **Version Control**: Git with trunk-based development
-- **Build System**: [SPECIFY after choosing engine]
-- **Asset Pipeline**: [SPECIFY after choosing engine]
+- **Build System**: Flutter build system (flutter build windows / apk / ios)
+- **Asset Pipeline**: assets/audio/, assets/images/, assets/fonts/ (currently placeholder)
 
-> **Note**: Engine-specialist agents exist for Godot, Unity, and Unreal with
-> dedicated sub-specialists. Use the set matching your engine.
+> **Note**: This is a Flutter project, not Godot/Unity/Unreal. Engine-specialist
+> agents for those engines are included but not applicable here.
 
 ## Project Structure
 
@@ -20,7 +26,7 @@ Each agent owns a specific domain, enforcing separation of concerns and quality.
 
 ## Engine Version Reference
 
-@docs/engine-reference/godot/VERSION.md
+Flutter 3.41+ / Dart 3.6+ — no engine-reference doc needed (use flutter.dev docs)
 
 ## Technical Preferences
 
