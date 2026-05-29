@@ -76,8 +76,8 @@ class DuelEngine {
       }
     }
 
-    // Voice crossing check.
-    if (userNote.midi < cantusNote.midi - 24) {
+    // Voice crossing check: user voice must stay above cantus.
+    if (userNote.midi < cantusNote.midi) {
       violations.add(CounterpointViolation.voiceCrossing);
     }
 
@@ -170,8 +170,8 @@ class DuelEngine {
 
     if (gradeLevel <= 2) return cMajor;
     if (gradeLevel <= 5) return _rng.nextBool() ? cMajor : aMinor;
-    // Higher grades: chromatic additions.
-    return [...cMajor, 61, 63, 66, 68, 70]..sort();
+    // Higher grades: full chromatic C4–C5.
+    return List.generate(13, (i) => 60 + i);
   }
 
   String _intervalName(int semitones) {
@@ -181,7 +181,7 @@ class DuelEngine {
       8: 'minor 6th', 9: 'major 6th', 10: 'minor 7th', 11: 'major 7th',
       12: 'octave',
     };
-    return names[semitones.abs() % 13] ?? 'interval';
+    return names[semitones.abs().clamp(0, 12)] ?? 'interval';
   }
 }
 

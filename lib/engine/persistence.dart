@@ -127,6 +127,7 @@ class PersistenceService {
         'gradeLevel': p.gradeLevel,
         'duelWins': p.duelWins,
         'harmonyPoints': p.harmonyPoints,
+        'weakNotesMidi': p.weakNotesMidi,
       };
 
   PlayerProgress _progressFromJson(Map<String, dynamic> j) => PlayerProgress(
@@ -141,6 +142,10 @@ class PersistenceService {
         gradeLevel: j['gradeLevel'] as int? ?? 0,
         duelWins: j['duelWins'] as int? ?? 0,
         harmonyPoints: j['harmonyPoints'] as int? ?? 0,
+        weakNotesMidi: (j['weakNotesMidi'] as List<dynamic>?)
+                ?.map((e) => e as int)
+                .toList() ??
+            [],
       );
 }
 

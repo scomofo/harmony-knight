@@ -29,23 +29,18 @@ class PracticeScreen extends ConsumerStatefulWidget {
 
 class _PracticeScreenState extends ConsumerState<PracticeScreen>
     with TickerProviderStateMixin {
-  late Note _targetNote;
-  late List<Note> _answerOptions;
+  Note? _targetNote;
+  List<Note> _answerOptions = [];
   String? _feedback;
   bool _showFeedback = false;
   late AnimationController _feedbackController;
   late AnimationController _feverController;
 
-  // Simple note pool for practice (C4 to B4 in C major).
-  final _notePool = [
-    const Note(midi: 60), // C4
-    const Note(midi: 62), // D4
-    const Note(midi: 64), // E4
-    const Note(midi: 65), // F4
-    const Note(midi: 67), // G4
-    const Note(midi: 69), // A4
-    const Note(midi: 71), // B4
-  ];
+  List<Note> _notePool = [];
+
+  // Tracks correctness per MIDI note for weak-note detection.
+  // midi -> [wasCorrect, wasCorrect, ...]
+  final Map<int, List<bool>> _noteHistory = {};
 
   @override
   void initState() {
@@ -58,7 +53,40 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-    _generateQuestion();
+    // Build the pool after the first frame so we can read gradeLevel from Riverpod.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final grade = ref.read(playerProgressProvider).gradeLevel;
+      _notePool = _buildNotePool(grade);
+      _generateQuestion();
+    });
+  }
+
+  /// Returns a grade-appropriate note pool.
+  ///
+  /// Grade 0 : C, E, G (landmark tonic triad — just 3 choices)
+  /// Grade 1–2: C major (C4–B4)
+  /// Grade 3–4: C major + A minor (adds A3, B3, C5)
+  /// Grade 5+  : Full chromatic C4–C5 (all 13 notes)
+  static List<Note> _buildNotePool(int gradeLevel) {
+    if (gradeLevel == 0) {
+      return const [Note(midi: 60), Note(midi: 64), Note(midi: 67)]; // C4, E4, G4
+    }
+    if (gradeLevel <= 2) {
+      return const [
+        Note(midi: 60), Note(midi: 62), Note(midi: 64),
+        Note(midi: 65), Note(midi: 67), Note(midi: 69), Note(midi: 71),
+      ];
+    }
+    if (gradeLevel <= 4) {
+      // C major + A minor: adds A3(57), B3(59), C5(72).
+      return const [
+        Note(midi: 57), Note(midi: 59),
+        Note(midi: 60), Note(midi: 62), Note(midi: 64),
+        Note(midi: 65), Note(midi: 67), Note(midi: 69), Note(midi: 71),
+        Note(midi: 72),
+      ];
+    }
+    return List.generate(13, (i) => Note(midi: 60 + i));
   }
 
   @override
@@ -69,20 +97,27 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
   }
 
   void _generateQuestion() {
+    if (_notePool.isEmpty) return;
     final shuffled = List<Note>.from(_notePool)..shuffle();
     _targetNote = shuffled.first;
-    // 4 answer options including the correct one.
-    _answerOptions = (shuffled.take(4).toList()..shuffle()).toList();
+    // Up to 4 answer options (fewer if pool is small), always includes the target.
+    final count = shuffled.length.clamp(1, 4);
+    _answerOptions = (shuffled.take(count).toList()..shuffle()).toList();
     _showFeedback = false;
     _feedback = null;
   }
 
   void _handleAnswer(Note selected) {
-    final isCorrect = selected.midi == _targetNote.midi;
+    if (_targetNote == null) return;
+    final isCorrect = selected.midi == _targetNote!.midi;
+
+    // Record per-note accuracy for weak-note analysis.
+    _noteHistory.putIfAbsent(_targetNote!.midi, () => []).add(isCorrect);
+    _updateWeakNotes();
 
     setState(() {
       _showFeedback = true;
-      _feedback = isCorrect ? 'Perfect!' : 'Try ${_targetNote.name}';
+      _feedback = isCorrect ? 'Perfect!' : 'Try ${_targetNote!.name}';
     });
 
     if (isCorrect) {
@@ -104,6 +139,20 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
       currentStreak: progress.currentStreak,
       lastActiveAt: progress.lastActiveAt,
     );
+  }
+
+  /// Recompute and persist weak notes after each answer.
+  /// A note is "weak" if it has ≥3 attempts and >50% miss rate.
+  void _updateWeakNotes() {
+    final weak = <int>[];
+    for (final entry in _noteHistory.entries) {
+      if (entry.value.length >= 3) {
+        final missRate =
+            entry.value.where((b) => !b).length / entry.value.length;
+        if (missRate > 0.5) weak.add(entry.key);
+      }
+    }
+    ref.read(playerProgressProvider.notifier).updateWeakNotes(weak);
   }
 
   @override
@@ -149,7 +198,9 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
         ],
       ),
       body: SafeArea(
-        child: Column(
+        child: _targetNote == null
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
           children: [
             // Fever Mode indicator.
             if (fever.isFeverActive)
@@ -186,7 +237,7 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
                     painter: StaffPainter(confidence: confidence),
                   ),
                   // Target note.
-                  ScaffoldedNote(note: _targetNote, size: 50),
+                  ScaffoldedNote(note: _targetNote!, size: 50),
                 ],
               ),
             ),
@@ -207,7 +258,7 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
-                  _targetNote.name,
+                  _targetNote!.name,
                   style: TextStyle(
                     color: Colors.white.withAlpha(
                       (255 * (1.0 - confidence * 2)).round().clamp(0, 255),
@@ -270,7 +321,7 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
   }
 
   Widget _buildAnswerButton(Note note, double confidence) {
-    final isCorrect = note.midi == _targetNote.midi;
+    final isCorrect = note.midi == _targetNote?.midi;
     final showResult = _showFeedback;
 
     return Material(

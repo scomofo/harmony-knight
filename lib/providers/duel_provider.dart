@@ -43,7 +43,7 @@ class DuelNotifier extends StateNotifier<DuelState> {
     );
 
     if (!result.isValid) {
-      // Invalid move: show a ghost resolution.
+      // Invalid move: show a ghost resolution with the AI's reasoning.
       final ghost = _engine.suggestGhostResolution(
         cantusNote: currentCantus,
         previousCantusNote: prevCantus,
@@ -51,6 +51,7 @@ class DuelNotifier extends StateNotifier<DuelState> {
       );
       state = state.copyWith(
         ghostSuggestion: ghost?.suggestedNote,
+        ghostReason: ghost?.reason,
       );
       return false;
     }

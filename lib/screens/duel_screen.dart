@@ -21,9 +21,6 @@ class DuelScreen extends ConsumerStatefulWidget {
 }
 
 class _DuelScreenState extends ConsumerState<DuelScreen> {
-  bool _showGhostReason = false;
-  String? _ghostReason;
-
   // Note input palette (C4 to C5 chromatic).
   final _inputNotes = List.generate(13, (i) => Note(midi: 60 + i));
 
@@ -38,28 +35,11 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
   }
 
   void _submitNote(Note note) {
-    final accepted = ref.read(duelProvider.notifier).submitNote(note);
-    if (!accepted) {
-      // Show ghost resolution reason.
-      setState(() {
-        _showGhostReason = true;
-        _ghostReason =
-            'That creates a forbidden motion. Tap the ghost note to see a better option.';
-      });
-    } else {
-      setState(() {
-        _showGhostReason = false;
-        _ghostReason = null;
-      });
-    }
+    ref.read(duelProvider.notifier).submitNote(note);
   }
 
   void _acceptGhost() {
     ref.read(duelProvider.notifier).acceptGhostSuggestion();
-    setState(() {
-      _showGhostReason = false;
-      _ghostReason = null;
-    });
   }
 
   @override
@@ -197,12 +177,12 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
                       ),
                     ),
 
-                  // Ghost reason feedback.
-                  if (_showGhostReason && _ghostReason != null)
+                  // Ghost reason: AI explanation of why the chosen note was invalid.
+                  if (duel.ghostSuggestion != null && duel.ghostReason != null)
                     Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Text(
-                        _ghostReason!,
+                        duel.ghostReason!,
                         style: TextStyle(
                           color: const Color(0xFFFF6F00).withAlpha(200),
                           fontSize: 13,

@@ -30,7 +30,7 @@
 #   Superseded entries:     Grep pattern="status: superseded"
 
 version: 1
-last_updated: ""
+last_updated: "2026-05-29"
 
 # ─── STATE OWNERSHIP ─────────────────────────────────────────────────────────
 # Who is the authoritative owner of each piece of shared game state.
@@ -43,7 +43,51 @@ last_updated: ""
 # interface: how other systems access this state (read-only property, method call,
 #   signal, shared resource, etc.) — this is the contract other ADRs depend on.
 
-state_ownership: []
+state_ownership:
+  - state: player_progress
+    status: active
+    owner_system: PlayerProgressNotifier
+    adr: docs/architecture/adr-0002-riverpod-state-management.md
+    interface: "ref.watch(playerProgressProvider) → PlayerProgress (read-only); mutations via notifier methods only"
+    write_access: PlayerProgressNotifier-only
+    referenced_by:
+      - docs/architecture/adr-0002-riverpod-state-management.md
+      - docs/architecture/adr-0003-json-file-persistence.md
+    added: 2026-05-29
+    revised: ""
+
+  - state: confidence_slider
+    status: active
+    owner_system: ScaffoldingNotifier
+    adr: docs/architecture/adr-0002-riverpod-state-management.md
+    interface: "ref.watch(confidenceProvider) → double 0.0–1.0"
+    write_access: ScaffoldingNotifier-only
+    referenced_by:
+      - docs/architecture/adr-0002-riverpod-state-management.md
+    added: 2026-05-29
+    revised: ""
+
+  - state: duel_state
+    status: active
+    owner_system: DuelNotifier
+    adr: docs/architecture/adr-0002-riverpod-state-management.md
+    interface: "ref.watch(duelProvider) → DuelState (read-only); mutations via DuelNotifier"
+    write_access: DuelNotifier-only
+    referenced_by:
+      - docs/architecture/adr-0002-riverpod-state-management.md
+    added: 2026-05-29
+    revised: ""
+
+  - state: engine_state
+    status: active
+    owner_system: GameEngine
+    adr: docs/architecture/adr-0001-deterministic-game-engine.md
+    interface: "GameEngine.update(time, input) → EngineState (value snapshot, not stored in Riverpod)"
+    write_access: GameEngine-only
+    referenced_by:
+      - docs/architecture/adr-0001-deterministic-game-engine.md
+    added: 2026-05-29
+    revised: ""
 
 # Example:
 #
@@ -157,7 +201,34 @@ api_decisions: []
 # Register a pattern when an ADR explicitly bans it AND other ADRs might
 # unknowingly use it (i.e., it's a tempting but wrong approach for this project).
 
-forbidden_patterns: []
+forbidden_patterns:
+  - pattern: datetime_now_in_game_loop
+    status: active
+    description: "Never call DateTime.now() or Stopwatch inside GameEngine.update(). All timing must flow from AudioClock."
+    why: "Non-deterministic timing breaks headless tests and replay. AudioClock is the single source of truth for gameplay time."
+    adr: docs/architecture/adr-0001-deterministic-game-engine.md
+    added: 2026-05-29
+
+  - pattern: async_in_engine_update
+    status: active
+    description: "GameEngine.update() must be synchronous. No await, no Future, no I/O inside the update loop."
+    why: "Async calls introduce non-determinism and unpredictable latency in the hot path. I/O belongs in services outside the engine."
+    adr: docs/architecture/adr-0001-deterministic-game-engine.md
+    added: 2026-05-29
+
+  - pattern: engine_state_in_riverpod
+    status: active
+    description: "Do not put per-frame EngineState in a Riverpod provider. Pass it directly to the renderer."
+    why: "Per-frame Riverpod updates (60/s) cause excessive widget rebuilds. EngineState is a render value, not application state."
+    adr: docs/architecture/adr-0001-deterministic-game-engine.md
+    added: 2026-05-29
+
+  - pattern: direct_statenotifier_state_write
+    status: active
+    description: "External code must never write to a StateNotifier's state directly. All mutations go through notifier methods."
+    why: "Direct state writes bypass persistence hooks and break the single-owner pattern established in ADR-0002."
+    adr: docs/architecture/adr-0002-riverpod-state-management.md
+    added: 2026-05-29
 
 # Example:
 #

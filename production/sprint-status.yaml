@@ -1,0 +1,74 @@
+version: 1
+last_updated: "2026-05-29"
+review_mode: solo
+
+current_sprint: 1
+
+sprints:
+  - id: 1
+    goal: "Wire core progression loop — grade advancement, Broken Blade exit, duel rewards"
+    started: "2026-05-29"
+    status: active   # active | complete | blocked
+
+    tasks:
+      # ── Must-Have ────────────────────────────────────────────────────────────
+
+      - id: S1-M1
+        title: "Grade Advancement Thresholds"
+        priority: must
+        status: todo   # todo | in_progress | done | blocked
+        owner: solo
+        notes: ""
+
+      - id: S1-M2
+        title: "Broken Blade Auto-Exit"
+        priority: must
+        status: todo
+        owner: solo
+        notes: ""
+
+      - id: S1-M3
+        title: "Harmony Points Awarded on Duel Completion"
+        priority: must
+        status: todo
+        owner: solo
+        notes: ""
+
+      # ── Should-Have ───────────────────────────────────────────────────────────
+
+      - id: S1-S1
+        title: "Level-Up Fanfare"
+        priority: should
+        status: todo
+        owner: solo
+        notes: ""
+
+      - id: S1-S2
+        title: "Ghost Note Visual Treatment"
+        priority: should
+        status: todo
+        owner: solo
+        notes: ""
+
+      - id: S1-S3
+        title: "Document Duel → Grade Advancement Relationship"
+        priority: should
+        status: todo
+        owner: solo
+        notes: ""
+
+      # ── Nice-to-Have ──────────────────────────────────────────────────────────
+
+      - id: S1-N1
+        title: "Widget Tests for PracticeScreen and DuelScreen"
+        priority: nice
+        status: todo
+        owner: solo
+        notes: ""
+
+      - id: S1-N2
+        title: "Sentinel Narrative Moment on Harmony Meter Fill"
+        priority: nice
+        status: todo
+        owner: solo
+        notes: ""

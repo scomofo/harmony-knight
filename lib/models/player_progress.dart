@@ -32,6 +32,9 @@ class PlayerProgress extends Equatable {
   /// XP / Harmony Points accumulated.
   final int harmonyPoints;
 
+  /// MIDI note numbers the player consistently struggles with (bottom 25% accuracy).
+  final List<int> weakNotesMidi;
+
   const PlayerProgress({
     this.confidence = 0.0,
     this.currentStreak = 0,
@@ -43,6 +46,7 @@ class PlayerProgress extends Equatable {
     this.gradeLevel = 0,
     this.duelWins = 0,
     this.harmonyPoints = 0,
+    this.weakNotesMidi = const [],
   });
 
   /// Accuracy percentage.
@@ -67,6 +71,7 @@ class PlayerProgress extends Equatable {
     int? gradeLevel,
     int? duelWins,
     int? harmonyPoints,
+    List<int>? weakNotesMidi,
   }) {
     return PlayerProgress(
       confidence: confidence ?? this.confidence,
@@ -79,6 +84,7 @@ class PlayerProgress extends Equatable {
       gradeLevel: gradeLevel ?? this.gradeLevel,
       duelWins: duelWins ?? this.duelWins,
       harmonyPoints: harmonyPoints ?? this.harmonyPoints,
+      weakNotesMidi: weakNotesMidi ?? this.weakNotesMidi,
     );
   }
 
@@ -86,6 +92,6 @@ class PlayerProgress extends Equatable {
   List<Object?> get props => [
         confidence, currentStreak, bestStreak, totalNotesPlayed,
         totalCorrectNotes, lastActiveAt, inBrokenBladeRecovery,
-        gradeLevel, duelWins, harmonyPoints,
+        gradeLevel, duelWins, harmonyPoints, weakNotesMidi,
       ];
 }

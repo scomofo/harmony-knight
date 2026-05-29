@@ -1,6 +1,10 @@
 # Source Directory
 
-When writing or editing game code in this directory, follow these standards.
+> **Flutter project**: Game source code lives in `lib/`, not this directory.
+> All agents should work under `lib/` for Dart/Flutter code.
+> This directory is a studio scaffold placeholder only.
+
+When writing or editing game code, follow these standards.
 
 ## Engine Version Warning
 
