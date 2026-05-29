@@ -9,9 +9,16 @@ const _grade0Names = ['C4', 'E4', 'G4'];
 
 // Wrap in a minimal ProviderScope + MaterialApp.
 // No router needed: none of these tests trigger navigation.
-Widget _buildSubject({bool isBrokenBladeMode = false}) => ProviderScope(
+Widget _buildSubject({
+  bool isBrokenBladeMode = false,
+  bool isFocusMode = false,
+}) =>
+    ProviderScope(
       child: MaterialApp(
-        home: PracticeScreen(isBrokenBladeMode: isBrokenBladeMode),
+        home: PracticeScreen(
+          isBrokenBladeMode: isBrokenBladeMode,
+          isFocusMode: isFocusMode,
+        ),
       ),
     );
 
@@ -112,6 +119,46 @@ void main() {
       await tester.pump();
 
       expect(find.text('0'), findsOneWidget);
+    });
+  });
+
+  group('PracticeScreen — Focus Session mode', () {
+    testWidgets('AppBar shows Focus Session title', (tester) async {
+      await tester.pumpWidget(_buildSubject(isFocusMode: true));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Focus Session'), findsOneWidget);
+    });
+
+    testWidgets('normal mode AppBar shows Practice title', (tester) async {
+      await tester.pumpWidget(_buildSubject());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Practice'), findsOneWidget);
+    });
+
+    testWidgets('focus mode with no weak notes falls back to grade pool', (tester) async {
+      // Default PlayerProgress has weakNotesMidi=[] — fallback to grade 0 pool.
+      await tester.pumpWidget(_buildSubject(isFocusMode: true));
+      await tester.pumpAndSettle();
+
+      // Grade-0 notes should appear (fallback is active).
+      var found = false;
+      for (final name in _grade0Names) {
+        if (tester.widgetList(find.text(name)).isNotEmpty) {
+          found = true;
+          break;
+        }
+      }
+      expect(found, isTrue,
+          reason: 'Focus mode with empty weak notes must fall back to grade pool');
+    });
+
+    testWidgets('focus mode still shows note prompt', (tester) async {
+      await tester.pumpWidget(_buildSubject(isFocusMode: true));
+      await tester.pumpAndSettle();
+
+      expect(find.text('What note is this?'), findsOneWidget);
     });
   });
 }

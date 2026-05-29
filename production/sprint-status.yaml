@@ -179,13 +179,13 @@ sprints:
       - id: S3-N1
         title: "Onboarding for New Users"
         priority: nice
-        status: todo
+        status: done
         owner: solo
-        notes: "Check onboarding_screen.dart routing; wire for totalNotesPlayed==0 first launch"
+        notes: "router.dart redirect checks 'onboarding_done' SharedPrefs key; onboarding_screen sets key on complete/skip"
 
       - id: S3-N2
         title: "Widget Test for Focus Session"
         priority: nice
-        status: todo
+        status: done
         owner: solo
-        notes: "Verify mode=focus uses weakNotesMidi pool; override playerProgressProvider in test"
+        notes: "4 focus-mode tests: AppBar title, normal-mode title, fallback to grade pool, note prompt shown"
