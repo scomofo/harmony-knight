@@ -46,16 +46,16 @@ sprints:
       - id: S1-S2
         title: "Ghost Note Visual Treatment"
         priority: should
-        status: todo
+        status: done
         owner: solo
-        notes: ""
+        notes: "Dashed border via PathMetrics; _shapePath() unified fill+outline"
 
       - id: S1-S3
         title: "Document Duel → Grade Advancement Relationship"
         priority: should
-        status: todo
+        status: done
         owner: solo
-        notes: ""
+        notes: "Practice-only signal; duel contribution explicitly rejected; curriculum-system.md updated"
 
       # ── Nice-to-Have ──────────────────────────────────────────────────────────
 
