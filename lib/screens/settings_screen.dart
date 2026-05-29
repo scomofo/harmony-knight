@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:harmony_knight/providers/scaffolding_provider.dart';
+import 'package:harmony_knight/providers/session_prefs_provider.dart';
 import 'package:harmony_knight/providers/sr_provider.dart';
-
 
 /// Settings screen with accessibility options and session preferences.
 ///
@@ -16,6 +16,8 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final progress = ref.watch(playerProgressProvider);
     final ghostTonesEnabled = ref.watch(ghostTonesEnabledProvider);
+    final prefs = ref.watch(sessionPrefsProvider);
+    final prefsNotifier = ref.read(sessionPrefsProvider.notifier);
 
     return Scaffold(
       backgroundColor: const Color(0xFF0D1117),
@@ -39,8 +41,8 @@ class SettingsScreen extends ConsumerWidget {
             Icons.timer,
             10,
             20,
-            12, // Default 12 minutes.
-            (val) {},
+            prefs.sessionLengthMinutes.toDouble(),
+            (val) => prefsNotifier.setSessionLength(val.round()),
             suffix: ' min',
           ),
           _buildSliderTile(
@@ -49,8 +51,8 @@ class SettingsScreen extends ConsumerWidget {
             Icons.new_releases,
             5,
             30,
-            20,
-            (val) {},
+            prefs.newItemsPerSession.toDouble(),
+            (val) => prefsNotifier.setNewItemsPerSession(val.round()),
           ),
           _buildSliderTile(
             'Warm-Up Questions',
@@ -58,8 +60,8 @@ class SettingsScreen extends ConsumerWidget {
             Icons.wb_sunny,
             1,
             10,
-            3,
-            (val) {},
+            prefs.warmUpNotes.toDouble(),
+            (val) => prefsNotifier.setWarmUpNotes(val.round()),
           ),
 
           const SizedBox(height: 24),
@@ -84,8 +86,8 @@ class SettingsScreen extends ConsumerWidget {
             'Haptic Feedback',
             'Vibration for rhythmic exercises and feedback',
             Icons.vibration,
-            true,
-            (val) {},
+            prefs.hapticEnabled,
+            (val) => prefsNotifier.setHapticEnabled(val),
           ),
           _buildToggleTile(
             'Screen Reader Support',
@@ -120,8 +122,8 @@ class SettingsScreen extends ConsumerWidget {
             'Metronome',
             'Audible metronome during rhythm exercises',
             Icons.timer,
-            true,
-            (val) {},
+            prefs.metronomeEnabled,
+            (val) => prefsNotifier.setMetronomeEnabled(val),
           ),
           _buildSliderTile(
             'Master Volume',

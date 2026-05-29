@@ -199,37 +199,37 @@ sprints:
       - id: S4-M1
         title: "Session Length Timer in PracticeScreen"
         priority: must
-        status: todo
+        status: done
         owner: solo
-        notes: "session_length SharedPrefs; MM:SS in AppBar; auto-exit at limit; SessionPrefsNotifier (new)"
+        notes: "SessionPrefsNotifier; MM:SS in AppBar (orange at -2min); Timer.periodic auto-exit; skipped in Broken Blade"
 
       - id: S4-M2
         title: "Warm-Up Count Setting"
         priority: must
-        status: todo
+        status: done
         owner: solo
-        notes: "warm_up_notes SharedPrefs; _rebuildSRQueue front-loads interval<=1 items first"
+        notes: "warm_up_notes → SpacedRepetitionScheduler(warmUpCount:); Settings slider wired"
 
       - id: S4-M3
         title: "New Items Per Session Cap"
         priority: must
-        status: todo
+        status: done
         owner: solo
-        notes: "new_items_per_session SharedPrefs; _rebuildSRQueue caps new-item count; due reviews uncapped"
+        notes: "new_items_per_session → SpacedRepetitionScheduler(maxNewItemsPerSession:); Settings slider wired"
 
       - id: S4-S1
         title: "Rhythm System GDD"
         priority: should
-        status: todo
+        status: done
         owner: solo
-        notes: "design/gdd/rhythm-system.md; 8 sections; Body Base-10, time sigs, metronome, haptics; systems-index updated"
+        notes: "design/gdd/rhythm-system.md; 8 sections; Body Base-10, metronome, haptics, timing windows; systems-index created"
 
       - id: S4-S2
         title: "Metronome and Haptic Feedback Toggle Persistence"
         priority: should
-        status: todo
+        status: done
         owner: solo
-        notes: "metronome_enabled + haptic_enabled SharedPrefs; Settings toggles wired; audio/haptics deferred to Sprint 5"
+        notes: "metronome_enabled + haptic_enabled in SessionPrefsNotifier; Settings toggles wired; audio/haptics Sprint 5"
 
       - id: S4-N1
         title: "Reduce Motion Persistence and Use"

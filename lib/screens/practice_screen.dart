@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +9,7 @@ import 'package:harmony_knight/engine/spaced_repetition.dart';
 import 'package:harmony_knight/models/note.dart';
 import 'package:harmony_knight/providers/scaffolding_provider.dart';
 import 'package:harmony_knight/providers/fever_provider.dart';
+import 'package:harmony_knight/providers/session_prefs_provider.dart';
 import 'package:harmony_knight/providers/sr_provider.dart';
 import 'package:harmony_knight/painters/staff_painter.dart';
 import 'package:harmony_knight/widgets/confidence_slider.dart';
@@ -56,14 +59,17 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
   bool _showLevelUp = false;
   int _newGradeLevel = 0;
 
-  // Session timing for heatmap recording.
+  // Session timing for heatmap recording and session-length auto-exit.
   late final DateTime _sessionStartTime;
   double _confidenceAtStart = 0.0;
+  int _sessionLengthMinutes = 12; // overwritten from prefs in postFrameCallback
+  Timer? _sessionTimer;
+  Duration _elapsed = Duration.zero;
 
   final PersistenceService _persistence = PersistenceService();
 
   // Spaced-repetition state.
-  final SpacedRepetitionScheduler _srScheduler = SpacedRepetitionScheduler();
+  SpacedRepetitionScheduler _srScheduler = SpacedRepetitionScheduler();
   List<SRItem> _srQueue = [];
   int _srQueueIndex = 0;
   bool _questionHadError = false; // tracks if current question had a wrong attempt
@@ -83,6 +89,29 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
     // Build the pool and SR queue after the first frame so providers are ready.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _confidenceAtStart = ref.read(confidenceProvider);
+
+      // Read session preferences and configure SR scheduler.
+      final prefs = ref.read(sessionPrefsProvider);
+      _sessionLengthMinutes = prefs.sessionLengthMinutes;
+      _srScheduler = SpacedRepetitionScheduler(
+        maxNewItemsPerSession: prefs.newItemsPerSession,
+        warmUpCount: prefs.warmUpNotes,
+      );
+
+      // Start the per-second tick (skip in Broken Blade — no time limit).
+      if (!widget.isBrokenBladeMode) {
+        _sessionTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+          if (!mounted) return;
+          setState(() {
+            _elapsed = DateTime.now().difference(_sessionStartTime);
+          });
+          if (_elapsed.inMinutes >= _sessionLengthMinutes) {
+            _sessionTimer?.cancel();
+            _onExit();
+          }
+        });
+      }
+
       final progress = ref.read(playerProgressProvider);
       final grade = progress.gradeLevel;
       if (widget.isFocusMode && progress.weakNotesMidi.isNotEmpty) {
@@ -125,6 +154,7 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
 
   @override
   void dispose() {
+    _sessionTimer?.cancel();
     _feedbackController.dispose();
     _feverController.dispose();
     super.dispose();
@@ -264,6 +294,7 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
 
   /// Called when leaving the screen — shows summary, then checks grade advancement.
   Future<void> _onExit() async {
+    _sessionTimer?.cancel();
     // Show session summary only if notes were played and not in Broken Blade
     // (Broken Blade has its own "Blade Restored!" dialog).
     if (_sessionTotal > 0 && !widget.isBrokenBladeMode && mounted) {
@@ -413,6 +444,22 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
           style: const TextStyle(color: Colors.white),
         ),
         actions: [
+          // Elapsed timer (not shown in Broken Blade mode).
+          if (!widget.isBrokenBladeMode)
+            Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: Center(
+                child: Text(
+                  _formatElapsed(_elapsed),
+                  style: TextStyle(
+                    color: _elapsed.inMinutes >= _sessionLengthMinutes - 2
+                        ? const Color(0xFFFF6F00)
+                        : Colors.white.withAlpha(150),
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ),
           // Streak display.
           Padding(
             padding: const EdgeInsets.only(right: 16),
@@ -583,6 +630,12 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
           ),
       ], // closes Stack children
     ); // closes Stack
+  }
+
+  String _formatElapsed(Duration d) {
+    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$m:$s';
   }
 
   Widget _buildAnswerButton(Note note, double confidence) {
