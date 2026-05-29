@@ -1,4 +1,4 @@
-# Flutter/Dart
+# === Flutter/Dart ===
 .dart_tool/
 .packages
 build/
@@ -9,20 +9,92 @@ build/
 *.iws
 .idea/
 
-# Isar
-*.isar
-*.isar.lock
-
-# Generated
+# === Generated Dart ===
 *.g.dart
 *.freezed.dart
 *.gen.dart
 
-# OS
-.DS_Store
-Thumbs.db
+# === Isar ===
+*.isar
+*.isar.lock
 
-# IDE
-.vscode/
+# === IDE and Editor ===
+.vs/
+.vscode/settings.json
 *.swp
 *.swo
+*~
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# === Claude Code Local ===
+.claude/settings.local.json
+CLAUDE.local.md
+production/session-logs/
+
+# === Internal Planning ===
+expansions/
+marrow/
+
+# === Runtime Artifacts ===
+docs/consistency-failures.md
+
+# === Build Output ===
+builds/
+bin/
+obj/
+out/
+dist/
+*.exe
+*.dll
+*.so
+*.dylib
+*.app
+
+# === Compiled Shaders ===
+*.spv
+*.cso
+*.dxbc
+
+# === Temporary and Cache ===
+*.tmp
+*.temp
+*.cache
+*.log
+__pycache__/
+*.pyc
+node_modules/
+.npm/
+
+# === Archives ===
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# === Secrets and Environment ===
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+credentials.json
+secrets.json
+
+# === Large Binary Assets (use Git LFS instead) ===
+# *.png
+# *.jpg
+# *.jpeg
+# *.wav
+# *.mp3
+# *.ogg
+# *.fbx
+# *.blend
+
+# === OS Generated ===
+ehthumbs.db
+ehthumbs_vista.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.lnk
