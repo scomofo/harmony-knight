@@ -37,19 +37,19 @@ class CurriculumScreen extends ConsumerWidget {
           _buildPhaseHeader('Phase 1: Foundation', 'The Seed Phase',
               const Color(0xFF4FC3F7)),
           ...Curriculum.forPhase(CurriculumPhase.foundation)
-              .map((l) => _buildLevelCard(l, currentGrade)),
+              .map((l) => _buildLevelCard(l, currentGrade, context)),
 
           const SizedBox(height: 24),
           _buildPhaseHeader('Phase 2: Intermediate', 'The Growth Phase',
               const Color(0xFF7C4DFF)),
           ...Curriculum.forPhase(CurriculumPhase.intermediate)
-              .map((l) => _buildLevelCard(l, currentGrade)),
+              .map((l) => _buildLevelCard(l, currentGrade, context)),
 
           const SizedBox(height: 24),
           _buildPhaseHeader('Phase 3: Advanced', 'The Fruit Phase',
               const Color(0xFFFFD54F)),
           ...Curriculum.forPhase(CurriculumPhase.advanced)
-              .map((l) => _buildLevelCard(l, currentGrade)),
+              .map((l) => _buildLevelCard(l, currentGrade, context)),
         ],
       ),
     );
@@ -82,7 +82,7 @@ class CurriculumScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildLevelCard(CurriculumLevel level, int currentGrade) {
+  Widget _buildLevelCard(CurriculumLevel level, int currentGrade, BuildContext context) {
     final isUnlocked = level.level <= currentGrade;
     final isCurrent = level.level == currentGrade;
 
@@ -212,6 +212,32 @@ class CurriculumScreen extends ConsumerWidget {
                     ],
                   ),
                 )),
+            // Circle of Fifths explore button for Level 3.
+            if (level.level == 3) ...[
+              const SizedBox(height: 8),
+              if (currentGrade >= 3)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: () => context.go('/circle-of-fifths'),
+                    icon: const Icon(Icons.explore,
+                        color: Color(0xFF7C4DFF), size: 16),
+                    label: const Text(
+                      'Explore →',
+                      style: TextStyle(color: Color(0xFF7C4DFF)),
+                    ),
+                  ),
+                )
+              else
+                Text(
+                  'Circle of Fifths unlocks at Grade 3',
+                  style: TextStyle(
+                    color: Colors.white.withAlpha(80),
+                    fontSize: 11,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+            ],
           ],
         ],
       ),

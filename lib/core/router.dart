@@ -6,7 +6,9 @@ import 'package:harmony_knight/screens/curriculum_screen.dart';
 import 'package:harmony_knight/screens/circle_of_fifths_screen.dart';
 import 'package:harmony_knight/screens/heatmap_screen.dart';
 import 'package:harmony_knight/screens/settings_screen.dart';
+import 'package:harmony_knight/engine/persistence.dart';
 import 'package:harmony_knight/screens/onboarding_screen.dart';
+import 'package:harmony_knight/screens/rhythm_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// App router with simple, direct navigation paths.
@@ -16,12 +18,20 @@ import 'package:shared_preferences/shared_preferences.dart';
 final appRouter = GoRouter(
   initialLocation: '/',
   redirect: (context, state) async {
+    final prefs = await SharedPreferences.getInstance();
+
     // Show onboarding on first launch only (redirect from home, not from within onboarding).
     if (state.matchedLocation == '/') {
-      final prefs = await SharedPreferences.getInstance();
       final done = prefs.getBool('onboarding_done') ?? false;
       if (!done) return '/onboarding';
     }
+
+    // Circle of Fifths unlocks at Grade 3.
+    if (state.matchedLocation == '/circle-of-fifths') {
+      final progress = await PersistenceService().loadProgress();
+      if (progress.gradeLevel < 3) return '/';
+    }
+
     return null;
   },
   routes: [
@@ -62,6 +72,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/settings',
       builder: (context, state) => const SettingsScreen(),
+    ),
+    GoRoute(
+      path: '/rhythm',
+      builder: (context, state) => const RhythmScreen(),
     ),
   ],
 );

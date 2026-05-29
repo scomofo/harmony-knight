@@ -81,6 +81,17 @@ class HomeScreen extends ConsumerWidget {
                       color: const Color(0xFFFFD54F),
                       onTap: () => context.go('/curriculum'),
                     ),
+                    if (progress.gradeLevel >= 1) ...[
+                      const SizedBox(height: 16),
+                      _buildActionCard(
+                        context,
+                        icon: Icons.audiotrack,
+                        title: 'Rhythm Practice',
+                        subtitle: 'Feel the pulse — Body Base-10',
+                        color: const Color(0xFF69F0AE),
+                        onTap: () => context.go('/rhythm'),
+                      ),
+                    ],
                   ],
                 ),
               ),

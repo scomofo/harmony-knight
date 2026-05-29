@@ -607,7 +607,9 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
         if (_showLevelUp)
           AnimatedOpacity(
             opacity: _showLevelUp ? 1.0 : 0.0,
-            duration: const Duration(milliseconds: 400),
+            duration: ref.read(sessionPrefsProvider).reduceMotion
+                ? Duration.zero
+                : const Duration(milliseconds: 400),
             child: Container(
               color: const Color(0xCC1A237E),
               alignment: Alignment.center,

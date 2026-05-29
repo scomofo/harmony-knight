@@ -79,8 +79,8 @@ class SettingsScreen extends ConsumerWidget {
             'Reduce Motion',
             'Disables animations and Fever Mode effects',
             Icons.motion_photos_off,
-            false,
-            (val) {},
+            prefs.reduceMotion,
+            (val) => prefsNotifier.setReduceMotion(val),
           ),
           _buildToggleTile(
             'Haptic Feedback',

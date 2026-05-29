@@ -8,6 +8,7 @@ class SessionPrefs {
   final int newItemsPerSession;
   final bool metronomeEnabled;
   final bool hapticEnabled;
+  final bool reduceMotion;
 
   const SessionPrefs({
     this.sessionLengthMinutes = 12,
@@ -15,6 +16,7 @@ class SessionPrefs {
     this.newItemsPerSession = 20,
     this.metronomeEnabled = true,
     this.hapticEnabled = true,
+    this.reduceMotion = false,
   });
 
   SessionPrefs copyWith({
@@ -23,6 +25,7 @@ class SessionPrefs {
     int? newItemsPerSession,
     bool? metronomeEnabled,
     bool? hapticEnabled,
+    bool? reduceMotion,
   }) =>
       SessionPrefs(
         sessionLengthMinutes:
@@ -31,6 +34,7 @@ class SessionPrefs {
         newItemsPerSession: newItemsPerSession ?? this.newItemsPerSession,
         metronomeEnabled: metronomeEnabled ?? this.metronomeEnabled,
         hapticEnabled: hapticEnabled ?? this.hapticEnabled,
+        reduceMotion: reduceMotion ?? this.reduceMotion,
       );
 }
 
@@ -41,6 +45,7 @@ class SessionPrefsNotifier extends StateNotifier<SessionPrefs> {
   static const _keyNewItems = 'new_items_per_session';
   static const _keyMetronome = 'metronome_enabled';
   static const _keyHaptic = 'haptic_enabled';
+  static const _keyReduceMotion = 'reduce_motion';
 
   SessionPrefsNotifier() : super(const SessionPrefs()) {
     _loadFromPrefs();
@@ -55,6 +60,7 @@ class SessionPrefsNotifier extends StateNotifier<SessionPrefs> {
       newItemsPerSession: p.getInt(_keyNewItems) ?? 20,
       metronomeEnabled: p.getBool(_keyMetronome) ?? true,
       hapticEnabled: p.getBool(_keyHaptic) ?? true,
+      reduceMotion: p.getBool(_keyReduceMotion) ?? false,
     );
   }
 
@@ -86,6 +92,11 @@ class SessionPrefsNotifier extends StateNotifier<SessionPrefs> {
   void setHapticEnabled(bool enabled) {
     state = state.copyWith(hapticEnabled: enabled);
     _prefs((p) async => p.setBool(_keyHaptic, enabled));
+  }
+
+  void setReduceMotion(bool enabled) {
+    state = state.copyWith(reduceMotion: enabled);
+    _prefs((p) async => p.setBool(_keyReduceMotion, enabled));
   }
 }
 

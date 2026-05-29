@@ -5,6 +5,7 @@ import 'package:harmony_knight/models/note.dart';
 import 'package:harmony_knight/providers/audio_provider.dart';
 import 'package:harmony_knight/providers/duel_provider.dart';
 import 'package:harmony_knight/providers/scaffolding_provider.dart';
+import 'package:harmony_knight/providers/session_prefs_provider.dart';
 import 'package:harmony_knight/widgets/confidence_slider.dart';
 import 'package:harmony_knight/widgets/scaffolded_note.dart';
 import 'package:harmony_knight/widgets/harmony_meter.dart';
@@ -53,6 +54,7 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
   Widget build(BuildContext context) {
     final duel = ref.watch(duelProvider);
     final confidence = ref.watch(confidenceProvider);
+    final reduceMotion = ref.watch(sessionPrefsProvider).reduceMotion;
 
     // Play ghost tone when a suggestion appears; stop when it clears.
     // Respects the ghost-tones toggle in Settings.
@@ -103,7 +105,7 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
                   // Discord Sentinel grudging-respect toast when meter is full.
                   if (duel.harmonyMeter >= 1.0)
                     AnimatedContainer(
-                      duration: const Duration(milliseconds: 400),
+                      duration: reduceMotion ? Duration.zero : const Duration(milliseconds: 400),
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(
                           vertical: 8, horizontal: 16),

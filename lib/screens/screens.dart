@@ -7,3 +7,4 @@ export 'circle_of_fifths_screen.dart';
 export 'heatmap_screen.dart';
 export 'settings_screen.dart';
 export 'onboarding_screen.dart';
+export 'rhythm_screen.dart';

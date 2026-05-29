@@ -2,7 +2,7 @@ version: 1
 last_updated: "2026-05-29"
 review_mode: solo
 
-current_sprint: 4
+current_sprint: 5
 
 sprints:
   - id: 1
@@ -244,3 +244,58 @@ sprints:
         status: todo
         owner: solo
         notes: "redirect to / if gradeLevel<3; Level 3 Curriculum Map card gets Explore button"
+
+  - id: 5
+    goal: "Rhythm comes alive — metronome audio, haptic beats, Level 2 rhythm exercise screen, deferred accessibility toggles"
+    started: "2026-05-29"
+    status: in-progress
+
+    tasks:
+      - id: S5-M1
+        title: "Metronome Audio Engine"
+        priority: must
+        status: done
+        owner: solo
+        notes: "lib/engine/metronome_service.dart; ToneGenerator MIDI 76 80ms click; accent vol 1.0 / normal vol 0.6; Timer.periodic(60000/bpm ms); lastBeatTimestamp exposed for tap scoring"
+
+      - id: S5-M2
+        title: "Haptic Beat Feedback"
+        priority: must
+        status: done
+        owner: solo
+        notes: "Integrated in MetronomeService._onBeat(); correctAnswer() on beat 1; lightTap() on others; guarded by hapticEnabled; Windows no-op"
+
+      - id: S5-M3
+        title: "Level 2 Rhythm Exercise Screen"
+        priority: must
+        status: done
+        owner: solo
+        notes: "rhythm_screen.dart + /rhythm route; 4 Body Base-10 buttons; timing windows 80/160/300ms; Wait-Mode on Miss; HomeScreen Rhythm card at gradeLevel>=1"
+
+      - id: S5-S1
+        title: "Reduce Motion Persistence and Use"
+        priority: should
+        status: done
+        owner: solo
+        notes: "reduceMotion in SessionPrefsNotifier ('reduce_motion' SharedPrefs); Settings toggle wired; fanfare AnimatedOpacity + sentinel AnimatedContainer + rhythm beat ScaleTransition all use Duration.zero when true"
+
+      - id: S5-S2
+        title: "Circle of Fifths Grade-Gating"
+        priority: should
+        status: done
+        owner: solo
+        notes: "router redirect /circle-of-fifths → / if gradeLevel<3 (via PersistenceService.loadProgress()); CurriculumScreen Level 3 card shows Explore button at grade>=3, locked label otherwise"
+
+      - id: S5-N1
+        title: "High Contrast Mode"
+        priority: nice
+        status: todo
+        owner: solo
+        notes: "high_contrast_enabled SharedPrefs; HighContrastNotifier; HomeScreen + PracticeScreen colour swaps"
+
+      - id: S5-N2
+        title: "Widget Tests for Rhythm Screen"
+        priority: nice
+        status: todo
+        owner: solo
+        notes: "4 tests: AppBar title, Perfect/Good tap scoring, Wait-Mode miss counter unchanged"
