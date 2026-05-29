@@ -1,8 +1,8 @@
 version: 1
-last_updated: "2026-05-29"  # M1, M2, M3, S1 completed
+last_updated: "2026-05-29"
 review_mode: solo
 
-current_sprint: 1
+current_sprint: 2
 
 sprints:
   - id: 1
@@ -72,3 +72,65 @@ sprints:
         status: done
         owner: solo
         notes: "3 rotating quotes shown as banner when harmonyMeter >= 1.0; keyed by currentTurn % 3"
+
+  - id: 2
+    goal: "Adaptive practice loop — SR-driven note selection, session summary, Broken Blade auto-detection"
+    started: "2026-05-29"
+    status: complete
+
+    tasks:
+      - id: S2-M1
+        title: "SR Item Persistence"
+        priority: must
+        status: done
+        owner: solo
+        notes: "saveSRItems/loadSRItems in PersistenceService; SRItemsNotifier + srItemsProvider"
+
+      - id: S2-M2
+        title: "SR-Driven Note Selection in PracticeScreen"
+        priority: must
+        status: done
+        owner: solo
+        notes: "_rebuildSRQueue + _generateQuestion SR-driven; good/hard/again response mapping"
+
+      - id: S2-M3
+        title: "Session Summary Dialog on Exit"
+        priority: must
+        status: done
+        owner: solo
+        notes: "_onExit async; shows accuracy%, notes reviewed, grade hint; skipped in Broken Blade mode"
+
+      - id: S2-S1
+        title: "Broken Blade Auto-Detection on Launch"
+        priority: should
+        status: done
+        owner: solo
+        notes: "Auto-set inBrokenBladeRecovery in _loadFromDisk; Practice card adapts title/color/route"
+
+      - id: S2-S2
+        title: "Update practice-system.md"
+        priority: should
+        status: done
+        owner: solo
+        notes: "[GAP] and [TBD] resolved; Follow-Up items struck"
+
+      - id: S2-S3
+        title: "Audio Architecture ADR-0004"
+        priority: should
+        status: done
+        owner: solo
+        notes: "Documents dual-service design; resolves ADR-0001 consolidation note as N/A"
+
+      - id: S2-N1
+        title: "Grade Progress Bar on Home Screen"
+        priority: nice
+        status: todo
+        owner: solo
+        notes: ""
+
+      - id: S2-N2
+        title: "SR Reset Button in Settings"
+        priority: nice
+        status: todo
+        owner: solo
+        notes: ""

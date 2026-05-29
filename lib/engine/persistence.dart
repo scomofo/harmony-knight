@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
+import 'package:harmony_knight/engine/spaced_repetition.dart';
 import 'package:harmony_knight/models/player_progress.dart';
 
 /// Persistence layer for PlayerProgress and session data.
@@ -12,6 +13,8 @@ class PersistenceService {
   static const String _progressFile = 'player_progress.json';
   static const String _sessionHistoryFile = 'session_history.json';
   static const String _heatmapFile = 'engagement_heatmap.json';
+  static const String _srItemsFile = 'sr_items.json';
+  static const int _srItemsCap = 200;
 
   String? _basePath;
 
@@ -114,6 +117,32 @@ class PersistenceService {
     }
   }
 
+  // ── Spaced Repetition Items ──
+
+  Future<void> saveSRItems(List<SRItem> items) async {
+    final capped = items.length > _srItemsCap
+        ? items.sublist(items.length - _srItemsCap)
+        : items;
+    final path = await _path;
+    final file = File('$path/$_srItemsFile');
+    await file.writeAsString(jsonEncode(capped.map(_srItemToJson).toList()));
+  }
+
+  Future<List<SRItem>> loadSRItems() async {
+    try {
+      final path = await _path;
+      final file = File('$path/$_srItemsFile');
+      if (!await file.exists()) return [];
+      final contents = await file.readAsString();
+      final list = jsonDecode(contents) as List;
+      return list
+          .map((j) => _srItemFromJson(Map<String, dynamic>.from(j as Map)))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
   // ── JSON Serialization ──
 
   Map<String, dynamic> _progressToJson(PlayerProgress p) => {
@@ -129,6 +158,32 @@ class PersistenceService {
         'harmonyPoints': p.harmonyPoints,
         'weakNotesMidi': p.weakNotesMidi,
       };
+
+  Map<String, dynamic> _srItemToJson(SRItem item) => {
+        'id': item.id,
+        'topic': item.topic,
+        'gradeLevel': item.gradeLevel,
+        'easeFactor': item.easeFactor,
+        'intervalDays': item.intervalDays,
+        'repetitions': item.repetitions,
+        'nextReviewAt': item.nextReviewAt.toIso8601String(),
+        'lastReviewedAt': item.lastReviewedAt?.toIso8601String(),
+      };
+
+  SRItem _srItemFromJson(Map<String, dynamic> j) => SRItem(
+        id: j['id'] as String,
+        topic: j['topic'] as String,
+        gradeLevel: j['gradeLevel'] as int? ?? 0,
+        easeFactor: (j['easeFactor'] as num?)?.toDouble() ?? 2.5,
+        intervalDays: j['intervalDays'] as int? ?? 0,
+        repetitions: j['repetitions'] as int? ?? 0,
+        nextReviewAt:
+            DateTime.tryParse(j['nextReviewAt'] as String? ?? '') ??
+                DateTime.now(),
+        lastReviewedAt: j['lastReviewedAt'] == null
+            ? null
+            : DateTime.tryParse(j['lastReviewedAt'] as String),
+      );
 
   PlayerProgress _progressFromJson(Map<String, dynamic> j) => PlayerProgress(
         confidence: (j['confidence'] as num?)?.toDouble() ?? 0.0,

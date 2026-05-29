@@ -30,7 +30,7 @@
 #   Superseded entries:     Grep pattern="status: superseded"
 
 version: 1
-last_updated: "2026-05-29"
+last_updated: "2026-05-29"  # Sprint 2: api_decisions populated (audio)
 
 # ─── STATE OWNERSHIP ─────────────────────────────────────────────────────────
 # Who is the authoritative owner of each piece of shared game state.
@@ -175,7 +175,30 @@ performance_budgets: []
 # Register an API decision when the choice is non-obvious and other ADRs might
 # make a different choice for the same purpose without knowing this was decided.
 
-api_decisions: []
+api_decisions:
+  - purpose: ui_audio
+    status: active
+    api: flutter_soloud (SoLoud singleton via lib/engine/audio_service.dart)
+    not: just_audio     # just_audio is reserved for the gameplay clock
+    adr: docs/architecture/adr-0004-audio-architecture.md
+    reason: "SoLoud optimised for short-fire sounds; just_audio for long-form playback with accurate position reporting"
+    referenced_by:
+      - docs/architecture/adr-0004-audio-architecture.md
+    added: 2026-05-29
+    revised: ""
+
+  - purpose: gameplay_clock
+    status: active
+    api: just_audio (AudioPlayer.position via lib/engine/audio/audio_service.dart implementing AudioClock)
+    not: SoLoud          # SoLoud has no reliable position stream for clock use
+    not: DateTime.now()  # forbidden per ADR-0001
+    adr: docs/architecture/adr-0004-audio-architecture.md
+    reason: "just_audio position stream is the single source of truth for gameplay time (ADR-0001)"
+    referenced_by:
+      - docs/architecture/adr-0001-deterministic-game-engine.md
+      - docs/architecture/adr-0004-audio-architecture.md
+    added: 2026-05-29
+    revised: ""
 
 # Example:
 #

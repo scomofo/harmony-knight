@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:harmony_knight/engine/curriculum/grade_thresholds.dart';
+import 'package:harmony_knight/engine/spaced_repetition.dart';
 import 'package:harmony_knight/models/note.dart';
 import 'package:harmony_knight/providers/scaffolding_provider.dart';
 import 'package:harmony_knight/providers/fever_provider.dart';
+import 'package:harmony_knight/providers/sr_provider.dart';
 import 'package:harmony_knight/painters/staff_painter.dart';
 import 'package:harmony_knight/widgets/confidence_slider.dart';
 import 'package:harmony_knight/widgets/scaffolded_note.dart';
@@ -51,6 +53,12 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
   bool _showLevelUp = false;
   int _newGradeLevel = 0;
 
+  // Spaced-repetition state.
+  final SpacedRepetitionScheduler _srScheduler = SpacedRepetitionScheduler();
+  List<SRItem> _srQueue = [];
+  int _srQueueIndex = 0;
+  bool _questionHadError = false; // tracks if current question had a wrong attempt
+
   @override
   void initState() {
     super.initState();
@@ -62,10 +70,11 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-    // Build the pool after the first frame so we can read gradeLevel from Riverpod.
+    // Build the pool and SR queue after the first frame so providers are ready.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final grade = ref.read(playerProgressProvider).gradeLevel;
       _notePool = _buildNotePool(grade);
+      _rebuildSRQueue();
       _generateQuestion();
     });
   }
@@ -105,13 +114,45 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
     super.dispose();
   }
 
+  void _rebuildSRQueue() {
+    if (_notePool.isEmpty) return;
+    final grade = ref.read(playerProgressProvider).gradeLevel;
+    final items = ref.read(srItemsProvider.notifier).itemsForPool(grade, _notePool);
+    _srQueue = _srScheduler.buildSessionQueue(items);
+    // Fallback: if SR queue is empty (all items new with no repetitions),
+    // treat every item as due by using the full pool in shuffled order.
+    if (_srQueue.isEmpty) {
+      _srQueue = List<SRItem>.from(items)..shuffle();
+    }
+    _srQueueIndex = 0;
+  }
+
   void _generateQuestion() {
     if (_notePool.isEmpty) return;
-    final shuffled = List<Note>.from(_notePool)..shuffle();
-    _targetNote = shuffled.first;
-    // Up to 4 answer options (fewer if pool is small), always includes the target.
-    final count = shuffled.length.clamp(1, 4);
-    _answerOptions = (shuffled.take(count).toList()..shuffle()).toList();
+
+    // Rebuild queue when exhausted.
+    if (_srQueueIndex >= _srQueue.length) _rebuildSRQueue();
+
+    _questionHadError = false;
+
+    if (_srQueue.isEmpty) return; // pool is empty — shouldn't happen
+
+    // Target note is SR-driven.
+    final srItem = _srQueue[_srQueueIndex];
+    final targetMidi = int.tryParse(srItem.id.replaceFirst('note_', '')) ?? -1;
+    _targetNote = _notePool.firstWhere(
+      (n) => n.midi == targetMidi,
+      orElse: () => _notePool.first,
+    );
+
+    // Distractors: up to 3 random non-target notes from the pool.
+    final distractors = (List<Note>.from(_notePool)
+          ..removeWhere((n) => n.midi == _targetNote!.midi)
+          ..shuffle())
+        .take(3)
+        .toList();
+
+    _answerOptions = ([_targetNote!, ...distractors]..shuffle()).toList();
     _showFeedback = false;
     _feedback = null;
   }
@@ -126,6 +167,18 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
 
     _sessionTotal++;
     if (isCorrect) _sessionCorrect++;
+
+    // SR update.
+    if (_srQueue.isNotEmpty && _srQueueIndex < _srQueue.length) {
+      final currentItem = _srQueue[_srQueueIndex];
+      final response = isCorrect
+          ? (_questionHadError ? SRResponse.hard : SRResponse.good)
+          : SRResponse.again;
+      final result = _srScheduler.schedule(item: currentItem, response: response);
+      ref.read(srItemsProvider.notifier).updateItem(result.updatedItem);
+      if (isCorrect) _srQueueIndex++;
+    }
+    if (!isCorrect) _questionHadError = true;
 
     setState(() {
       _showFeedback = true;
@@ -193,8 +246,18 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
     );
   }
 
-  /// Called when leaving the screen — checks for grade advancement.
-  void _onExit() {
+  /// Called when leaving the screen — shows summary, then checks grade advancement.
+  Future<void> _onExit() async {
+    // Show session summary only if notes were played and not in Broken Blade
+    // (Broken Blade has its own "Blade Restored!" dialog).
+    if (_sessionTotal > 0 && !widget.isBrokenBladeMode && mounted) {
+      await showDialog<void>(
+        context: context,
+        builder: (_) => _buildSummaryDialog(),
+      );
+    }
+    if (!mounted) return;
+
     final advanced = ref
         .read(playerProgressProvider.notifier)
         .checkAndAdvanceGrade(
@@ -214,8 +277,66 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
         }
       });
     } else {
-      context.go('/');
+      if (mounted) context.go('/');
     }
+  }
+
+  Widget _buildSummaryDialog() {
+    final accuracy = _sessionTotal > 0
+        ? (_sessionCorrect / _sessionTotal * 100).round()
+        : 0;
+    final grade = ref.read(playerProgressProvider).gradeLevel;
+    final threshold = kGradeThresholds[grade];
+    final String gradeHint;
+    if (threshold == null) {
+      gradeHint = 'Grade $grade — max level reached!';
+    } else if (_sessionTotal >= threshold.minSessionAttempts &&
+        accuracy >= (threshold.minSessionAccuracy * 100).round()) {
+      gradeHint = 'Grade $grade — ready to advance!';
+    } else {
+      gradeHint =
+          'Grade $grade — need ${(threshold.minSessionAccuracy * 100).round()}%'
+          ' over ${threshold.minSessionAttempts} notes';
+    }
+
+    return AlertDialog(
+      backgroundColor: const Color(0xFF1A237E),
+      title: const Text(
+        'Practice Complete',
+        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        textAlign: TextAlign.center,
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Accuracy: $accuracy%',
+            style: const TextStyle(
+              color: Color(0xFFFFD54F),
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Notes reviewed: $_sessionTotal',
+            style: const TextStyle(color: Colors.white70, fontSize: 14),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            gradeHint,
+            style: const TextStyle(color: Colors.white60, fontSize: 13),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Done', style: TextStyle(color: Color(0xFF4FC3F7))),
+        ),
+      ],
+    );
   }
 
   /// Recompute and persist weak notes after each answer.

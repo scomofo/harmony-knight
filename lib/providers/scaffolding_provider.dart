@@ -61,7 +61,13 @@ class PlayerProgressNotifier extends StateNotifier<PlayerProgress> {
 
   Future<void> _loadFromDisk() async {
     final saved = await _persistence.loadProgress();
-    if (mounted) state = saved;
+    if (!mounted) return;
+    state = saved;
+    // Auto-detect Broken Blade: 48h absence triggers recovery mode.
+    if (state.isStreakLapsed && !state.inBrokenBladeRecovery) {
+      state = state.copyWith(inBrokenBladeRecovery: true);
+      _save();
+    }
   }
 
   void _save() => _persistence.saveProgress(state);

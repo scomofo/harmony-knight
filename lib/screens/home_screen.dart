@@ -41,11 +41,21 @@ class HomeScreen extends ConsumerWidget {
                   children: [
                     _buildActionCard(
                       context,
-                      icon: Icons.music_note,
-                      title: 'Practice',
-                      subtitle: 'Train your ear and notation skills',
-                      color: const Color(0xFF4FC3F7),
-                      onTap: () => context.go('/practice'),
+                      icon: progress.inBrokenBladeRecovery
+                          ? Icons.build
+                          : Icons.music_note,
+                      title: progress.inBrokenBladeRecovery
+                          ? 'Restore Your Blade'
+                          : 'Practice',
+                      subtitle: progress.inBrokenBladeRecovery
+                          ? 'Complete a warm-up to restore your streak'
+                          : 'Train your ear and notation skills',
+                      color: progress.inBrokenBladeRecovery
+                          ? const Color(0xFFFF6F00)
+                          : const Color(0xFF4FC3F7),
+                      onTap: () => context.go(progress.inBrokenBladeRecovery
+                          ? '/practice?mode=broken_blade'
+                          : '/practice'),
                     ),
                     const SizedBox(height: 16),
                     _buildActionCard(
@@ -68,10 +78,6 @@ class HomeScreen extends ConsumerWidget {
                   ],
                 ),
               ),
-
-              // Broken Blade recovery prompt.
-              if (progress.isStreakLapsed && !progress.inBrokenBladeRecovery)
-                _buildBrokenBladePrompt(context),
 
               // Weak notes hint (shown when the player has identified weak notes).
               if (progress.weakNotesMidi.isNotEmpty)
@@ -254,31 +260,4 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildBrokenBladePrompt(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFF6F00).withAlpha(30),
-        border: Border.all(color: const Color(0xFFFF6F00).withAlpha(100)),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.broken_image, color: Color(0xFFFF6F00)),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Text(
-              'Your blade needs mending! Complete a quick warm-up to restore your streak.',
-              style: TextStyle(color: Colors.white, fontSize: 13),
-            ),
-          ),
-          TextButton(
-            onPressed: () => context.go('/practice?mode=broken_blade'),
-            child: const Text('Restore', style: TextStyle(color: Color(0xFFFF6F00))),
-          ),
-        ],
-      ),
-    );
-  }
 }

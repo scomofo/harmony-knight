@@ -128,43 +128,40 @@ pool as regular practice at the player's grade level.
 
 ---
 
-## Grade Advancement **[GAP — thresholds not yet defined]**
+## Grade Advancement
 
-**Intent** (clarified 2026-05-29): Grade level advances automatically when the
-player sustains sufficient accuracy. The specific thresholds need to be defined.
+**Decided: 2026-05-29** (was [GAP])
 
-**Design decisions needed:**
-1. **Window size**: how many recent attempts to measure (e.g., last 30 notes)?
-2. **Threshold**: what accuracy % triggers advancement (e.g., 85%)?
-3. **Confirmation**: single-session burst or sustained across multiple sessions?
-4. **Fanfare**: what feedback signals a grade advance (sound, animation, narrative beat)?
+Grade level advances at the end of a Practice session when both conditions are met:
 
-*Suggested starting values for playtesting:*
-- Window: last 20 notes at the current grade
-- Advance threshold: ≥ 85% correct
-- Advance must be sustained across ≥ 2 sessions (prevents lucky-streak promotions)
-- `PlayerProgressNotifier.setGradeLevel()` is the hook; nothing calls it yet
+| Grade | Min session attempts | Min session accuracy |
+|-------|---------------------|----------------------|
+| 0 → 1 | 10 | 80% |
+| 1–4 → next | 20 | 85% |
+| 5–7 → next | 30 | 90% |
+| 8 | — (ceiling) | — |
+
+`PlayerProgressNotifier.checkAndAdvanceGrade(sessionTotal, sessionCorrect)` is
+called when the player taps Back. On advance, a level-up fanfare overlay shows
+for 2.5s. Thresholds live in `lib/engine/curriculum/grade_thresholds.dart`.
 
 ---
 
-## Spaced Repetition **[TBD — integration not yet decided]**
+## Spaced Repetition
 
-A full `SpacedRepetitionScheduler` (SM-2 variant) exists in
-`lib/engine/spaced_repetition.dart`. It is ADHD-adapted:
+**Decided: 2026-05-29** — Option A: SR drives note selection within Practice.
 
-- Session cap: 12 minutes
-- Max new items per session: 20
-- Warm-up count: 3 (easiest due reviews first)
-- Interleave ratio: 3 reviews per 1 new item
+`SpacedRepetitionScheduler.buildSessionQueue()` orders which notes are tested
+each session. Due reviews appear first (warm-up), then new items. `SRItem`
+records are persisted in `sr_items.json` and keyed by `'note_<midi>'`.
 
-**Integration options (decision pending):**
-- **Option A**: Replace the random note draw in Practice with SR-scheduled items —
-  the scheduler picks which notes to show and in what order
-- **Option B**: Separate "Review" mode accessible from Home alongside Practice —
-  SR runs on flashcard-style note/interval/chord cards, Practice stays random
+Response mapping:
+- Correct first try → `SRResponse.good`
+- Correct after a wrong attempt → `SRResponse.hard`
+- Wrong attempt → `SRResponse.again` (retry same note immediately, no advance)
 
-*Do not integrate until the grade-advancement design is finalised, since SR
-difficulty should be tied to grade-scoped item pools.*
+Distractors (the 3 wrong buttons) are still chosen randomly from the grade pool.
+When the queue is exhausted, a new queue is built for the session continuation.
 
 ---
 
@@ -199,9 +196,8 @@ mission-length quota of correct answers is reached.
 
 ## Follow-Up Work
 
-1. **Define grade advancement thresholds** — the most important missing design decision
-2. **Decide SpacedRepetition integration approach** (Option A or B above)
-3. **Wire `setGradeLevel()`** — call it from `PlayerProgressNotifier` when threshold met
-4. **Add level-advance fanfare** — animation + narrative beat on promotion
-5. **Broken Blade exit condition** — current implementation has no automatic exit after
-   mission completes; player must navigate away manually
+1. ~~**Define grade advancement thresholds**~~ — Done Sprint 1 (S1-M1)
+2. ~~**Decide SpacedRepetition integration approach**~~ — Done Sprint 2 (Option A)
+3. ~~**Wire `setGradeLevel()`**~~ — Done Sprint 1 (S1-M1)
+4. ~~**Add level-advance fanfare**~~ — Done Sprint 1 (S1-S1)
+5. ~~**Broken Blade exit condition**~~ — Done Sprint 1 (S1-M2)
