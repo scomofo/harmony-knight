@@ -222,6 +222,14 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
                               fontSize: 16,
                             ),
                           ),
+                          Text(
+                            '+${(duel.harmonyMeter * 100).round().clamp(1, 100)} Harmony Points',
+                            style: const TextStyle(
+                              color: Color(0xFFFFD54F),
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                           const SizedBox(height: 16),
                           ElevatedButton(
                             onPressed: () {

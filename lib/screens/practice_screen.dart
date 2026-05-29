@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:harmony_knight/engine/curriculum/grade_thresholds.dart';
 import 'package:harmony_knight/models/note.dart';
 import 'package:harmony_knight/providers/scaffolding_provider.dart';
 import 'package:harmony_knight/providers/fever_provider.dart';
@@ -41,6 +42,14 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
   // Tracks correctness per MIDI note for weak-note detection.
   // midi -> [wasCorrect, wasCorrect, ...]
   final Map<int, List<bool>> _noteHistory = {};
+
+  // Session-level counters for grade advancement evaluation.
+  int _sessionTotal = 0;
+  int _sessionCorrect = 0;
+
+  // Level-up fanfare overlay state.
+  bool _showLevelUp = false;
+  int _newGradeLevel = 0;
 
   @override
   void initState() {
@@ -115,6 +124,9 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
     _noteHistory.putIfAbsent(_targetNote!.midi, () => []).add(isCorrect);
     _updateWeakNotes();
 
+    _sessionTotal++;
+    if (isCorrect) _sessionCorrect++;
+
     setState(() {
       _showFeedback = true;
       _feedback = isCorrect ? 'Perfect!' : 'Try ${_targetNote!.name}';
@@ -122,6 +134,17 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
 
     if (isCorrect) {
       ref.read(playerProgressProvider.notifier).recordCorrectNote();
+
+      // Broken Blade: end session after mission length correct answers.
+      if (widget.isBrokenBladeMode &&
+          _sessionCorrect >= kBrokenBladeMissionLength) {
+        ref.read(playerProgressProvider.notifier).completeBrokenBladeRecovery();
+        _feedbackController.forward(from: 0.0).then((_) {
+          if (mounted) _showBladeRestoredAndPop();
+        });
+        return;
+      }
+
       _feedbackController.forward(from: 0.0).then((_) {
         if (mounted) {
           setState(() => _generateQuestion());
@@ -139,6 +162,60 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
       currentStreak: progress.currentStreak,
       lastActiveAt: progress.lastActiveAt,
     );
+  }
+
+  void _showBladeRestoredAndPop() {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF1A237E),
+        title: const Text(
+          'Blade Restored!',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          textAlign: TextAlign.center,
+        ),
+        content: const Text(
+          'Your warm-up is complete. The streak lives on.',
+          style: TextStyle(color: Colors.white70),
+          textAlign: TextAlign.center,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              context.go('/');
+            },
+            child: const Text('Continue', style: TextStyle(color: Color(0xFFFFD54F))),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Called when leaving the screen — checks for grade advancement.
+  void _onExit() {
+    final advanced = ref
+        .read(playerProgressProvider.notifier)
+        .checkAndAdvanceGrade(
+          sessionTotal: _sessionTotal,
+          sessionCorrect: _sessionCorrect,
+        );
+    if (advanced && mounted) {
+      final newGrade = ref.read(playerProgressProvider).gradeLevel;
+      setState(() {
+        _showLevelUp = true;
+        _newGradeLevel = newGrade;
+      });
+      Future.delayed(const Duration(milliseconds: 2500), () {
+        if (mounted) {
+          setState(() => _showLevelUp = false);
+          context.go('/');
+        }
+      });
+    } else {
+      context.go('/');
+    }
   }
 
   /// Recompute and persist weak notes after each answer.
@@ -161,14 +238,16 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
     final progress = ref.watch(playerProgressProvider);
     final fever = ref.watch(feverProvider);
 
-    return Scaffold(
+    return Stack(
+      children: [
+        Scaffold(
       backgroundColor: const Color(0xFF0D1117),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => context.go('/'),
+          onPressed: _onExit,
         ),
         title: Text(
           widget.isBrokenBladeMode ? 'Blade Restoration' : 'Practice',
@@ -317,7 +396,34 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
           ],
         ),
       ),
-    );
+        ), // closes Scaffold
+        // Level-up fanfare overlay.
+        if (_showLevelUp)
+          AnimatedOpacity(
+            opacity: _showLevelUp ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 400),
+            child: Container(
+              color: const Color(0xCC1A237E),
+              alignment: Alignment.center,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.star, color: Color(0xFFFFD54F), size: 64),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Grade $_newGradeLevel Unlocked!',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ], // closes Stack children
+    ); // closes Stack
   }
 
   Widget _buildAnswerButton(Note note, double confidence) {

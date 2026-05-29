@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:harmony_knight/engine/curriculum/grade_thresholds.dart';
 import 'package:harmony_knight/engine/persistence.dart';
 import 'package:harmony_knight/models/player_progress.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -124,6 +125,26 @@ class PlayerProgressNotifier extends StateNotifier<PlayerProgress> {
   void updateWeakNotes(List<int> midiNotes) {
     state = state.copyWith(weakNotesMidi: midiNotes);
     _save();
+  }
+
+  /// Advance grade level if session stats meet the threshold for the current grade.
+  ///
+  /// Returns true if the player advanced, false otherwise.
+  bool checkAndAdvanceGrade({
+    required int sessionTotal,
+    required int sessionCorrect,
+  }) {
+    final currentGrade = state.gradeLevel;
+    final threshold = kGradeThresholds[currentGrade];
+    if (threshold == null) return false; // grade 8 — already at ceiling
+
+    if (sessionTotal < threshold.minSessionAttempts) return false;
+    final accuracy = sessionTotal > 0 ? sessionCorrect / sessionTotal : 0.0;
+    if (accuracy < threshold.minSessionAccuracy) return false;
+
+    state = state.copyWith(gradeLevel: currentGrade + 1);
+    _save();
+    return true;
   }
 }
 

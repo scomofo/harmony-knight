@@ -3,6 +3,7 @@ import 'package:harmony_knight/core/constants.dart';
 import 'package:harmony_knight/models/note.dart';
 import 'package:harmony_knight/models/duel_state.dart';
 import 'package:harmony_knight/engine/duel_engine.dart';
+import 'package:harmony_knight/providers/scaffolding_provider.dart';
 
 /// State notifier for the Collaborative Counterpoint Duel.
 ///
@@ -11,8 +12,9 @@ import 'package:harmony_knight/engine/duel_engine.dart';
 /// a valid harmonic response. No timers, no performance anxiety.
 class DuelNotifier extends StateNotifier<DuelState> {
   final DuelEngine _engine = DuelEngine();
+  final Ref _ref;
 
-  DuelNotifier() : super(const DuelState(cantusFirmus: []));
+  DuelNotifier(this._ref) : super(const DuelState(cantusFirmus: []));
 
   /// Start a new duel at the given grade level.
   void startDuel({int gradeLevel = 0}) {
@@ -77,6 +79,8 @@ class DuelNotifier extends StateNotifier<DuelState> {
       clearGhost: true,
     );
 
+    if (isComplete) _awardDuelRewards(newMeter);
+
     return true;
   }
 
@@ -116,7 +120,16 @@ class DuelNotifier extends StateNotifier<DuelState> {
       clearGhost: true,
     );
 
+    if (isComplete) _awardDuelRewards(newMeter);
+
     return true;
+  }
+
+  void _awardDuelRewards(double harmonyMeter) {
+    final points = (harmonyMeter * 100).round().clamp(1, 100);
+    final progress = _ref.read(playerProgressProvider.notifier);
+    progress.addHarmonyPoints(points);
+    progress.recordDuelWin();
   }
 
   /// Reset the duel state.
@@ -127,5 +140,5 @@ class DuelNotifier extends StateNotifier<DuelState> {
 
 final duelProvider =
     StateNotifierProvider<DuelNotifier, DuelState>((ref) {
-  return DuelNotifier();
+  return DuelNotifier(ref);
 });
