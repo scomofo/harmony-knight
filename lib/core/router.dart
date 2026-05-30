@@ -8,6 +8,7 @@ import 'package:harmony_knight/screens/heatmap_screen.dart';
 import 'package:harmony_knight/screens/settings_screen.dart';
 import 'package:harmony_knight/engine/persistence.dart';
 import 'package:harmony_knight/screens/onboarding_screen.dart';
+import 'package:harmony_knight/screens/interval_screen.dart';
 import 'package:harmony_knight/screens/rhythm_screen.dart';
 import 'package:harmony_knight/screens/scale_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -81,6 +82,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/scale',
       builder: (context, state) => const ScaleScreen(),
+    ),
+    GoRoute(
+      path: '/interval',
+      builder: (context, state) => const IntervalScreen(),
     ),
   ],
 );

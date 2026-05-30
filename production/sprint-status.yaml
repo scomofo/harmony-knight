@@ -2,7 +2,7 @@ version: 1
 last_updated: "2026-05-29"
 review_mode: solo
 
-current_sprint: 8
+current_sprint: 9
 
 sprints:
   - id: 1
@@ -413,7 +413,7 @@ sprints:
   - id: 8
     goal: "Level 3 content — scale spelling exercise, CoF key quiz, CoF GDD"
     started: "2026-05-29"
-    status: in-progress
+    status: complete
 
     tasks:
       - id: S8-M1
@@ -454,13 +454,68 @@ sprints:
       - id: S8-N1
         title: "Natural Minor Scale Mode"
         priority: nice
-        status: todo
+        status: skipped
         owner: solo
-        notes: "Switch to Minor button after major scale complete; relative minor root; same palette"
+        notes: "Deferred — nth pattern"
 
       - id: S8-N2
         title: "Widget Tests for Scale Screen"
         priority: nice
+        status: skipped
+        owner: solo
+        notes: "Deferred — nth pattern"
+
+  - id: 9
+    goal: "Level 4 foundation — interval ear training, interval GDD, interval home card"
+    started: "2026-05-29"
+    status: in-progress
+
+    tasks:
+      - id: S9-M1
+        title: "Interval System GDD"
+        priority: must
+        status: done
+        owner: solo
+        notes: "design/gdd/interval-system.md; all 8 sections; 11-interval pool (m2–P8); 18 acceptance criteria; systems-index updated"
+
+      - id: S9-M2
+        title: "Interval Ear Training Screen"
+        priority: must
+        status: done
+        owner: solo
+        notes: "interval_screen.dart; /interval route; 11-interval pool; random root C4-G4; 4 choices; Wait-Mode; 800ms reveal; session recorded; soundFeedback wired; AudioSource play via soloud.loadMem"
+
+      - id: S9-M3
+        title: "Interval Practice Home Card"
+        priority: must
+        status: done
+        owner: solo
+        notes: "gradeLevel>=3; icon music_note; amber Color(0xFFFFB300); below Scale card; go('/interval')"
+
+      - id: S9-S1
+        title: "Interval Name Reveal on Correct Answer"
+        priority: should
+        status: done
+        owner: solo
+        notes: "_buildReveal() widget: check_circle icon + interval name (amber, 28sp) + semitone count; replaces buttons; 800ms then auto-advance"
+
+      - id: S9-S2
+        title: "Update Systems Index"
+        priority: should
+        status: done
+        owner: solo
+        notes: "Level 4 Interval System row added → designed + implemented; Triad + Gliph rows moved to Planned"
+
+      - id: S9-N1
+        title: "Replay Button"
+        priority: nice
+        status: done
+        owner: solo
+        notes: "TextButton.icon(Icons.replay) in _buildQuestion(); calls _playInterval(); always visible during question"
+
+      - id: S9-N2
+        title: "Widget Tests for Interval Screen"
+        priority: nice
         status: todo
         owner: solo
-        notes: "4 tests: AppBar title, correct tap advances, wrong tap Wait-Mode, completion shows points"
+        notes: "4 tests: AppBar title, correct answer advances, wrong answer Wait-Mode, session complete shows points"

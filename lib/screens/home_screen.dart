@@ -104,6 +104,17 @@ class HomeScreen extends ConsumerWidget {
                         onTap: () => context.go('/scale'),
                       ),
                     ],
+                    if (progress.gradeLevel >= 3) ...[
+                      const SizedBox(height: 16),
+                      _buildActionCard(
+                        context,
+                        icon: Icons.music_note,
+                        title: 'Interval Training',
+                        subtitle: 'Identify the distance between notes',
+                        color: const Color(0xFFFFB300),
+                        onTap: () => context.go('/interval'),
+                      ),
+                    ],
                   ],
                 ),
               ),
