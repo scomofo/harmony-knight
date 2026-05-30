@@ -309,8 +309,15 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
       ref.read(playerProgressProvider.notifier).recordIncorrectNote();
       // Audio error signal.
       ref.read(soundFeedbackProvider).playWrong();
-      // Wait-Mode: don't advance — let user see the correct answer.
-      _feedbackController.forward(from: 0.0);
+      // Wait-Mode: show the correct answer for 1.2 s, then re-enable buttons.
+      _feedbackController.forward(from: 0.0).then((_) {
+        if (mounted) {
+          setState(() {
+            _showFeedback = false;
+            _feedback = null;
+          });
+        }
+      });
     }
   }
 
@@ -591,6 +598,9 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
                 ),
               ),
 
+            // Grade progress bar — shows how far through this session's threshold.
+            _buildSessionProgress(),
+
             const SizedBox(height: 24),
 
             // Staff with target note.
@@ -715,6 +725,65 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
           ),
       ], // closes Stack children
     ); // closes Stack
+  }
+
+  Widget _buildSessionProgress() {
+    final grade = ref.read(playerProgressProvider).gradeLevel;
+    final threshold = kGradeThresholds[grade];
+    if (threshold == null) return const SizedBox.shrink(); // max grade
+
+    final attempted = _sessionTotal;
+    final needed = threshold.minSessionAttempts;
+    final accuracy = attempted > 0 ? _sessionCorrect / attempted : 0.0;
+    final accuracyNeeded = threshold.minSessionAccuracy;
+
+    // Progress toward minimum attempts (the gating requirement).
+    final attemptsProgress = (attempted / needed).clamp(0.0, 1.0);
+    final onTrack = accuracy >= accuracyNeeded || attempted == 0;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Grade $grade → ${grade + 1}',
+                style: TextStyle(
+                  color: Colors.white.withAlpha(120),
+                  fontSize: 11,
+                ),
+              ),
+              Text(
+                attempted == 0
+                    ? 'Need $needed notes at ${(accuracyNeeded * 100).round()}%'
+                    : '$attempted/$needed  •  ${(accuracy * 100).round()}% acc',
+                style: TextStyle(
+                  color: onTrack
+                      ? Colors.white.withAlpha(120)
+                      : const Color(0xFFFF6F00).withAlpha(200),
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 3),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(2),
+            child: LinearProgressIndicator(
+              value: attemptsProgress,
+              minHeight: 3,
+              backgroundColor: Colors.white.withAlpha(25),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                onTrack ? const Color(0xFF4FC3F7) : const Color(0xFFFF6F00),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   String _formatElapsed(Duration d) {

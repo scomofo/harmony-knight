@@ -41,8 +41,8 @@ class MetronomeService {
   /// Pre-generate click WAV sources. Call once after AudioService.initialize().
   Future<void> initialize() async {
     if (!_audio.isInitialized) return;
-    _normalSource = await _loadClick(volume: 0.6);
-    _accentSource = await _loadClick(volume: 1.0);
+    _normalSource = await _loadClick(0.6);
+    _accentSource = await _loadClick(1.0);
   }
 
   Future<AudioSource?> _loadClick(double volume) async {

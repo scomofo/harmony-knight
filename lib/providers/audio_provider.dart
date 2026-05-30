@@ -15,6 +15,9 @@ final audioServiceProvider = Provider<AudioService>((ref) {
 final ghostToneProvider = Provider<GhostToneEngine>((ref) {
   final engine = GhostToneEngine();
   ref.onDispose(() => engine.dispose());
+  Future.microtask(() async {
+    try { await engine.initialize(); } catch (_) {}
+  });
   return engine;
 });
 
@@ -22,6 +25,9 @@ final ghostToneProvider = Provider<GhostToneEngine>((ref) {
 final soundFeedbackProvider = Provider<SoundFeedbackService>((ref) {
   final service = SoundFeedbackService();
   ref.onDispose(() => service.dispose());
+  Future.microtask(() async {
+    try { await service.initialize(); } catch (_) {}
+  });
   return service;
 });
 

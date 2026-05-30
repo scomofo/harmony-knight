@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:harmony_knight/models/note.dart';
 import 'package:harmony_knight/models/quest.dart';
+import 'package:harmony_knight/providers/audio_provider.dart';
 import 'package:harmony_knight/providers/duel_provider.dart';
 import 'package:harmony_knight/providers/quest_provider.dart';
 import 'package:harmony_knight/providers/scaffolding_provider.dart';
