@@ -4,6 +4,9 @@ import 'package:harmony_knight/models/note.dart';
 import 'package:harmony_knight/engine/ghost_tone_engine.dart';
 import 'package:harmony_knight/engine/duel_engine.dart';
 import 'package:harmony_knight/engine/fever_mode_engine.dart';
+import 'package:harmony_knight/providers/duel_provider.dart';
+import 'package:harmony_knight/providers/scaffolding_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   group('Note model', () {
@@ -123,12 +126,12 @@ void main() {
     });
 
     test('harmony meter delta rewards imperfect consonance most', () {
-      final perfectResult = DuelMoveResult(
+      const perfectResult = DuelMoveResult(
         quality: IntervalQuality.perfectConsonance,
         violations: [],
         isValid: true,
       );
-      final imperfectResult = DuelMoveResult(
+      const imperfectResult = DuelMoveResult(
         quality: IntervalQuality.imperfectConsonance,
         violations: [],
         isValid: true,
@@ -140,7 +143,7 @@ void main() {
     });
 
     test('dissonance resolution grants 15% Big Win bonus', () {
-      final result = DuelMoveResult(
+      const result = DuelMoveResult(
         quality: IntervalQuality.imperfectConsonance,
         violations: [],
         isValid: true,
@@ -149,6 +152,37 @@ void main() {
         engine.harmonyMeterDelta(result, dissonanceResolved: true),
         0.15,
       );
+    });
+  });
+
+  group('DuelNotifier', () {
+    test('stores ghost resolution reason after an invalid move', () {
+      final notifier = DuelNotifier()..startDuel(gradeLevel: 0);
+
+      final accepted = notifier.submitNote(const Note(midi: 61));
+
+      expect(accepted, isFalse);
+      expect(notifier.state.ghostSuggestion, isNotNull);
+      expect(notifier.state.ghostReason, isNotNull);
+      expect(notifier.state.ghostReason, isNot(contains('forbidden motion')));
+    });
+  });
+
+  group('PlayerProgressNotifier', () {
+    test('persists progress for the next notifier instance', () async {
+      SharedPreferences.setMockInitialValues({});
+
+      final first = PlayerProgressNotifier();
+      await first.loadSavedProgress();
+      first.recordCorrectNote();
+      await first.saveProgress();
+
+      final second = PlayerProgressNotifier();
+      await second.loadSavedProgress();
+
+      expect(second.state.currentStreak, 1);
+      expect(second.state.totalCorrectNotes, 1);
+      expect(second.state.totalNotesPlayed, 1);
     });
   });
 

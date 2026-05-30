@@ -56,7 +56,7 @@ class HapticEngine {
       }
 
       // Wait for the beat duration before next pulse.
-      await Future.delayed(Duration(milliseconds: beatMs));
+      await Future<void>.delayed(Duration(milliseconds: beatMs));
     }
   }
 
@@ -76,7 +76,7 @@ class HapticEngine {
   static Future<void> feverModeActivation() async {
     for (int i = 0; i < 3; i++) {
       await HapticFeedback.heavyImpact();
-      await Future.delayed(const Duration(milliseconds: 100));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
     }
   }
 
@@ -84,7 +84,7 @@ class HapticEngine {
   /// Two soft taps with a pause — like a heartbeat.
   static Future<void> passiveScaffoldingPulse() async {
     await HapticFeedback.lightImpact();
-    await Future.delayed(const Duration(milliseconds: 150));
+    await Future<void>.delayed(const Duration(milliseconds: 150));
     await HapticFeedback.lightImpact();
   }
 }

@@ -52,7 +52,7 @@ void main() {
 
   group('GameEngine scoring', () {
     test('perfect hit registers as perfect', () {
-      final note = const ChartNote(time: 5.0, midi: 69, id: 1); // A4 = 440Hz
+      const note = ChartNote(time: 5.0, midi: 69, id: 1); // A4 = 440Hz
       final chart = Chart(
         title: 'test',
         bpm: 120,
@@ -79,7 +79,7 @@ void main() {
     });
 
     test('missed note is counted after window expires', () {
-      final note = const ChartNote(time: 5.0, midi: 60, id: 1);
+      const note = ChartNote(time: 5.0, midi: 60, id: 1);
       final chart = Chart(
         title: 'test',
         bpm: 120,
@@ -98,7 +98,7 @@ void main() {
     });
 
     test('late hit within window still counts as good', () {
-      final note = const ChartNote(time: 5.0, midi: 69, id: 1);
+      const note = ChartNote(time: 5.0, midi: 69, id: 1);
       final chart = Chart(
         title: 'test',
         bpm: 120,
@@ -107,7 +107,7 @@ void main() {
       );
       final engine = GameEngine(chart: chart)..start();
 
-      engine.update(time: 4.9, input: InputFrame.silent(4.9));
+      engine.update(time: 4.9, input: const InputFrame.silent(4.9));
       // 80ms late — should still count as good-ish.
       final state = engine.update(
         time: 5.08,
@@ -124,7 +124,7 @@ void main() {
     });
 
     test('pitch way off registers as miss even with perfect timing', () {
-      final note = const ChartNote(time: 5.0, midi: 69, id: 1);
+      const note = ChartNote(time: 5.0, midi: 69, id: 1);
       final chart = Chart(
         title: 'test',
         bpm: 120,
@@ -133,12 +133,12 @@ void main() {
       );
       final engine = GameEngine(chart: chart)..start();
 
-      engine.update(time: 4.9, input: InputFrame.silent(4.9));
+      engine.update(time: 4.9, input: const InputFrame.silent(4.9));
       // Perfect timing but singing a tritone off (way outside cent window).
-      final wrongFreq = 440.0 * 1.414; // +600 cents
+      const wrongFreq = 440.0 * 1.414; // +600 cents
       engine.update(
         time: 5.0,
-        input: InputFrame(
+        input: const InputFrame(
           time: 5.0,
           frequency: wrongFreq,
           confidence: 0.9,
@@ -176,8 +176,8 @@ void main() {
     const windows = HitWindows();
 
     test('perfect when both errors within perfect thresholds', () {
-      final hit = HitResult(
-        note: const ChartNote(time: 0, midi: 60),
+      const hit = HitResult(
+        note: ChartNote(time: 0, midi: 60),
         timingErrorMs: 10.0,
         pitchErrorCents: 5.0,
         confidence: 0.9,

@@ -13,6 +13,8 @@ build/
 *.g.dart
 *.freezed.dart
 *.gen.dart
+.codegraph/
+.playtest-artifacts/
 
 # === Isar ===
 *.isar

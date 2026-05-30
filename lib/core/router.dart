@@ -1,6 +1,7 @@
 import 'package:go_router/go_router.dart';
 import 'package:harmony_knight/screens/home_screen.dart';
 import 'package:harmony_knight/screens/practice_screen.dart';
+import 'package:harmony_knight/screens/gameplay_screen.dart';
 import 'package:harmony_knight/screens/duel_screen.dart';
 import 'package:harmony_knight/screens/curriculum_screen.dart';
 import 'package:harmony_knight/screens/circle_of_fifths_screen.dart';
@@ -55,6 +56,10 @@ final appRouter = GoRouter(
           isFocusMode: mode == 'focus',
         );
       },
+    ),
+    GoRoute(
+      path: '/gameplay',
+      builder: (context, state) => const GameplayScreen(),
     ),
     GoRoute(
       path: '/duel',

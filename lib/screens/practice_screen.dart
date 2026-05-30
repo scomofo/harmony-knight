@@ -7,11 +7,14 @@ import 'package:harmony_knight/engine/curriculum/grade_thresholds.dart';
 import 'package:harmony_knight/engine/persistence.dart';
 import 'package:harmony_knight/engine/spaced_repetition.dart';
 import 'package:harmony_knight/models/note.dart';
+import 'package:harmony_knight/models/quest.dart';
 import 'package:harmony_knight/engine/fever_mode_engine.dart';
 import 'package:harmony_knight/engine/haptic_engine.dart';
 import 'package:harmony_knight/providers/audio_provider.dart';
 import 'package:harmony_knight/providers/scaffolding_provider.dart';
 import 'package:harmony_knight/providers/fever_provider.dart';
+import 'package:harmony_knight/providers/mastery_provider.dart';
+import 'package:harmony_knight/providers/quest_provider.dart';
 import 'package:harmony_knight/providers/session_prefs_provider.dart';
 import 'package:harmony_knight/providers/sr_provider.dart';
 import 'package:harmony_knight/painters/staff_painter.dart';
@@ -41,10 +44,13 @@ class PracticeScreen extends ConsumerStatefulWidget {
 
 class _PracticeScreenState extends ConsumerState<PracticeScreen>
     with TickerProviderStateMixin {
+  static const _noteReadingTopicId = 'note-reading-c4-b4';
+
   Note? _targetNote;
   List<Note> _answerOptions = [];
   String? _feedback;
   bool _showFeedback = false;
+  late DateTime _questionStartedAt;
   late AnimationController _feedbackController;
   late AnimationController _feverController;
 
@@ -187,7 +193,7 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
 
     _questionHadError = false;
 
-    if (_srQueue.isEmpty) return; // pool is empty — shouldn't happen
+    if (_srQueue.isEmpty) return;
 
     // Target note is SR-driven.
     final srItem = _srQueue[_srQueueIndex];
@@ -205,6 +211,7 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
         .toList();
 
     _answerOptions = ([_targetNote!, ...distractors]..shuffle()).toList();
+    _questionStartedAt = DateTime.now();
     _showFeedback = false;
     _feedback = null;
   }
@@ -212,6 +219,8 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
   void _handleAnswer(Note selected) {
     if (_targetNote == null) return;
     final isCorrect = selected.midi == _targetNote!.midi;
+    final responseMs = DateTime.now().difference(_questionStartedAt).inMilliseconds;
+    final confidence = ref.read(confidenceProvider);
 
     // Record per-note accuracy for weak-note analysis.
     _noteHistory.putIfAbsent(_targetNote!.midi, () => []).add(isCorrect);
@@ -237,6 +246,13 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
       _feedback = isCorrect ? 'Perfect!' : 'Try ${_targetNote!.name}';
     });
 
+    ref.read(masteryProvider.notifier).recordAttempt(
+      topicId: _noteReadingTopicId,
+      correct: isCorrect,
+      responseMs: responseMs,
+      confidence: confidence,
+    );
+
     // Update Fever Mode before awarding points so multiplier is current.
     final progressBeforeUpdate = ref.read(playerProgressProvider);
     ref.read(feverProvider.notifier).evaluate(
@@ -246,16 +262,17 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
 
     if (isCorrect) {
       ref.read(playerProgressProvider.notifier).recordCorrectNote();
+      ref.read(questProvider.notifier).recordProgress(QuestMode.practice);
 
       // Streak milestone toasts (5 / 10 / 25 / 50).
       final newStreak = ref.read(playerProgressProvider).currentStreak;
-      const _milestoneMessages = {
+      const milestoneMessages = {
         5: '5 in a row!',
         10: 'Streak of 10 — Fever incoming!',
         25: "25! You're on fire.",
         50: '50 streak. Legendary.',
       };
-      final milestoneMsg = _milestoneMessages[newStreak];
+      final milestoneMsg = milestoneMessages[newStreak];
       if (milestoneMsg != null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(milestoneMsg),
@@ -713,7 +730,7 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: _showFeedback && !isCorrect ? null : () => _handleAnswer(note),
+        onTap: _showFeedback ? null : () => _handleAnswer(note),
         borderRadius: BorderRadius.circular(16),
         child: Container(
           width: 80,

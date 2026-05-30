@@ -176,7 +176,8 @@ class SettingsScreen extends ConsumerWidget {
             ),
             subtitle: Text(
               'View focus patterns and session analytics',
-              style: TextStyle(color: Colors.white.withAlpha(100), fontSize: 12),
+              style:
+                  TextStyle(color: Colors.white.withAlpha(100), fontSize: 12),
             ),
             trailing: const Icon(Icons.chevron_right, color: Colors.grey),
             onTap: () => context.go('/heatmap'),
@@ -238,14 +239,15 @@ class SettingsScreen extends ConsumerWidget {
       margin: const EdgeInsets.only(bottom: 4),
       child: SwitchListTile(
         secondary: Icon(icon, color: Colors.white.withAlpha(150), size: 22),
-        title: Text(title, style: const TextStyle(color: Colors.white, fontSize: 14)),
+        title: Text(title,
+            style: const TextStyle(color: Colors.white, fontSize: 14)),
         subtitle: Text(
           subtitle,
           style: TextStyle(color: Colors.white.withAlpha(80), fontSize: 11),
         ),
         value: value,
         onChanged: onChanged,
-        activeColor: const Color(0xFF7C4DFF),
+        activeThumbColor: const Color(0xFF7C4DFF),
       ),
     );
   }
@@ -279,7 +281,8 @@ class SettingsScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(title,
-                        style: const TextStyle(color: Colors.white, fontSize: 14)),
+                        style:
+                            const TextStyle(color: Colors.white, fontSize: 14)),
                     Text(subtitle,
                         style: TextStyle(
                             color: Colors.white.withAlpha(80), fontSize: 11)),
@@ -287,7 +290,7 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               ),
               Text(
-                '${value is int ? value : (value as double).toStringAsFixed(1)}$suffix',
+                '${value is int ? value : (value).toStringAsFixed(1)}$suffix',
                 style: const TextStyle(color: Color(0xFF4FC3F7), fontSize: 14),
               ),
             ],
@@ -307,7 +310,8 @@ class SettingsScreen extends ConsumerWidget {
   Widget _buildInfoTile(String title, String value, IconData icon) {
     return ListTile(
       leading: Icon(icon, color: Colors.white.withAlpha(150), size: 22),
-      title: Text(title, style: const TextStyle(color: Colors.white, fontSize: 14)),
+      title: Text(title,
+          style: const TextStyle(color: Colors.white, fontSize: 14)),
       trailing: Text(
         value,
         style: const TextStyle(color: Color(0xFF4FC3F7), fontSize: 16),
@@ -316,7 +320,7 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   void _showSRResetDialog(BuildContext context, WidgetRef ref) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF161B22),

@@ -1,5 +1,4 @@
 import 'dart:math';
-import 'dart:typed_data';
 import 'package:flutter_soloud/flutter_soloud.dart';
 import 'package:harmony_knight/engine/audio_service.dart';
 import 'package:harmony_knight/engine/tone_generator.dart';
@@ -81,7 +80,7 @@ class GhostToneEngine {
 
     // Pre-roll delay (helps ADHD learners find the pitch before it plays).
     if (params.preRollMs > 0) {
-      await Future.delayed(Duration(milliseconds: params.preRollMs));
+      await Future<void>.delayed(Duration(milliseconds: params.preRollMs));
     }
 
     try {

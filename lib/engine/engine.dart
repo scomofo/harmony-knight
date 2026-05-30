@@ -1,4 +1,5 @@
 /// Barrel export for all engine modules.
+library;
 export 'audio_service.dart';
 export 'ghost_tone_engine.dart';
 export 'tone_generator.dart';

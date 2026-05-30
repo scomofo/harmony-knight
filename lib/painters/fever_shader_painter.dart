@@ -49,7 +49,7 @@ class FeverShaderPainter extends CustomPainter {
   void _drawGlowingStaffLines(Canvas canvas, Size size, double intensity) {
     const lineCount = 5;
     const lineSpacing = 12.0;
-    final totalHeight = (lineCount - 1) * lineSpacing;
+    const totalHeight = (lineCount - 1) * lineSpacing;
     final startY = (size.height - totalHeight) / 2;
 
     for (int i = 0; i < lineCount; i++) {
@@ -113,7 +113,7 @@ class FeverShaderPainter extends CustomPainter {
       ..color = const Color(0xFFFFD54F).withAlpha((180 * opacity).round())
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3 * (1.0 - rippleProgress)
-      ..maskFilter = MaskFilter.blur(BlurStyle.normal, 3);
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
     canvas.drawCircle(perfectHitCenter!, radius, ringPaint);
 
     // Inner fill.
