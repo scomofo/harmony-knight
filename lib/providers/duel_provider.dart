@@ -3,6 +3,7 @@ import 'package:harmony_knight/core/constants.dart';
 import 'package:harmony_knight/models/note.dart';
 import 'package:harmony_knight/models/duel_state.dart';
 import 'package:harmony_knight/engine/duel_engine.dart';
+import 'package:harmony_knight/providers/fever_provider.dart';
 import 'package:harmony_knight/providers/scaffolding_provider.dart';
 
 /// State notifier for the Collaborative Counterpoint Duel.
@@ -126,7 +127,10 @@ class DuelNotifier extends StateNotifier<DuelState> {
   }
 
   void _awardDuelRewards(double harmonyMeter) {
-    final points = (harmonyMeter * 100).round().clamp(1, 100);
+    final basePoints = (harmonyMeter * 100).round().clamp(1, 100);
+    final fever = _ref.read(feverProvider);
+    final multiplier = fever.isFeverActive ? fever.streakMultiplier.round().clamp(1, 3) : 1;
+    final points = (basePoints * multiplier).clamp(1, 300);
     final progress = _ref.read(playerProgressProvider.notifier);
     progress.addHarmonyPoints(points);
     progress.recordDuelWin();

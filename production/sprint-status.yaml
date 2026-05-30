@@ -2,7 +2,7 @@ version: 1
 last_updated: "2026-05-29"
 review_mode: solo
 
-current_sprint: 5
+current_sprint: 6
 
 sprints:
   - id: 1
@@ -299,3 +299,58 @@ sprints:
         status: todo
         owner: solo
         notes: "4 tests: AppBar title, Perfect/Good tap scoring, Wait-Mode miss counter unchanged"
+
+  - id: 6
+    goal: "Reward loop closure — answer audio feedback, practice harmony points, Fever Mode multiplier, rhythm BPM chooser"
+    started: "2026-05-29"
+    status: in-progress
+
+    tasks:
+      - id: S6-M1
+        title: "Answer Audio Feedback"
+        priority: must
+        status: done
+        owner: solo
+        notes: "lib/engine/sound_feedback_service.dart; MIDI 64 correct 300ms / MIDI 41 wrong 150ms; soundFeedbackProvider + AudioInitNotifier; practice_screen playCorrect()/playWrong() in _handleAnswer()"
+
+      - id: S6-M2
+        title: "Rhythm BPM Chooser"
+        priority: must
+        status: done
+        owner: solo
+        notes: "_bpmChosen flag; _buildBpmPicker() overlay with 5 presets (40/60/80/100/120); Start button calls _startExercise(); default 60 BPM"
+
+      - id: S6-M3
+        title: "Practice Harmony Point Awards"
+        priority: must
+        status: done
+        owner: solo
+        notes: "addHarmonyPoints(fever.streakMultiplier.round().clamp(1,10)) on correct answer in _handleAnswer(); fever evaluated before award"
+
+      - id: S6-S1
+        title: "Fever Mode Haptic and Duel Multiplier"
+        priority: should
+        status: done
+        owner: solo
+        notes: "ref.listen feverProvider in PracticeScreen build → HapticEngine.feverModeActivation() on false→true; duel_provider._awardDuelRewards × fever.streakMultiplier.round()"
+
+      - id: S6-S2
+        title: "Rhythm Session Recording"
+        priority: should
+        status: done
+        owner: solo
+        notes: "_recordSession() called on session complete; exerciseType=rhythm; correctNotes=(totalPoints/3).round(); PersistenceService.recordSession()"
+
+      - id: S6-N1
+        title: "High Contrast Mode"
+        priority: nice
+        status: todo
+        owner: solo
+        notes: "high_contrast_enabled SharedPrefs; HighContrastNotifier; HomeScreen + PracticeScreen colour swaps"
+
+      - id: S6-N2
+        title: "Duel Answer Audio Feedback"
+        priority: nice
+        status: todo
+        owner: solo
+        notes: "ref.listen duelProvider last turnHistory entry; playCorrect()/playWrong() from SoundFeedbackService"

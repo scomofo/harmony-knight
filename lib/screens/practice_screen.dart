@@ -7,6 +7,9 @@ import 'package:harmony_knight/engine/curriculum/grade_thresholds.dart';
 import 'package:harmony_knight/engine/persistence.dart';
 import 'package:harmony_knight/engine/spaced_repetition.dart';
 import 'package:harmony_knight/models/note.dart';
+import 'package:harmony_knight/engine/fever_mode_engine.dart';
+import 'package:harmony_knight/engine/haptic_engine.dart';
+import 'package:harmony_knight/providers/audio_provider.dart';
 import 'package:harmony_knight/providers/scaffolding_provider.dart';
 import 'package:harmony_knight/providers/fever_provider.dart';
 import 'package:harmony_knight/providers/session_prefs_provider.dart';
@@ -231,8 +234,23 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
       _feedback = isCorrect ? 'Perfect!' : 'Try ${_targetNote!.name}';
     });
 
+    // Update Fever Mode before awarding points so multiplier is current.
+    final progressBeforeUpdate = ref.read(playerProgressProvider);
+    ref.read(feverProvider.notifier).evaluate(
+      currentStreak: progressBeforeUpdate.currentStreak,
+      lastActiveAt: progressBeforeUpdate.lastActiveAt,
+    );
+
     if (isCorrect) {
       ref.read(playerProgressProvider.notifier).recordCorrectNote();
+
+      // Award harmony points (1 × fever multiplier).
+      final fever = ref.read(feverProvider);
+      final pts = (fever.streakMultiplier).round().clamp(1, 10);
+      ref.read(playerProgressProvider.notifier).addHarmonyPoints(pts);
+
+      // Audio reward tone.
+      ref.read(soundFeedbackProvider).playCorrect();
 
       // Broken Blade: end session after mission length correct answers.
       if (widget.isBrokenBladeMode &&
@@ -251,16 +269,11 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
       });
     } else {
       ref.read(playerProgressProvider.notifier).recordIncorrectNote();
+      // Audio error signal.
+      ref.read(soundFeedbackProvider).playWrong();
       // Wait-Mode: don't advance — let user see the correct answer.
       _feedbackController.forward(from: 0.0);
     }
-
-    // Update Fever Mode.
-    final progress = ref.read(playerProgressProvider);
-    ref.read(feverProvider.notifier).evaluate(
-      currentStreak: progress.currentStreak,
-      lastActiveAt: progress.lastActiveAt,
-    );
   }
 
   void _showBladeRestoredAndPop() {
@@ -423,6 +436,13 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
     final confidence = ref.watch(confidenceProvider);
     final progress = ref.watch(playerProgressProvider);
     final fever = ref.watch(feverProvider);
+
+    // Fire haptic once when Fever Mode activates (false → true transition).
+    ref.listen<FeverModeStatus>(feverProvider, (prev, next) {
+      if (prev != null && !prev.isFeverActive && next.isFeverActive) {
+        HapticEngine.feverModeActivation();
+      }
+    });
 
     return Stack(
       children: [
