@@ -433,9 +433,9 @@ sprints:
       - id: S8-M3
         title: "Circle of Fifths GDD"
         priority: must
-        status: todo
+        status: done
         owner: solo
-        notes: "design/gdd/circle-of-fifths-system.md; all 8 sections; systems-index updated"
+        notes: "design/gdd/circle-of-fifths-system.md; all 8 sections; systems-index updated (Level 2 rhythm status also corrected)"
 
       - id: S8-S1
         title: "Scale Practice Home Card"
