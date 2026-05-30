@@ -2,7 +2,7 @@ version: 1
 last_updated: "2026-05-29"
 review_mode: solo
 
-current_sprint: 7
+current_sprint: 8
 
 sprints:
   - id: 1
@@ -358,7 +358,7 @@ sprints:
   - id: 7
     goal: "Polish pass — Reset All Progress, duel audio feedback, High Contrast Mode, session score HUD, engagement recording"
     started: "2026-05-29"
-    status: in-progress
+    status: complete
 
     tasks:
       - id: S7-M1
@@ -406,6 +406,61 @@ sprints:
       - id: S7-N2
         title: "Widget Tests"
         priority: nice
-        status: todo
+        status: skipped
         owner: solo
         notes: "4 tests: reset dialog text, high contrast bg, session HUD +0 init, duel audio listen fires"
+
+  - id: 8
+    goal: "Level 3 content — scale spelling exercise, CoF key quiz, CoF GDD"
+    started: "2026-05-29"
+    status: in-progress
+
+    tasks:
+      - id: S8-M1
+        title: "Scale Spelling Exercise Screen"
+        priority: must
+        status: todo
+        owner: solo
+        notes: "/scale route; root note shown; tap 8 major scale degrees in order; Wait-Mode on wrong; harmony points 5-15; session recorded; soundFeedback wired"
+
+      - id: S8-M2
+        title: "Circle of Fifths Key Quiz Mode"
+        priority: must
+        status: todo
+        owner: solo
+        notes: "_quizMode toggle; prompt types: N sharps/flats, relative minor; playCorrect/Wrong; addHarmonyPoints(3); correct counter in AppBar"
+
+      - id: S8-M3
+        title: "Circle of Fifths GDD"
+        priority: must
+        status: todo
+        owner: solo
+        notes: "design/gdd/circle-of-fifths-system.md; all 8 sections; systems-index updated"
+
+      - id: S8-S1
+        title: "Scale Practice Home Card"
+        priority: should
+        status: todo
+        owner: solo
+        notes: "gradeLevel>=2; icon piano_rounded; teal Color(0xFF26C6DA); below Rhythm card; go('/scale')"
+
+      - id: S8-S2
+        title: "Major Scale Notes in CoF Detail Panel"
+        priority: should
+        status: todo
+        owner: solo
+        notes: "_majorScaleNotes const map; horizontal Row of 8 note names; root+octave bold; shown when _selectedKey != null in Explore mode"
+
+      - id: S8-N1
+        title: "Natural Minor Scale Mode"
+        priority: nice
+        status: todo
+        owner: solo
+        notes: "Switch to Minor button after major scale complete; relative minor root; same palette"
+
+      - id: S8-N2
+        title: "Widget Tests for Scale Screen"
+        priority: nice
+        status: todo
+        owner: solo
+        notes: "4 tests: AppBar title, correct tap advances, wrong tap Wait-Mode, completion shows points"
