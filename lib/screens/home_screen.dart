@@ -19,9 +19,10 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final progress = ref.watch(playerProgressProvider);
     final currentLevel = Curriculum.forLevel(progress.gradeLevel);
+    final highContrast = ref.watch(highContrastProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0D1117),
+      backgroundColor: highContrast ? Colors.black : const Color(0xFF0D1117),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20),
@@ -33,7 +34,7 @@ class HomeScreen extends ConsumerWidget {
               const SizedBox(height: 16),
 
               // Current quest banner.
-              _buildQuestBanner(currentLevel),
+              _buildQuestBanner(currentLevel, highContrast: highContrast),
               const SizedBox(height: 8),
 
               // Grade progress bar.
@@ -162,14 +163,17 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildQuestBanner(CurriculumLevel? level) {
+  Widget _buildQuestBanner(CurriculumLevel? level, {bool highContrast = false}) {
     if (level == null) return const SizedBox.shrink();
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1A237E), Color(0xFF4A148C)],
-        ),
+        gradient: highContrast
+            ? null
+            : const LinearGradient(
+                colors: [Color(0xFF1A237E), Color(0xFF4A148C)],
+              ),
+        color: highContrast ? const Color(0xFF1A0050) : null,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(

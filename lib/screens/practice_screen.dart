@@ -69,6 +69,9 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
   Timer? _sessionTimer;
   Duration _elapsed = Duration.zero;
 
+  // Session score counter shown in AppBar (S7-S1).
+  int _sessionPoints = 0;
+
   final PersistenceService _persistence = PersistenceService();
 
   // Spaced-repetition state.
@@ -244,10 +247,28 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
     if (isCorrect) {
       ref.read(playerProgressProvider.notifier).recordCorrectNote();
 
+      // Streak milestone toasts (5 / 10 / 25 / 50).
+      final newStreak = ref.read(playerProgressProvider).currentStreak;
+      const _milestoneMessages = {
+        5: '5 in a row!',
+        10: 'Streak of 10 — Fever incoming!',
+        25: "25! You're on fire.",
+        50: '50 streak. Legendary.',
+      };
+      final milestoneMsg = _milestoneMessages[newStreak];
+      if (milestoneMsg != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(milestoneMsg),
+          duration: const Duration(seconds: 2),
+          backgroundColor: const Color(0xFF1A237E),
+        ));
+      }
+
       // Award harmony points (1 × fever multiplier).
       final fever = ref.read(feverProvider);
       final pts = (fever.streakMultiplier).round().clamp(1, 10);
       ref.read(playerProgressProvider.notifier).addHarmonyPoints(pts);
+      setState(() => _sessionPoints += pts);
 
       // Audio reward tone.
       ref.read(soundFeedbackProvider).playCorrect();
@@ -332,6 +353,16 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
             widget.isBrokenBladeMode ? 'broken_blade' : 'practice',
         confidenceAtStart: _confidenceAtStart,
         confidenceAtEnd: confidence,
+      ));
+
+      final accuracy = _sessionCorrect / _sessionTotal;
+      await _persistence.recordEngagement(EngagementPoint(
+        timestamp: _sessionStartTime,
+        topic: widget.isFocusMode ? 'focus' : 'note_id',
+        focusDuration: _elapsed.inSeconds.toDouble(),
+        wasHyperfocused: accuracy >= 0.95 && _elapsed.inMinutes >= 10,
+        wasOffTask: accuracy < 0.40,
+        errorsInWindow: _sessionTotal - _sessionCorrect,
       ));
     }
     if (!mounted) return;
@@ -436,6 +467,7 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
     final confidence = ref.watch(confidenceProvider);
     final progress = ref.watch(playerProgressProvider);
     final fever = ref.watch(feverProvider);
+    final highContrast = ref.watch(highContrastProvider);
 
     // Fire haptic once when Fever Mode activates (false → true transition).
     ref.listen<FeverModeStatus>(feverProvider, (prev, next) {
@@ -447,7 +479,7 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
     return Stack(
       children: [
         Scaffold(
-      backgroundColor: const Color(0xFF0D1117),
+      backgroundColor: highContrast ? Colors.black : const Color(0xFF0D1117),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -480,6 +512,20 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
                 ),
               ),
             ),
+          // Session score HUD.
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Row(
+              children: [
+                const Icon(Icons.star, color: Color(0xFFFFD54F), size: 18),
+                const SizedBox(width: 4),
+                Text(
+                  '+$_sessionPoints',
+                  style: const TextStyle(color: Color(0xFFFFD54F), fontSize: 14),
+                ),
+              ],
+            ),
+          ),
           // Streak display.
           Padding(
             padding: const EdgeInsets.only(right: 16),

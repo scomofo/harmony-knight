@@ -186,3 +186,30 @@ final ghostTonesEnabledProvider =
     StateNotifierProvider<GhostTonesNotifier, bool>((ref) {
   return GhostTonesNotifier();
 });
+
+/// Notifier for the high-contrast accessibility mode.
+///
+/// Switches backgrounds to pure black and removes gradients for users who
+/// need maximum contrast. Persists across sessions (key: 'high_contrast_enabled').
+class HighContrastNotifier extends StateNotifier<bool> {
+  static const _prefKey = 'high_contrast_enabled';
+
+  HighContrastNotifier() : super(false) {
+    _loadFromPrefs();
+  }
+
+  Future<void> _loadFromPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) state = prefs.getBool(_prefKey) ?? false;
+  }
+
+  void toggle(bool enabled) {
+    state = enabled;
+    SharedPreferences.getInstance().then((p) => p.setBool(_prefKey, enabled));
+  }
+}
+
+final highContrastProvider =
+    StateNotifierProvider<HighContrastNotifier, bool>((ref) {
+  return HighContrastNotifier();
+});

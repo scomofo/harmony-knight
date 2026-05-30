@@ -56,12 +56,24 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
     final confidence = ref.watch(confidenceProvider);
     final reduceMotion = ref.watch(sessionPrefsProvider).reduceMotion;
 
-    // Play ghost tone when a suggestion appears; stop when it clears.
-    // Respects the ghost-tones toggle in Settings.
+    // Play audio feedback and ghost tones on duel state changes.
     ref.listen(duelProvider, (prev, next) {
       final ghostEngine = ref.read(ghostToneProvider);
+      final soundFeedback = ref.read(soundFeedbackProvider);
       final hadGhost = prev?.ghostSuggestion != null;
       final hasGhost = next.ghostSuggestion != null;
+
+      if (prev != null) {
+        if (next.turnHistory.length > prev.turnHistory.length) {
+          // Valid note placed — turn advanced.
+          soundFeedback.playCorrect();
+        } else if (hasGhost && !hadGhost) {
+          // Invalid note — ghost suggestion appeared.
+          soundFeedback.playWrong();
+        }
+      }
+
+      // Ghost tone audio: play on appearance, stop on dismissal.
       if (hasGhost && !hadGhost) {
         if (ref.read(ghostTonesEnabledProvider)) {
           ghostEngine.playGhostTone(

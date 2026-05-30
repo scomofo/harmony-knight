@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:harmony_knight/engine/persistence.dart';
+import 'package:harmony_knight/models/player_progress.dart';
 import 'package:harmony_knight/providers/scaffolding_provider.dart';
 import 'package:harmony_knight/providers/session_prefs_provider.dart';
 import 'package:harmony_knight/providers/sr_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Settings screen with accessibility options and session preferences.
 ///
@@ -16,6 +19,7 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final progress = ref.watch(playerProgressProvider);
     final ghostTonesEnabled = ref.watch(ghostTonesEnabledProvider);
+    final highContrast = ref.watch(highContrastProvider);
     final prefs = ref.watch(sessionPrefsProvider);
     final prefsNotifier = ref.read(sessionPrefsProvider.notifier);
 
@@ -72,8 +76,8 @@ class SettingsScreen extends ConsumerWidget {
             'High Contrast Mode',
             'Increases color contrast for all UI elements',
             Icons.contrast,
-            false,
-            (val) {},
+            highContrast,
+            (val) => ref.read(highContrastProvider.notifier).toggle(val),
           ),
           _buildToggleTile(
             'Reduce Motion',
@@ -195,7 +199,7 @@ class SettingsScreen extends ConsumerWidget {
           // Reset all progress (with confirmation).
           Center(
             child: TextButton(
-              onPressed: () => _showResetDialog(context),
+              onPressed: () => _showResetDialog(context, ref),
               child: Text(
                 'Reset All Progress',
                 style: TextStyle(color: Colors.red.shade400, fontSize: 13),
@@ -340,15 +344,16 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  void _showResetDialog(BuildContext context) {
+  void _showResetDialog(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF161B22),
-        title: const Text('Reset Progress?',
+        title: const Text('Reset All Progress?',
             style: TextStyle(color: Colors.white)),
         content: const Text(
-          'This will erase all progress, streaks, and settings. This cannot be undone.',
+          'This will erase ALL progress, grades, streaks, and settings. '
+          'This cannot be undone.',
           style: TextStyle(color: Colors.white70),
         ),
         actions: [
@@ -357,9 +362,15 @@ class SettingsScreen extends ConsumerWidget {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              // Reset would go here.
+              await PersistenceService().saveProgress(
+                PlayerProgress(lastActiveAt: DateTime.now()),
+              );
+              ref.read(srItemsProvider.notifier).clearAll();
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.clear();
+              if (context.mounted) context.go('/onboarding');
             },
             child: Text('Reset', style: TextStyle(color: Colors.red.shade400)),
           ),

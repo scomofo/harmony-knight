@@ -2,7 +2,7 @@ version: 1
 last_updated: "2026-05-29"
 review_mode: solo
 
-current_sprint: 6
+current_sprint: 7
 
 sprints:
   - id: 1
@@ -354,3 +354,58 @@ sprints:
         status: todo
         owner: solo
         notes: "ref.listen duelProvider last turnHistory entry; playCorrect()/playWrong() from SoundFeedbackService"
+
+  - id: 7
+    goal: "Polish pass — Reset All Progress, duel audio feedback, High Contrast Mode, session score HUD, engagement recording"
+    started: "2026-05-29"
+    status: in-progress
+
+    tasks:
+      - id: S7-M1
+        title: "Reset All Progress"
+        priority: must
+        status: done
+        owner: solo
+        notes: "_showResetDialog(context, ref); saveProgress(blank PlayerProgress), srItemsProvider.clearAll(), SharedPrefs.clear(), context.go('/onboarding'); dialog copy updated"
+
+      - id: S7-M2
+        title: "Duel Answer Audio Feedback"
+        priority: must
+        status: done
+        owner: solo
+        notes: "Extended existing ref.listen in DuelScreen.build(); turnHistory.length grows → playCorrect(); ghost null→non-null → playWrong(); guarded by prev != null"
+
+      - id: S7-M3
+        title: "High Contrast Mode"
+        priority: must
+        status: done
+        owner: solo
+        notes: "HighContrastNotifier + highContrastProvider in scaffolding_provider.dart (key 'high_contrast_enabled'); Settings toggle wired; HomeScreen + PracticeScreen backgroundColor → Colors.black; quest banner → solid Color(0xFF1A0050)"
+
+      - id: S7-S1
+        title: "Session Score HUD"
+        priority: should
+        status: done
+        owner: solo
+        notes: "_sessionPoints field in _PracticeScreenState; setState(+=pts) alongside addHarmonyPoints; star+count Row in AppBar before streak; shows +0 at session start"
+
+      - id: S7-S2
+        title: "Engagement Data Recording"
+        priority: should
+        status: done
+        owner: solo
+        notes: "recordEngagement(EngagementPoint(...)) called in _onExit() after recordSession(); topic='focus'|'note_id'; wasHyperfocused: accuracy>=0.95 && elapsed>=10min; wasOffTask: accuracy<0.40; errorsInWindow=total-correct"
+
+      - id: S7-N1
+        title: "Streak Milestone Toasts"
+        priority: nice
+        status: done
+        owner: solo
+        notes: "SnackBar on streak 5/10/25/50 in _handleAnswer after recordCorrectNote(); _milestoneMessages const map; dark navy background"
+
+      - id: S7-N2
+        title: "Widget Tests"
+        priority: nice
+        status: todo
+        owner: solo
+        notes: "4 tests: reset dialog text, high contrast bg, session HUD +0 init, duel audio listen fires"
