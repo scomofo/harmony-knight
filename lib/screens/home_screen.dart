@@ -115,6 +115,17 @@ class HomeScreen extends ConsumerWidget {
                         onTap: () => context.go('/interval'),
                       ),
                     ],
+                    if (progress.gradeLevel >= 4) ...[
+                      const SizedBox(height: 16),
+                      _buildActionCard(
+                        context,
+                        icon: Icons.piano,
+                        title: 'Triad Training',
+                        subtitle: 'Identify major, minor, and more',
+                        color: const Color(0xFFFF7043),
+                        onTap: () => context.go('/triad'),
+                      ),
+                    ],
                   ],
                 ),
               ),

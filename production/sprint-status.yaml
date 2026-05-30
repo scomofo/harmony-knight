@@ -2,7 +2,7 @@ version: 1
 last_updated: "2026-05-29"
 review_mode: solo
 
-current_sprint: 9
+current_sprint: 10
 
 sprints:
   - id: 1
@@ -516,6 +516,61 @@ sprints:
       - id: S9-N2
         title: "Widget Tests for Interval Screen"
         priority: nice
-        status: todo
+        status: skipped
         owner: solo
-        notes: "4 tests: AppBar title, correct answer advances, wrong answer Wait-Mode, session complete shows points"
+        notes: "Deferred — nth pattern"
+
+  - id: 10
+    goal: "Level 4 triads — triad quality ear training, triad GDD, home card at grade 4"
+    started: "2026-05-29"
+    status: in-progress
+
+    tasks:
+      - id: S10-M1
+        title: "Triad System GDD"
+        priority: must
+        status: done
+        owner: solo
+        notes: "design/gdd/triad-system.md; 8 sections; Major[0,4,7] Minor[0,3,7] Aug[0,4,8] Dim[0,3,6]; arpeggio 400ms/note 450ms gap; 18 AC"
+
+      - id: S10-M2
+        title: "Triad Ear Training Screen"
+        priority: must
+        status: done
+        owner: solo
+        notes: "triad_screen.dart; /triad route; 4 fixed quality buttons; arpeggio playback via AudioSource; Wait-Mode; 800ms reveal; session recorded exerciseType=triad"
+
+      - id: S10-M3
+        title: "Triad Practice Home Card"
+        priority: must
+        status: done
+        owner: solo
+        notes: "gradeLevel>=4; icon piano; deep-orange Color(0xFFFF7043); below Interval card; go('/triad')"
+
+      - id: S10-S1
+        title: "Triad Name Reveal on Correct Answer"
+        priority: should
+        status: done
+        owner: solo
+        notes: "_buildReveal(): check_circle + quality name (orange 28sp) + intervalShorthand ('Root · M3 · P5' etc); 800ms auto-advance"
+
+      - id: S10-S2
+        title: "Update Systems Index"
+        priority: should
+        status: done
+        owner: solo
+        notes: "Level 4 Triad System row → designed + implemented; Gliph stays in Planned"
+
+      - id: S10-N1
+        title: "Replay Button"
+        priority: nice
+        status: done
+        owner: solo
+        notes: "TextButton.icon(Icons.replay) in _buildQuestion(); calls _playArpeggio(); always visible"
+
+      - id: S10-N2
+        title: "Widget Tests for Triad Screen"
+        priority: nice
+        status: skipped
+        owner: solo
+        notes: "Deferred — nth pattern"
