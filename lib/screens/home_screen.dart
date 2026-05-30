@@ -93,6 +93,17 @@ class HomeScreen extends ConsumerWidget {
                         onTap: () => context.go('/rhythm'),
                       ),
                     ],
+                    if (progress.gradeLevel >= 2) ...[
+                      const SizedBox(height: 16),
+                      _buildActionCard(
+                        context,
+                        icon: Icons.piano_outlined,
+                        title: 'Scale Practice',
+                        subtitle: 'Build major scales key by key',
+                        color: const Color(0xFF26C6DA),
+                        onTap: () => context.go('/scale'),
+                      ),
+                    ],
                   ],
                 ),
               ),

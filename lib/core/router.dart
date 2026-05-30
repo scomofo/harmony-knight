@@ -9,6 +9,7 @@ import 'package:harmony_knight/screens/settings_screen.dart';
 import 'package:harmony_knight/engine/persistence.dart';
 import 'package:harmony_knight/screens/onboarding_screen.dart';
 import 'package:harmony_knight/screens/rhythm_screen.dart';
+import 'package:harmony_knight/screens/scale_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// App router with simple, direct navigation paths.
@@ -76,6 +77,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/rhythm',
       builder: (context, state) => const RhythmScreen(),
+    ),
+    GoRoute(
+      path: '/scale',
+      builder: (context, state) => const ScaleScreen(),
     ),
   ],
 );

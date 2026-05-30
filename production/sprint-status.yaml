@@ -419,16 +419,16 @@ sprints:
       - id: S8-M1
         title: "Scale Spelling Exercise Screen"
         priority: must
-        status: todo
+        status: done
         owner: solo
-        notes: "/scale route; root note shown; tap 8 major scale degrees in order; Wait-Mode on wrong; harmony points 5-15; session recorded; soundFeedback wired"
+        notes: "scale_screen.dart; /scale route; 6 roots C/G/D/A/F/Bb; chromatic 13-note palette; progress dots; Wait-Mode; pts=5+(correctFirstTry/8*10).round(); session recorded; soundFeedback wired"
 
       - id: S8-M2
         title: "Circle of Fifths Key Quiz Mode"
         priority: must
-        status: todo
+        status: done
         owner: solo
-        notes: "_quizMode toggle; prompt types: N sharps/flats, relative minor; playCorrect/Wrong; addHarmonyPoints(3); correct counter in AppBar"
+        notes: "_quizMode toggle; 4 question types: sharps/flats/relativeMinor/zero; playCorrect/Wrong; addHarmonyPoints(3); 1.5s wrong-answer amber highlight; correct counter in AppBar; detail panel hidden in quiz"
 
       - id: S8-M3
         title: "Circle of Fifths GDD"
@@ -440,16 +440,16 @@ sprints:
       - id: S8-S1
         title: "Scale Practice Home Card"
         priority: should
-        status: todo
+        status: done
         owner: solo
-        notes: "gradeLevel>=2; icon piano_rounded; teal Color(0xFF26C6DA); below Rhythm card; go('/scale')"
+        notes: "gradeLevel>=2; icon piano_outlined; teal Color(0xFF26C6DA); below Rhythm card; go('/scale')"
 
       - id: S8-S2
         title: "Major Scale Notes in CoF Detail Panel"
         priority: should
-        status: todo
+        status: done
         owner: solo
-        notes: "_majorScaleNotes const map; horizontal Row of 8 note names; root+octave bold; shown when _selectedKey != null in Explore mode"
+        notes: "_majorScaleNotes const map (12 keys); horizontal Row of 8 note names in detail panel; root+octave bold; only in Explore mode when _selectedKey != null"
 
       - id: S8-N1
         title: "Natural Minor Scale Mode"
