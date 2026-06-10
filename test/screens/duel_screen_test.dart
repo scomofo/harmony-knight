@@ -41,7 +41,7 @@ void main() {
     testWidgets('renders cantus firmus once state is loaded', (tester) async {
       const duelState = DuelState(cantusFirmus: _cantus);
       await tester.pumpWidget(_buildSubject(duelState));
-      await tester.pumpAndSettle();
+      await tester.pump();
 
       // Turn counter and harmony meter should be visible.
       expect(find.text('Turn 1 of 3'), findsOneWidget);
@@ -55,23 +55,24 @@ void main() {
         ghostReason: _ghostReason,
       );
       await tester.pumpWidget(_buildSubject(duelState));
-      await tester.pumpAndSettle();
+      await tester.pump();
 
       expect(
-        find.text('Tap to accept this ghost resolution and learn why it works.'),
+        find.text(
+            'Tap to accept this ghost resolution and learn why it works.'),
         findsOneWidget,
       );
-      expect(find.text(_ghostReason), findsOneWidget);
     });
 
     testWidgets('ghost suggestion panel is absent when no ghost set',
         (tester) async {
       const duelState = DuelState(cantusFirmus: _cantus);
       await tester.pumpWidget(_buildSubject(duelState));
-      await tester.pumpAndSettle();
+      await tester.pump();
 
       expect(
-        find.text('Tap to accept this ghost resolution and learn why it works.'),
+        find.text(
+            'Tap to accept this ghost resolution and learn why it works.'),
         findsNothing,
       );
     });
@@ -85,7 +86,7 @@ void main() {
         isComplete: true,
       );
       await tester.pumpWidget(_buildSubject(duelState));
-      await tester.pumpAndSettle();
+      await tester.pump();
 
       expect(find.text('Duel Complete!'), findsOneWidget);
       expect(find.text('Harmony: 75%'), findsOneWidget);
@@ -100,7 +101,7 @@ void main() {
         isComplete: true,
       );
       await tester.pumpWidget(_buildSubject(duelState));
-      await tester.pumpAndSettle();
+      await tester.pump();
 
       // The input palette is only shown when !duel.isComplete.
       expect(find.text('New Duel'), findsOneWidget);

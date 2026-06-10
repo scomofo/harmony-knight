@@ -38,6 +38,7 @@ production/session-logs/
 # === Internal Planning ===
 expansions/
 marrow/
+devharmony-knight2/
 
 # === Runtime Artifacts ===
 docs/consistency-failures.md

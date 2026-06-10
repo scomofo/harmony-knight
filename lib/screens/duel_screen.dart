@@ -120,81 +120,51 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
       body: SafeArea(
         child: duel.cantusFirmus.isEmpty
             ? const Center(child: CircularProgressIndicator())
-            : Column(
-                children: [
-                  const SizedBox(height: 16),
+            : SingleChildScrollView(
+                child: Column(
+                  children: [
+                    const SizedBox(height: 16),
 
-                  // Harmony Meter.
-                  HarmonyMeter(
-                    fillLevel: duel.harmonyMeter,
-                    triggerBigWin: duel.turnHistory.isNotEmpty &&
-                        duel.turnHistory.last.grantsBigWinBonus,
-                  ),
+                    // Harmony Meter.
+                    HarmonyMeter(
+                      fillLevel: duel.harmonyMeter,
+                      triggerBigWin: duel.turnHistory.isNotEmpty &&
+                          duel.turnHistory.last.grantsBigWinBonus,
+                    ),
 
-                  // Discord Sentinel grudging-respect toast when meter is full.
-                  if (duel.harmonyMeter >= 1.0)
-                    AnimatedContainer(
-                      duration: reduceMotion ? Duration.zero : const Duration(milliseconds: 400),
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 8, horizontal: 16),
-                      color: const Color(0xFF1A003A),
-                      child: Text(
-                        _sentinelQuotes[duel.currentTurn % 3],
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Color(0xFFCE93D8),
-                          fontSize: 13,
-                          fontStyle: FontStyle.italic,
+                    // Discord Sentinel grudging-respect toast when meter is full.
+                    if (duel.harmonyMeter >= 1.0)
+                      AnimatedContainer(
+                        duration: reduceMotion
+                            ? Duration.zero
+                            : const Duration(milliseconds: 400),
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 8, horizontal: 16),
+                        color: const Color(0xFF1A003A),
+                        child: Text(
+                          _sentinelQuotes[duel.currentTurn % 3],
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Color(0xFFCE93D8),
+                            fontSize: 13,
+                            fontStyle: FontStyle.italic,
+                          ),
                         ),
                       ),
-                    ),
 
-                  const SizedBox(height: 8),
-                  Text(
-                    'Turn ${duel.currentTurn + 1} of ${duel.totalTurns}',
-                    style: TextStyle(
-                      color: Colors.white.withAlpha(150),
-                      fontSize: 14,
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Cantus Firmus row.
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Discord Sentinel\'s Cantus Firmus:',
-                            style: TextStyle(
-                              color: Colors.white.withAlpha(150),
-                              fontSize: 12,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: ScaffoldedNoteRow(
-                              notes: duel.cantusFirmus,
-                              highlightIndex:
-                                  duel.isComplete ? null : duel.currentTurn,
-                              noteSize: 36,
-                            ),
-                          ),
-                        ],
+                    const SizedBox(height: 8),
+                    Text(
+                      'Turn ${duel.currentTurn + 1} of ${duel.totalTurns}',
+                      style: TextStyle(
+                        color: Colors.white.withAlpha(150),
+                        fontSize: 14,
                       ),
                     ),
-                  ),
 
-                  const SizedBox(height: 16),
+                    const SizedBox(height: 24),
 
-                  // User's counterpoint row.
-                  if (duel.userCounterpoint.isNotEmpty)
+                    // Cantus Firmus row.
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: SizedBox(
@@ -203,7 +173,7 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Your Counterpoint:',
+                              'Discord Sentinel\'s Cantus Firmus:',
                               style: TextStyle(
                                 color: Colors.white.withAlpha(150),
                                 fontSize: 12,
@@ -213,7 +183,9 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
                             SingleChildScrollView(
                               scrollDirection: Axis.horizontal,
                               child: ScaffoldedNoteRow(
-                                notes: duel.userCounterpoint,
+                                notes: duel.cantusFirmus,
+                                highlightIndex:
+                                    duel.isComplete ? null : duel.currentTurn,
                                 noteSize: 36,
                               ),
                             ),
@@ -222,143 +194,175 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
                       ),
                     ),
 
-                  const SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
-                  // Ghost note suggestion.
-                  if (duel.ghostSuggestion != null)
-                    GestureDetector(
-                      onTap: _acceptGhost,
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 16),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF7C4DFF).withAlpha(30),
-                          border: Border.all(
-                            color: const Color(0xFF7C4DFF).withAlpha(100),
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            ScaffoldedNote(
-                              note: duel.ghostSuggestion!,
-                              size: 36,
-                            ),
-                            const SizedBox(width: 12),
-                            const Expanded(
-                              child: Text(
-                                'Tap to accept this ghost resolution and learn why it works.',
+                    // User's counterpoint row.
+                    if (duel.userCounterpoint.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Your Counterpoint:',
                                 style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 13,
+                                  color: Colors.white.withAlpha(150),
+                                  fontSize: 12,
                                 ),
                               ),
+                              const SizedBox(height: 8),
+                              SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: ScaffoldedNoteRow(
+                                  notes: duel.userCounterpoint,
+                                  noteSize: 36,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                    const SizedBox(height: 16),
+
+                    // Ghost note suggestion.
+                    if (duel.ghostSuggestion != null)
+                      GestureDetector(
+                        onTap: _acceptGhost,
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 16),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF7C4DFF).withAlpha(30),
+                            border: Border.all(
+                              color: const Color(0xFF7C4DFF).withAlpha(100),
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              ScaffoldedNote(
+                                note: duel.ghostSuggestion!,
+                                size: 36,
+                              ),
+                              const SizedBox(width: 12),
+                              const Expanded(
+                                child: Text(
+                                  'Tap to accept this ghost resolution and learn why it works.',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                    // Ghost reason feedback.
+                    if (_showGhostReason && duel.ghostReason != null)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          duel.ghostReason!,
+                          style: TextStyle(
+                            color: const Color(0xFFFF6F00).withAlpha(200),
+                            fontSize: 13,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+
+                    const SizedBox(height: 16),
+
+                    // Duel complete banner.
+                    if (duel.isComplete)
+                      Container(
+                        margin: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF1A237E), Color(0xFF7C4DFF)],
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Column(
+                          children: [
+                            const Text(
+                              'Duel Complete!',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Harmony: ${(duel.harmonyMeter * 100).round()}%',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                              ),
+                            ),
+                            Text(
+                              '+${(duel.harmonyMeter * 100).round().clamp(1, 100)} Harmony Points',
+                              style: const TextStyle(
+                                color: Color(0xFFFFD54F),
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: () {
+                                ref.read(duelProvider.notifier).reset();
+                                final grade =
+                                    ref.read(playerProgressProvider).gradeLevel;
+                                ref
+                                    .read(duelProvider.notifier)
+                                    .startDuel(gradeLevel: grade);
+                              },
+                              child: const Text('New Duel'),
                             ),
                           ],
                         ),
                       ),
-                    ),
 
-                  // Ghost reason feedback.
-                  if (_showGhostReason && duel.ghostReason != null)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        duel.ghostReason!,
-                        style: TextStyle(
-                          color: const Color(0xFFFF6F00).withAlpha(200),
-                          fontSize: 13,
-                        ),
-                        textAlign: TextAlign.center,
+                    // Note input palette (only show if duel is active).
+                    if (!duel.isComplete)
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final isCompact = constraints.maxWidth < 480;
+                          final tiles = _inputNotes
+                              .map((note) => _buildNoteTile(note, confidence))
+                              .toList();
+
+                          return Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            color: Colors.grey.shade900.withAlpha(150),
+                            child: isCompact
+                                ? SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    child: Row(children: tiles),
+                                  )
+                                : Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    alignment: WrapAlignment.center,
+                                    children: tiles,
+                                  ),
+                          );
+                        },
                       ),
-                    ),
 
-                  const Spacer(),
-
-                  // Duel complete banner.
-                  if (duel.isComplete)
-                    Container(
-                      margin: const EdgeInsets.all(16),
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF1A237E), Color(0xFF7C4DFF)],
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Column(
-                        children: [
-                          const Text(
-                            'Duel Complete!',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Harmony: ${(duel.harmonyMeter * 100).round()}%',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                            ),
-                          ),
-                          Text(
-                            '+${(duel.harmonyMeter * 100).round().clamp(1, 100)} Harmony Points',
-                            style: const TextStyle(
-                              color: Color(0xFFFFD54F),
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: () {
-                              ref.read(duelProvider.notifier).reset();
-                              final grade =
-                                  ref.read(playerProgressProvider).gradeLevel;
-                              ref
-                                  .read(duelProvider.notifier)
-                                  .startDuel(gradeLevel: grade);
-                            },
-                            child: const Text('New Duel'),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                  // Note input palette (only show if duel is active).
-                  if (!duel.isComplete)
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final isCompact = constraints.maxWidth < 480;
-                        final tiles = _inputNotes
-                            .map((note) => _buildNoteTile(note, confidence))
-                            .toList();
-
-                        return Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          color: Colors.grey.shade900.withAlpha(150),
-                          child: isCompact
-                              ? SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
-                                  child: Row(children: tiles),
-                                )
-                              : Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  alignment: WrapAlignment.center,
-                                  children: tiles,
-                                ),
-                        );
-                      },
-                    ),
-
-                  // Confidence slider.
-                  const ConfidenceSlider(),
-                ],
+                    // Confidence slider.
+                    const ConfidenceSlider(),
+                  ],
+                ),
               ),
       ),
     );

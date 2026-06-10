@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:harmony_knight/core/constants.dart';
 import 'package:harmony_knight/models/note.dart';
 import 'package:harmony_knight/engine/ghost_tone_engine.dart';
@@ -157,7 +158,11 @@ void main() {
 
   group('DuelNotifier', () {
     test('stores ghost resolution reason after an invalid move', () {
-      final notifier = DuelNotifier()..startDuel(gradeLevel: 0);
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      final notifier = container.read(duelProvider.notifier)
+        ..startDuel(gradeLevel: 0);
 
       final accepted = notifier.submitNote(const Note(midi: 61));
 

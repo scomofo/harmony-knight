@@ -1,5 +1,5 @@
 version: 1
-last_updated: "2026-05-29"
+last_updated: "2026-06-10"
 review_mode: solo
 
 current_sprint: 10
@@ -523,7 +523,7 @@ sprints:
   - id: 10
     goal: "Level 4 triads — triad quality ear training, triad GDD, home card at grade 4"
     started: "2026-05-29"
-    status: in-progress
+    status: complete
 
     tasks:
       - id: S10-M1
@@ -571,6 +571,6 @@ sprints:
       - id: S10-N2
         title: "Widget Tests for Triad Screen"
         priority: nice
-        status: skipped
+        status: done
         owner: solo
-        notes: "Deferred — nth pattern"
+        notes: "Added triad_screen_test.dart with AppBar, correct reveal, wrong Wait-Mode, and complete-session points coverage; TriadScreen has debug-only deterministic sequences for tests"

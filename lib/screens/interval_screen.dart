@@ -92,7 +92,9 @@ class _IntervalScreenState extends ConsumerState<IntervalScreen> {
   }
 
   List<_Interval> _buildOptions(_Interval correct) {
-    final others = _intervals.where((i) => i.semitones != correct.semitones).toList()
+    final others = _intervals
+        .where((i) => i.semitones != correct.semitones)
+        .toList()
       ..shuffle(_rng);
     return ([correct, ...others.take(3)])..shuffle(_rng);
   }
@@ -104,17 +106,19 @@ class _IntervalScreenState extends ConsumerState<IntervalScreen> {
     try {
       _disposeSources();
       final rootWav = ToneGenerator.samplesToWav(
-        ToneGenerator.generateSineTone(midiNote: _rootMidi, durationMs: 500, volume: 0.7),
+        ToneGenerator.generateSineTone(
+            midiNote: _rootMidi, durationMs: 500, volume: 0.7),
       );
       _rootSource = await audio.soloud.loadMem('int_r_$_rootMidi.wav', rootWav);
       audio.soloud.play(_rootSource!);
 
-      await Future.delayed(const Duration(milliseconds: 650));
+      await Future<void>.delayed(const Duration(milliseconds: 650));
       if (!mounted) return;
 
       final ivMidi = _rootMidi + _current.semitones;
       final ivWav = ToneGenerator.samplesToWav(
-        ToneGenerator.generateSineTone(midiNote: ivMidi, durationMs: 500, volume: 0.7),
+        ToneGenerator.generateSineTone(
+            midiNote: ivMidi, durationMs: 500, volume: 0.7),
       );
       _ivSource = await audio.soloud.loadMem('int_iv_$ivMidi.wav', ivWav);
       audio.soloud.play(_ivSource!);
@@ -168,7 +172,8 @@ class _IntervalScreenState extends ConsumerState<IntervalScreen> {
   }
 
   void _recordSession() {
-    final durationSeconds = DateTime.now().difference(_sessionStartTime).inSeconds;
+    final durationSeconds =
+        DateTime.now().difference(_sessionStartTime).inSeconds;
     final grade = ref.read(playerProgressProvider).gradeLevel;
     final confidenceNow = ref.read(confidenceProvider);
     _persistence.recordSession(SessionRecord(
@@ -199,14 +204,16 @@ class _IntervalScreenState extends ConsumerState<IntervalScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => context.go('/'),
         ),
-        title: const Text('Interval Training', style: TextStyle(color: Colors.white)),
+        title: const Text('Interval Training',
+            style: TextStyle(color: Colors.white)),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: Center(
               child: Text(
                 _sessionComplete ? 'Done!' : 'Q ${_questionsAsked + 1} / 8',
-                style: TextStyle(color: Colors.white.withAlpha(180), fontSize: 13),
+                style:
+                    TextStyle(color: Colors.white.withAlpha(180), fontSize: 13),
               ),
             ),
           ),
@@ -241,13 +248,11 @@ class _IntervalScreenState extends ConsumerState<IntervalScreen> {
           opacity: _waitMode ? 1.0 : 0.0,
           duration: const Duration(milliseconds: 200),
           child: Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             decoration: BoxDecoration(
               color: const Color(0xFFFF5252).withAlpha(40),
               borderRadius: BorderRadius.circular(16),
-              border:
-                  Border.all(color: const Color(0xFFFF5252).withAlpha(120)),
+              border: Border.all(color: const Color(0xFFFF5252).withAlpha(120)),
             ),
             child: const Text('Wrong — try again',
                 style: TextStyle(color: Color(0xFFFF5252), fontSize: 13)),
@@ -308,15 +313,14 @@ class _IntervalScreenState extends ConsumerState<IntervalScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFFB300).withAlpha(20),
                   foregroundColor: Colors.white,
-                  side: BorderSide(
-                      color: const Color(0xFFFFB300).withAlpha(100)),
+                  side:
+                      BorderSide(color: const Color(0xFFFFB300).withAlpha(100)),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
                 onPressed: () => _handleAnswer(opt),
-                child:
-                    Text(opt.name, style: const TextStyle(fontSize: 16)),
+                child: Text(opt.name, style: const TextStyle(fontSize: 16)),
               ),
             ),
           );
@@ -358,8 +362,7 @@ class _IntervalScreenState extends ConsumerState<IntervalScreen> {
                     fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             Text('$_correctFirstTry / 8 first-try correct',
-                style:
-                    const TextStyle(color: Colors.white, fontSize: 20)),
+                style: const TextStyle(color: Colors.white, fontSize: 20)),
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -379,8 +382,8 @@ class _IntervalScreenState extends ConsumerState<IntervalScreen> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFFFB300),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 32, vertical: 14),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
               ),

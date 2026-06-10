@@ -22,39 +22,42 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() {
-    SharedPreferences.setMockInitialValues({});
+    SharedPreferences.setMockInitialValues({'onboarding_done': true});
   });
 
-  testWidgets('app smoke test', (WidgetTester tester) async {
+  Future<void> pumpAppHome(
+    WidgetTester tester, {
+    ProviderContainer? container,
+  }) async {
     appRouter.go('/');
-    await tester.pumpWidget(const ProviderScope(child: HarmonyKnightApp()));
+    final child = container == null
+        ? const ProviderScope(child: HarmonyKnightApp())
+        : UncontrolledProviderScope(
+            container: container,
+            child: const HarmonyKnightApp(),
+          );
+    await tester.pumpWidget(child);
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+
+  testWidgets('app smoke test', (WidgetTester tester) async {
+    await pumpAppHome(tester);
 
     expect(find.text('Harmony Knight'), findsOneWidget);
   });
 
-  testWidgets('home exposes the real-time gameplay route',
-      (WidgetTester tester) async {
-    appRouter.go('/');
-    await tester.pumpWidget(const ProviderScope(child: HarmonyKnightApp()));
-    await tester.pump();
+  testWidgets('home exposes the practice action', (WidgetTester tester) async {
+    await pumpAppHome(tester);
 
-    expect(find.text('Real-Time'), findsOneWidget);
-
-    await tester.ensureVisible(find.text('Real-Time'));
-    await tester.pump();
-    await tester.tap(find.text('Real-Time'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Real-Time Training'), findsOneWidget);
-    expect(find.text('Start Run'), findsOneWidget);
+    expect(find.text('Practice'), findsOneWidget);
+    expect(find.text('Train your ear and notation skills'), findsOneWidget);
   });
 
   testWidgets('home shows recommended quest and daily path',
       (WidgetTester tester) async {
-    appRouter.go('/');
-    await tester.pumpWidget(const ProviderScope(child: HarmonyKnightApp()));
-    await tester.pump();
+    await pumpAppHome(tester);
 
     expect(find.text('Next Quest'), findsOneWidget);
     expect(find.text('Read 5 notes'), findsWidgets);
@@ -65,9 +68,7 @@ void main() {
 
   testWidgets('home prompts new players to start note-reading mastery',
       (WidgetTester tester) async {
-    appRouter.go('/');
-    await tester.pumpWidget(const ProviderScope(child: HarmonyKnightApp()));
-    await tester.pump();
+    await pumpAppHome(tester);
 
     expect(find.text('Note reading: start your first attempt'), findsOneWidget);
   });
@@ -84,14 +85,7 @@ void main() {
           confidence: 0.7,
         );
 
-    appRouter.go('/');
-    await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: const HarmonyKnightApp(),
-      ),
-    );
-    await tester.pump();
+    await pumpAppHome(tester, container: container);
 
     expect(find.text('Note reading: 2/3 stars'), findsOneWidget);
   });
@@ -117,19 +111,13 @@ void main() {
     );
     addTearDown(container.dispose);
 
-    appRouter.go('/');
-    await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: const HarmonyKnightApp(),
-      ),
-    );
-    await tester.pump();
+    await pumpAppHome(tester, container: container);
 
     expect(find.text('Claim'), findsOneWidget);
 
     await tester.tap(find.text('Claim'));
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
 
     expect(container.read(playerProgressProvider).harmonyPoints, 20);
     expect(container.read(questProvider).dailyQuests.first.claimed, isTrue);

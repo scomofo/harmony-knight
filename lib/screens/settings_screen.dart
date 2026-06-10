@@ -341,7 +341,8 @@ class SettingsScreen extends ConsumerWidget {
               ref.read(srItemsProvider.notifier).clearAll();
               Navigator.pop(ctx);
             },
-            child: Text('Reset', style: TextStyle(color: Colors.orange.shade400)),
+            child:
+                Text('Reset', style: TextStyle(color: Colors.orange.shade400)),
           ),
         ],
       ),
@@ -349,7 +350,7 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   void _showResetDialog(BuildContext context, WidgetRef ref) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF161B22),

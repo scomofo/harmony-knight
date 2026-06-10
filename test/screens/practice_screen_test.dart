@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:harmony_knight/screens/practice_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // Grade 0 pool is always C4 (60), E4 (64), G4 (67).
 // Note.name returns the full octave name, e.g. "C4".
@@ -21,6 +22,19 @@ Widget _buildSubject({
         ),
       ),
     );
+
+Future<void> _pumpSubject(
+  WidgetTester tester, {
+  bool isBrokenBladeMode = false,
+  bool isFocusMode = false,
+}) async {
+  await tester.pumpWidget(_buildSubject(
+    isBrokenBladeMode: isBrokenBladeMode,
+    isFocusMode: isFocusMode,
+  ));
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 100));
+}
 
 // At confidence=0 (default), PracticeScreen shows the target note name as both
 // a large hint text AND a button label. Non-target notes appear only in buttons.
@@ -42,17 +56,21 @@ String? _wrongName(WidgetTester tester, String target) {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   group('PracticeScreen', () {
     testWidgets('renders note prompt once pool builds', (tester) async {
-      await tester.pumpWidget(_buildSubject());
-      await tester.pumpAndSettle();
+      await _pumpSubject(tester);
 
       expect(find.text('What note is this?'), findsOneWidget);
     });
 
     testWidgets('all three grade-0 note buttons are present', (tester) async {
-      await tester.pumpWidget(_buildSubject());
-      await tester.pumpAndSettle();
+      await _pumpSubject(tester);
 
       for (final name in _grade0Names) {
         expect(find.text(name), findsWidgets,
@@ -60,9 +78,9 @@ void main() {
       }
     });
 
-    testWidgets('tapping correct answer shows Perfect! feedback', (tester) async {
-      await tester.pumpWidget(_buildSubject());
-      await tester.pumpAndSettle();
+    testWidgets('tapping correct answer shows Perfect! feedback',
+        (tester) async {
+      await _pumpSubject(tester);
 
       final target = _targetName(tester);
       expect(target, isNotNull);
@@ -75,8 +93,7 @@ void main() {
     });
 
     testWidgets('correct answer increments streak counter', (tester) async {
-      await tester.pumpWidget(_buildSubject());
-      await tester.pumpAndSettle();
+      await _pumpSubject(tester);
 
       expect(find.text('0'), findsOneWidget);
 
@@ -90,8 +107,7 @@ void main() {
     });
 
     testWidgets('tapping wrong answer shows Try feedback', (tester) async {
-      await tester.pumpWidget(_buildSubject());
-      await tester.pumpAndSettle();
+      await _pumpSubject(tester);
 
       final target = _targetName(tester);
       expect(target, isNotNull);
@@ -105,8 +121,7 @@ void main() {
     });
 
     testWidgets('wrong answer does not increment streak', (tester) async {
-      await tester.pumpWidget(_buildSubject());
-      await tester.pumpAndSettle();
+      await _pumpSubject(tester);
 
       expect(find.text('0'), findsOneWidget);
 
@@ -124,23 +139,21 @@ void main() {
 
   group('PracticeScreen — Focus Session mode', () {
     testWidgets('AppBar shows Focus Session title', (tester) async {
-      await tester.pumpWidget(_buildSubject(isFocusMode: true));
-      await tester.pumpAndSettle();
+      await _pumpSubject(tester, isFocusMode: true);
 
       expect(find.text('Focus Session'), findsOneWidget);
     });
 
     testWidgets('normal mode AppBar shows Practice title', (tester) async {
-      await tester.pumpWidget(_buildSubject());
-      await tester.pumpAndSettle();
+      await _pumpSubject(tester);
 
       expect(find.text('Practice'), findsOneWidget);
     });
 
-    testWidgets('focus mode with no weak notes falls back to grade pool', (tester) async {
+    testWidgets('focus mode with no weak notes falls back to grade pool',
+        (tester) async {
       // Default PlayerProgress has weakNotesMidi=[] — fallback to grade 0 pool.
-      await tester.pumpWidget(_buildSubject(isFocusMode: true));
-      await tester.pumpAndSettle();
+      await _pumpSubject(tester, isFocusMode: true);
 
       // Grade-0 notes should appear (fallback is active).
       var found = false;
@@ -151,12 +164,12 @@ void main() {
         }
       }
       expect(found, isTrue,
-          reason: 'Focus mode with empty weak notes must fall back to grade pool');
+          reason:
+              'Focus mode with empty weak notes must fall back to grade pool');
     });
 
     testWidgets('focus mode still shows note prompt', (tester) async {
-      await tester.pumpWidget(_buildSubject(isFocusMode: true));
-      await tester.pumpAndSettle();
+      await _pumpSubject(tester, isFocusMode: true);
 
       expect(find.text('What note is this?'), findsOneWidget);
     });

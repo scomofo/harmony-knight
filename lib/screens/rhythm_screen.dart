@@ -202,9 +202,9 @@ class _RhythmScreenState extends ConsumerState<RhythmScreen>
             context.go('/');
           },
         ),
-        title: Text(
+        title: const Text(
           'Rhythm Practice',
-          style: const TextStyle(color: Colors.white),
+          style: TextStyle(color: Colors.white),
         ),
         actions: [
           Padding(
@@ -253,7 +253,8 @@ class _RhythmScreenState extends ConsumerState<RhythmScreen>
             const SizedBox(height: 8),
             Text(
               'Start slow — you can always go faster',
-              style: TextStyle(color: Colors.white.withAlpha(140), fontSize: 13),
+              style:
+                  TextStyle(color: Colors.white.withAlpha(140), fontSize: 13),
             ),
             const SizedBox(height: 40),
             Wrap(
@@ -282,7 +283,9 @@ class _RhythmScreenState extends ConsumerState<RhythmScreen>
                         Text(
                           '$bpm',
                           style: TextStyle(
-                            color: selected ? Colors.white : const Color(0xFF7C4DFF),
+                            color: selected
+                                ? Colors.white
+                                : const Color(0xFF7C4DFF),
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
                           ),
@@ -313,7 +316,10 @@ class _RhythmScreenState extends ConsumerState<RhythmScreen>
               onPressed: _startExercise,
               child: const Text(
                 'Start',
-                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold),
               ),
             ),
           ],
@@ -413,7 +419,8 @@ class _RhythmScreenState extends ConsumerState<RhythmScreen>
   Widget _buildActionGrid() {
     const actions = [
       _ActionDef(label: 'Sway', icon: Icons.waves, subtitle: 'Whole note'),
-      _ActionDef(label: 'Nod', icon: Icons.arrow_downward, subtitle: 'Half note'),
+      _ActionDef(
+          label: 'Nod', icon: Icons.arrow_downward, subtitle: 'Half note'),
       _ActionDef(label: 'Tap', icon: Icons.touch_app, subtitle: 'Quarter note'),
       _ActionDef(label: 'Snap', icon: Icons.flash_on, subtitle: 'Eighth note'),
     ];
@@ -441,8 +448,7 @@ class _RhythmScreenState extends ConsumerState<RhythmScreen>
         child: Container(
           decoration: BoxDecoration(
             color: const Color(0xFF7C4DFF).withAlpha(30),
-            border:
-                Border.all(color: const Color(0xFF7C4DFF).withAlpha(100)),
+            border: Border.all(color: const Color(0xFF7C4DFF).withAlpha(100)),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
@@ -498,7 +504,9 @@ class _RhythmScreenState extends ConsumerState<RhythmScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(label, style: TextStyle(color: grade, fontSize: 28, fontWeight: FontWeight.bold)),
+            Text(label,
+                style: TextStyle(
+                    color: grade, fontSize: 28, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             Text(
               'Accuracy: $pct%',
@@ -507,17 +515,21 @@ class _RhythmScreenState extends ConsumerState<RhythmScreen>
             const SizedBox(height: 8),
             Text(
               '$_totalPoints / $_maxPoints points',
-              style: TextStyle(color: Colors.white.withAlpha(150), fontSize: 14),
+              style:
+                  TextStyle(color: Colors.white.withAlpha(150), fontSize: 14),
             ),
             const SizedBox(height: 48),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF7C4DFF),
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: () => context.go('/'),
-              child: const Text('Back to Home', style: TextStyle(color: Colors.white, fontSize: 16)),
+              child: const Text('Back to Home',
+                  style: TextStyle(color: Colors.white, fontSize: 16)),
             ),
           ],
         ),
@@ -530,5 +542,6 @@ class _ActionDef {
   final String label;
   final IconData icon;
   final String subtitle;
-  const _ActionDef({required this.label, required this.icon, required this.subtitle});
+  const _ActionDef(
+      {required this.label, required this.icon, required this.subtitle});
 }

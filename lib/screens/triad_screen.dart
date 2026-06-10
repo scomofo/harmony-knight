@@ -24,7 +24,18 @@ class _TriadQuality {
 /// buttons. 8 questions per session. Wait-Mode on wrong answers; 800ms
 /// quality+interval reveal on correct before advancing.
 class TriadScreen extends ConsumerStatefulWidget {
-  const TriadScreen({super.key});
+  final List<String>? debugQualitySequence;
+  final List<int>? debugRootSequence;
+  final bool autoPlay;
+  final bool recordSessionOnComplete;
+
+  const TriadScreen({
+    super.key,
+    this.debugQualitySequence,
+    this.debugRootSequence,
+    this.autoPlay = true,
+    this.recordSessionOnComplete = true,
+  });
 
   @override
   ConsumerState<TriadScreen> createState() => _TriadScreenState();
@@ -32,9 +43,9 @@ class TriadScreen extends ConsumerStatefulWidget {
 
 class _TriadScreenState extends ConsumerState<TriadScreen> {
   static const _qualities = [
-    _TriadQuality('Major',      [0, 4, 7], 'Root · M3 · P5'),
-    _TriadQuality('Minor',      [0, 3, 7], 'Root · m3 · P5'),
-    _TriadQuality('Augmented',  [0, 4, 8], 'Root · M3 · A5'),
+    _TriadQuality('Major', [0, 4, 7], 'Root · M3 · P5'),
+    _TriadQuality('Minor', [0, 3, 7], 'Root · m3 · P5'),
+    _TriadQuality('Augmented', [0, 4, 8], 'Root · M3 · A5'),
     _TriadQuality('Diminished', [0, 3, 6], 'Root · m3 · d5'),
   ];
 
@@ -44,6 +55,8 @@ class _TriadScreenState extends ConsumerState<TriadScreen> {
   final _rng = Random();
   late _TriadQuality _current;
   late int _rootMidi;
+  int _debugQualityIndex = 0;
+  int _debugRootIndex = 0;
 
   int _questionsAsked = 0;
   int _correctFirstTry = 0;
@@ -68,7 +81,9 @@ class _TriadScreenState extends ConsumerState<TriadScreen> {
       _confidenceAtStart = ref.read(confidenceProvider);
     });
     _nextQuestion();
-    Future.delayed(const Duration(milliseconds: 400), _playArpeggio);
+    if (widget.autoPlay) {
+      Future.delayed(const Duration(milliseconds: 400), _playArpeggio);
+    }
   }
 
   @override
@@ -78,11 +93,36 @@ class _TriadScreenState extends ConsumerState<TriadScreen> {
   }
 
   void _nextQuestion() {
-    _current = _qualities[_rng.nextInt(_qualities.length)];
-    _rootMidi = _roots[_rng.nextInt(_roots.length)];
+    _current = _nextQuality();
+    _rootMidi = _nextRoot();
     _questionHadError = false;
     _waitMode = false;
     _showReveal = false;
+  }
+
+  _TriadQuality _nextQuality() {
+    final sequence = widget.debugQualitySequence;
+    if (sequence == null || sequence.isEmpty) {
+      return _qualities[_rng.nextInt(_qualities.length)];
+    }
+
+    final name = sequence[_debugQualityIndex % sequence.length];
+    _debugQualityIndex++;
+    return _qualities.firstWhere(
+      (quality) => quality.name == name,
+      orElse: () => _qualities[_rng.nextInt(_qualities.length)],
+    );
+  }
+
+  int _nextRoot() {
+    final sequence = widget.debugRootSequence;
+    if (sequence == null || sequence.isEmpty) {
+      return _roots[_rng.nextInt(_roots.length)];
+    }
+
+    final root = sequence[_debugRootIndex % sequence.length];
+    _debugRootIndex++;
+    return _roots.contains(root) ? root : _roots[_rng.nextInt(_roots.length)];
   }
 
   Future<void> _playArpeggio() async {
@@ -99,29 +139,32 @@ class _TriadScreenState extends ConsumerState<TriadScreen> {
       _rootSource = await audio.soloud.loadMem(
         'triad_r_$root.wav',
         ToneGenerator.samplesToWav(
-          ToneGenerator.generateSineTone(midiNote: root, durationMs: 400, volume: 0.7),
+          ToneGenerator.generateSineTone(
+              midiNote: root, durationMs: 400, volume: 0.7),
         ),
       );
       audio.soloud.play(_rootSource!);
 
-      await Future.delayed(const Duration(milliseconds: 450));
+      await Future<void>.delayed(const Duration(milliseconds: 450));
       if (!mounted) return;
 
       _thirdSource = await audio.soloud.loadMem(
         'triad_t_$third.wav',
         ToneGenerator.samplesToWav(
-          ToneGenerator.generateSineTone(midiNote: third, durationMs: 400, volume: 0.7),
+          ToneGenerator.generateSineTone(
+              midiNote: third, durationMs: 400, volume: 0.7),
         ),
       );
       audio.soloud.play(_thirdSource!);
 
-      await Future.delayed(const Duration(milliseconds: 450));
+      await Future<void>.delayed(const Duration(milliseconds: 450));
       if (!mounted) return;
 
       _fifthSource = await audio.soloud.loadMem(
         'triad_f_$fifth.wav',
         ToneGenerator.samplesToWav(
-          ToneGenerator.generateSineTone(midiNote: fifth, durationMs: 400, volume: 0.7),
+          ToneGenerator.generateSineTone(
+              midiNote: fifth, durationMs: 400, volume: 0.7),
         ),
       );
       audio.soloud.play(_fifthSource!);
@@ -132,7 +175,7 @@ class _TriadScreenState extends ConsumerState<TriadScreen> {
     final audio = AudioService();
     if (!audio.isInitialized) return;
     try {
-      if (_rootSource  != null) audio.soloud.disposeSource(_rootSource!);
+      if (_rootSource != null) audio.soloud.disposeSource(_rootSource!);
       if (_thirdSource != null) audio.soloud.disposeSource(_thirdSource!);
       if (_fifthSource != null) audio.soloud.disposeSource(_fifthSource!);
     } catch (_) {}
@@ -156,26 +199,29 @@ class _TriadScreenState extends ConsumerState<TriadScreen> {
             _questionsAsked = nextQ;
             _sessionComplete = true;
           });
-          _recordSession();
+          if (widget.recordSessionOnComplete) _recordSession();
           _awardPoints();
         } else {
           setState(() {
             _questionsAsked = nextQ;
             _nextQuestion();
           });
-          _playArpeggio();
+          if (widget.autoPlay) _playArpeggio();
         }
       });
     } else {
       _questionHadError = true;
       ref.read(soundFeedbackProvider).playWrong();
       setState(() => _waitMode = true);
-      Future.delayed(const Duration(milliseconds: 500), _playArpeggio);
+      if (widget.autoPlay) {
+        Future.delayed(const Duration(milliseconds: 500), _playArpeggio);
+      }
     }
   }
 
   void _recordSession() {
-    final durationSeconds = DateTime.now().difference(_sessionStartTime).inSeconds;
+    final durationSeconds =
+        DateTime.now().difference(_sessionStartTime).inSeconds;
     final grade = ref.read(playerProgressProvider).gradeLevel;
     final confidenceNow = ref.read(confidenceProvider);
     _persistence.recordSession(SessionRecord(
@@ -206,14 +252,16 @@ class _TriadScreenState extends ConsumerState<TriadScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => context.go('/'),
         ),
-        title: const Text('Triad Training', style: TextStyle(color: Colors.white)),
+        title:
+            const Text('Triad Training', style: TextStyle(color: Colors.white)),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: Center(
               child: Text(
                 _sessionComplete ? 'Done!' : 'Q ${_questionsAsked + 1} / 8',
-                style: TextStyle(color: Colors.white.withAlpha(180), fontSize: 13),
+                style:
+                    TextStyle(color: Colors.white.withAlpha(180), fontSize: 13),
               ),
             ),
           ),
@@ -249,13 +297,11 @@ class _TriadScreenState extends ConsumerState<TriadScreen> {
           opacity: _waitMode ? 1.0 : 0.0,
           duration: const Duration(milliseconds: 200),
           child: Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             decoration: BoxDecoration(
               color: const Color(0xFFFF5252).withAlpha(40),
               borderRadius: BorderRadius.circular(16),
-              border:
-                  Border.all(color: const Color(0xFFFF5252).withAlpha(120)),
+              border: Border.all(color: const Color(0xFFFF5252).withAlpha(120)),
             ),
             child: const Text('Wrong — try again',
                 style: TextStyle(color: Color(0xFFFF5252), fontSize: 13)),
@@ -316,8 +362,8 @@ class _TriadScreenState extends ConsumerState<TriadScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFF7043).withAlpha(20),
                   foregroundColor: Colors.white,
-                  side: BorderSide(
-                      color: const Color(0xFFFF7043).withAlpha(100)),
+                  side:
+                      BorderSide(color: const Color(0xFFFF7043).withAlpha(100)),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
@@ -365,8 +411,7 @@ class _TriadScreenState extends ConsumerState<TriadScreen> {
                     fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             Text('$_correctFirstTry / 8 first-try correct',
-                style:
-                    const TextStyle(color: Colors.white, fontSize: 20)),
+                style: const TextStyle(color: Colors.white, fontSize: 20)),
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -384,8 +429,8 @@ class _TriadScreenState extends ConsumerState<TriadScreen> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFFF7043),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 32, vertical: 14),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
               ),
@@ -396,8 +441,10 @@ class _TriadScreenState extends ConsumerState<TriadScreen> {
                   _sessionComplete = false;
                   _nextQuestion();
                 });
-                Future.delayed(
-                    const Duration(milliseconds: 400), _playArpeggio);
+                if (widget.autoPlay) {
+                  Future.delayed(
+                      const Duration(milliseconds: 400), _playArpeggio);
+                }
               },
               child: const Text('New Session',
                   style: TextStyle(
