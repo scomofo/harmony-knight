@@ -25,6 +25,17 @@ class PersistenceService {
     return _basePath!;
   }
 
+  /// Writes [contents] to [file] atomically: the full contents are written
+  /// to a sibling temp file first, then renamed over the destination. This
+  /// means a crash or kill mid-write can never leave a half-written (and
+  /// therefore unparseable) JSON file on disk — the reader always sees
+  /// either the old contents or the fully-written new contents.
+  Future<void> _writeAtomic(File file, String contents) async {
+    final tempFile = File('${file.path}.tmp');
+    await tempFile.writeAsString(contents, flush: true);
+    await tempFile.rename(file.path);
+  }
+
   // ── PlayerProgress Persistence ──
 
   /// Save player progress to disk.
@@ -32,7 +43,7 @@ class PersistenceService {
     final path = await _path;
     final file = File('$path/$_progressFile');
     final json = _progressToJson(progress);
-    await file.writeAsString(jsonEncode(json));
+    await _writeAtomic(file, jsonEncode(json));
   }
 
   /// Load player progress from disk. Returns default if none exists.
@@ -63,7 +74,8 @@ class PersistenceService {
     }
     final path = await _path;
     final file = File('$path/$_sessionHistoryFile');
-    await file.writeAsString(
+    await _writeAtomic(
+      file,
       jsonEncode(history.map((s) => s.toJson()).toList()),
     );
   }
@@ -96,7 +108,8 @@ class PersistenceService {
     }
     final path = await _path;
     final file = File('$path/$_heatmapFile');
-    await file.writeAsString(
+    await _writeAtomic(
+      file,
       jsonEncode(data.map((p) => p.toJson()).toList()),
     );
   }
@@ -125,7 +138,7 @@ class PersistenceService {
         : items;
     final path = await _path;
     final file = File('$path/$_srItemsFile');
-    await file.writeAsString(jsonEncode(capped.map(_srItemToJson).toList()));
+    await _writeAtomic(file, jsonEncode(capped.map(_srItemToJson).toList()));
   }
 
   Future<List<SRItem>> loadSRItems() async {
