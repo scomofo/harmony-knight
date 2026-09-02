@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
@@ -25,15 +26,46 @@ class PersistenceService {
     return _basePath!;
   }
 
+  // Serializes writes per destination path so overlapping saves (e.g. the
+  // fire-and-forget calls from SRItemsNotifier.updateItem and the session
+  // recorders) can't race: without this, two writers could both open the
+  // same temp path, and whichever renamed first would remove the temp file
+  // out from under the other before it could rename its own write. Shared
+  // across every PersistenceService instance — since separate instances
+  // are created throughout the app (e.g. one per StateNotifier), the file
+  // on disk, not the instance, is the resource that actually needs
+  // serializing.
+  static final Map<String, Future<void>> _writeQueues = {};
+  static int _tempFileSeq = 0;
+
   /// Writes [contents] to [file] atomically: the full contents are written
   /// to a sibling temp file first, then renamed over the destination. This
   /// means a crash or kill mid-write can never leave a half-written (and
   /// therefore unparseable) JSON file on disk — the reader always sees
   /// either the old contents or the fully-written new contents.
   Future<void> _writeAtomic(File file, String contents) async {
-    final tempFile = File('${file.path}.tmp');
-    await tempFile.writeAsString(contents, flush: true);
-    await tempFile.rename(file.path);
+    final path = file.path;
+    final previous = _writeQueues[path];
+    final done = Completer<void>();
+    _writeQueues[path] = done.future;
+
+    if (previous != null) {
+      try {
+        await previous;
+      } catch (_) {
+        // A prior write's failure must not block this one.
+      }
+    }
+
+    try {
+      // A unique-per-write temp filename means even a bug elsewhere that
+      // bypasses this queue can't collide with the file currently in use.
+      final tempFile = File('$path.${_tempFileSeq++}.tmp');
+      await tempFile.writeAsString(contents, flush: true);
+      await tempFile.rename(path);
+    } finally {
+      done.complete();
+    }
   }
 
   // ── PlayerProgress Persistence ──
