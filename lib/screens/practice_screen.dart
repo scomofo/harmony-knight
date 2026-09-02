@@ -531,20 +531,29 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
 
             const SizedBox(height: 24),
 
-            // Staff with target note.
-            SizedBox(
-              height: 100,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  // Staff lines (fade in with confidence).
-                  CustomPaint(
-                    size: const Size(300, 100),
-                    painter: StaffPainter(confidence: confidence),
-                  ),
-                  // Target note.
-                  ScaffoldedNote(note: _targetNote!, size: 50),
-                ],
+            // Staff with target note. Semantics label mirrors the same
+            // confidence gate as the visual name hint below — a screen
+            // reader should not be told the answer once the visual hint
+            // has faded out for a high-confidence player.
+            Semantics(
+              label: confidence < 0.5
+                  ? 'Target note: ${_targetNote!.name}'
+                  : 'Target note',
+              excludeSemantics: true,
+              child: SizedBox(
+                height: 100,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Staff lines (fade in with confidence).
+                    CustomPaint(
+                      size: const Size(300, 100),
+                      painter: StaffPainter(confidence: confidence),
+                    ),
+                    // Target note.
+                    ScaffoldedNote(note: _targetNote!, size: 50),
+                  ],
+                ),
               ),
             ),
 
@@ -559,18 +568,24 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
               ),
             ),
 
-            // Note name hint (fades with confidence).
+            // Note name hint (fades with confidence). Excluded from
+            // semantics: the name is already announced once by the target
+            // note's own Semantics label above — without this, a screen
+            // reader would hit the same note name twice (once from that
+            // label, once implicitly from this Text).
             if (confidence < 0.5)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  _targetNote!.name,
-                  style: TextStyle(
-                    color: Colors.white.withAlpha(
-                      (255 * (1.0 - confidence * 2)).round().clamp(0, 255),
+              ExcludeSemantics(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    _targetNote!.name,
+                    style: TextStyle(
+                      color: Colors.white.withAlpha(
+                        (255 * (1.0 - confidence * 2)).round().clamp(0, 255),
+                      ),
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
                     ),
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
@@ -724,42 +739,52 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
     final isCorrect = note.midi == _targetNote?.midi;
     final showResult = _showFeedback;
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: _showFeedback ? null : () => _handleAnswer(note),
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          width: 80,
-          height: 80,
-          decoration: BoxDecoration(
-            color: showResult && isCorrect
-                ? const Color(0xFF2E7D32).withAlpha(100)
-                : Colors.grey.shade900,
-            border: Border.all(
-              color: confidence < 0.5
-                  ? note.figureNoteColor.withAlpha(150)
-                  : Colors.grey.shade700,
-              width: 2,
+    // One explicit, authoritative semantics node per answer choice: the
+    // note name is always exposed here (unlike the target note above) since
+    // without it a screen reader or switch-access user has no way to tell
+    // these choices apart at all, let alone pick one.
+    return Semantics(
+      label: note.name,
+      button: true,
+      enabled: !_showFeedback,
+      excludeSemantics: true,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _showFeedback ? null : () => _handleAnswer(note),
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: showResult && isCorrect
+                  ? const Color(0xFF2E7D32).withAlpha(100)
+                  : Colors.grey.shade900,
+              border: Border.all(
+                color: confidence < 0.5
+                    ? note.figureNoteColor.withAlpha(150)
+                    : Colors.grey.shade700,
+                width: 2,
+              ),
+              borderRadius: BorderRadius.circular(16),
             ),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ScaffoldedNote(note: note, size: 36),
-              const SizedBox(height: 4),
-              if (confidence < 0.7)
-                Text(
-                  note.name,
-                  style: TextStyle(
-                    color: Colors.white.withAlpha(
-                      (255 * (1.0 - confidence)).round().clamp(80, 255),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ScaffoldedNote(note: note, size: 36),
+                const SizedBox(height: 4),
+                if (confidence < 0.7)
+                  Text(
+                    note.name,
+                    style: TextStyle(
+                      color: Colors.white.withAlpha(
+                        (255 * (1.0 - confidence)).round().clamp(80, 255),
+                      ),
+                      fontSize: 12,
                     ),
-                    fontSize: 12,
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
