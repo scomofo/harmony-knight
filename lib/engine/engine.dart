@@ -22,6 +22,7 @@ export 'core/game_engine.dart';
 export 'core/hit_result.dart';
 export 'core/input_frame.dart';
 export 'core/note_tracker.dart';
+export 'core/practice_question_engine.dart';
 export 'debug/debug_overlay.dart';
 export 'feedback/feedback_frame.dart';
 export 'input/input_system.dart';

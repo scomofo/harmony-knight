@@ -12,6 +12,29 @@ import 'package:harmony_knight/engine/audio_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Route framework errors (widget build/layout/paint failures) through
+  // debugPrint so they're visible in logs instead of vanishing, while
+  // keeping the default presentation (red screen in debug) for developers.
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    debugPrint('FlutterError: ${details.exceptionAsString()}');
+  };
+
+  // Route uncaught async errors (outside the Flutter framework's own error
+  // handling, e.g. an unawaited Future) the same way instead of letting
+  // them crash the app silently.
+  WidgetsBinding.instance.platformDispatcher.onError = (error, stack) {
+    debugPrint('Uncaught async error: $error\n$stack');
+    return true;
+  };
+
+  // In release builds, replace the default red screen of death with a
+  // friendlier fallback — this app's audience is children, and a raw
+  // stack trace is neither helpful nor age-appropriate.
+  if (kReleaseMode) {
+    ErrorWidget.builder = (FlutterErrorDetails details) => const _FriendlyErrorScreen();
+  }
+
   // Force portrait orientation for consistent layout.
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
@@ -34,6 +57,30 @@ void main() async {
   }
 
   runApp(const ProviderScope(child: HarmonyKnightApp()));
+}
+
+/// Shown in place of the default red error screen in release builds when a
+/// widget throws during build. Kept intentionally simple so it renders
+/// safely under any parent constraints.
+class _FriendlyErrorScreen extends StatelessWidget {
+  const _FriendlyErrorScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Material(
+      color: Color(0xFF0D1117),
+      child: Center(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Text(
+            'Oops — this screen hit a snag.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white70),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class HarmonyKnightApp extends StatelessWidget {

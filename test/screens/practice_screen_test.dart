@@ -174,4 +174,35 @@ void main() {
       expect(find.text('What note is this?'), findsOneWidget);
     });
   });
+
+  group('PracticeScreen — accessibility', () {
+    testWidgets('answer buttons expose their note name to a screen reader',
+        (tester) async {
+      final handle = tester.ensureSemantics();
+      await _pumpSubject(tester);
+
+      for (final name in _grade0Names) {
+        expect(find.bySemanticsLabel(name), findsOneWidget,
+            reason: '$name button should carry a semantics label so a '
+                'screen reader or switch-access user can select it');
+      }
+
+      handle.dispose();
+    });
+
+    testWidgets(
+        'target note announces its name once the visual hint is showing',
+        (tester) async {
+      final handle = tester.ensureSemantics();
+      await _pumpSubject(tester);
+
+      // Default confidence is 0 (< 0.5), matching the visual name hint that
+      // is also showing at this point — the semantics label should match.
+      final target = _targetName(tester);
+      expect(target, isNotNull);
+      expect(find.bySemanticsLabel('Target note: $target'), findsOneWidget);
+
+      handle.dispose();
+    });
+  });
 }

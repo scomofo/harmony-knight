@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:harmony_knight/engine/curriculum/grade_thresholds.dart';
 import 'package:harmony_knight/engine/persistence.dart';
-import 'package:harmony_knight/engine/spaced_repetition.dart';
+import 'package:harmony_knight/engine/core/practice_question_engine.dart';
 import 'package:harmony_knight/models/note.dart';
 import 'package:harmony_knight/models/quest.dart';
 import 'package:harmony_knight/engine/fever_mode_engine.dart';
@@ -54,12 +54,6 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
   late AnimationController _feedbackController;
   late AnimationController _feverController;
 
-  List<Note> _notePool = [];
-
-  // Tracks correctness per MIDI note for weak-note detection.
-  // midi -> [wasCorrect, wasCorrect, ...]
-  final Map<int, List<bool>> _noteHistory = {};
-
   // Session-level counters for grade advancement evaluation.
   int _sessionTotal = 0;
   int _sessionCorrect = 0;
@@ -80,11 +74,9 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
 
   final PersistenceService _persistence = PersistenceService();
 
-  // Spaced-repetition state.
-  SpacedRepetitionScheduler _srScheduler = SpacedRepetitionScheduler();
-  List<SRItem> _srQueue = [];
-  int _srQueueIndex = 0;
-  bool _questionHadError = false; // tracks if current question had a wrong attempt
+  // Note-pool selection, SR queueing, question generation, and weak-note
+  // tracking — see PracticeQuestionEngine for the extracted state machine.
+  final PracticeQuestionEngine _engine = PracticeQuestionEngine();
 
   @override
   void initState() {
@@ -105,7 +97,7 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
       // Read session preferences and configure SR scheduler.
       final prefs = ref.read(sessionPrefsProvider);
       _sessionLengthMinutes = prefs.sessionLengthMinutes;
-      _srScheduler = SpacedRepetitionScheduler(
+      _engine.configureScheduler(
         maxNewItemsPerSession: prefs.newItemsPerSession,
         warmUpCount: prefs.warmUpNotes,
       );
@@ -127,41 +119,14 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
       final progress = ref.read(playerProgressProvider);
       final grade = progress.gradeLevel;
       if (widget.isFocusMode && progress.weakNotesMidi.isNotEmpty) {
-        _notePool = progress.weakNotesMidi.map((m) => Note(midi: m)).toList();
+        _engine.notePool =
+            progress.weakNotesMidi.map((m) => Note(midi: m)).toList();
       } else {
-        _notePool = _buildNotePool(grade);
+        _engine.notePool = PracticeQuestionEngine.buildNotePool(grade);
       }
       _rebuildSRQueue();
       _generateQuestion();
     });
-  }
-
-  /// Returns a grade-appropriate note pool.
-  ///
-  /// Grade 0 : C, E, G (landmark tonic triad — just 3 choices)
-  /// Grade 1–2: C major (C4–B4)
-  /// Grade 3–4: C major + A minor (adds A3, B3, C5)
-  /// Grade 5+  : Full chromatic C4–C5 (all 13 notes)
-  static List<Note> _buildNotePool(int gradeLevel) {
-    if (gradeLevel == 0) {
-      return const [Note(midi: 60), Note(midi: 64), Note(midi: 67)]; // C4, E4, G4
-    }
-    if (gradeLevel <= 2) {
-      return const [
-        Note(midi: 60), Note(midi: 62), Note(midi: 64),
-        Note(midi: 65), Note(midi: 67), Note(midi: 69), Note(midi: 71),
-      ];
-    }
-    if (gradeLevel <= 4) {
-      // C major + A minor: adds A3(57), B3(59), C5(72).
-      return const [
-        Note(midi: 57), Note(midi: 59),
-        Note(midi: 60), Note(midi: 62), Note(midi: 64),
-        Note(midi: 65), Note(midi: 67), Note(midi: 69), Note(midi: 71),
-        Note(midi: 72),
-      ];
-    }
-    return List.generate(13, (i) => Note(midi: 60 + i));
   }
 
   @override
@@ -173,44 +138,24 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
   }
 
   void _rebuildSRQueue() {
-    if (_notePool.isEmpty) return;
+    if (_engine.notePool.isEmpty) return;
     final grade = ref.read(playerProgressProvider).gradeLevel;
-    final items = ref.read(srItemsProvider.notifier).itemsForPool(grade, _notePool);
-    _srQueue = _srScheduler.buildSessionQueue(items);
-    // Fallback: if SR queue is empty (all items new with no repetitions),
-    // treat every item as due by using the full pool in shuffled order.
-    if (_srQueue.isEmpty) {
-      _srQueue = List<SRItem>.from(items)..shuffle();
-    }
-    _srQueueIndex = 0;
+    final items = ref
+        .read(srItemsProvider.notifier)
+        .itemsForPool(grade, _engine.notePool);
+    _engine.rebuildQueue(items);
   }
 
   void _generateQuestion() {
-    if (_notePool.isEmpty) return;
+    if (_engine.notePool.isEmpty) return;
 
     // Rebuild queue when exhausted.
-    if (_srQueueIndex >= _srQueue.length) _rebuildSRQueue();
+    if (_engine.isQueueExhausted) _rebuildSRQueue();
 
-    _questionHadError = false;
+    if (!_engine.generateQuestion()) return;
 
-    if (_srQueue.isEmpty) return;
-
-    // Target note is SR-driven.
-    final srItem = _srQueue[_srQueueIndex];
-    final targetMidi = int.tryParse(srItem.id.replaceFirst('note_', '')) ?? -1;
-    _targetNote = _notePool.firstWhere(
-      (n) => n.midi == targetMidi,
-      orElse: () => _notePool.first,
-    );
-
-    // Distractors: up to 3 random non-target notes from the pool.
-    final distractors = (List<Note>.from(_notePool)
-          ..removeWhere((n) => n.midi == _targetNote!.midi)
-          ..shuffle())
-        .take(3)
-        .toList();
-
-    _answerOptions = ([_targetNote!, ...distractors]..shuffle()).toList();
+    _targetNote = _engine.targetNote;
+    _answerOptions = _engine.answerOptions;
     _questionStartedAt = DateTime.now();
     _showFeedback = false;
     _feedback = null;
@@ -218,32 +163,29 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
 
   void _handleAnswer(Note selected) {
     if (_targetNote == null) return;
-    final isCorrect = selected.midi == _targetNote!.midi;
-    final responseMs = DateTime.now().difference(_questionStartedAt).inMilliseconds;
+    final target = _targetNote!;
+    final responseMs =
+        DateTime.now().difference(_questionStartedAt).inMilliseconds;
     final confidence = ref.read(confidenceProvider);
 
-    // Record per-note accuracy for weak-note analysis.
-    _noteHistory.putIfAbsent(_targetNote!.midi, () => []).add(isCorrect);
-    _updateWeakNotes();
+    // Delegate correctness, weak-note tracking, and SR scheduling to the
+    // question engine; apply the Riverpod side effects it reports back.
+    final result = _engine.recordAnswer(selected);
+    final isCorrect = result.isCorrect;
+
+    if (result.updatedSRItem != null) {
+      ref.read(srItemsProvider.notifier).updateItem(result.updatedSRItem!);
+    }
+    ref
+        .read(playerProgressProvider.notifier)
+        .updateWeakNotes(result.weakNotesMidi);
 
     _sessionTotal++;
     if (isCorrect) _sessionCorrect++;
 
-    // SR update.
-    if (_srQueue.isNotEmpty && _srQueueIndex < _srQueue.length) {
-      final currentItem = _srQueue[_srQueueIndex];
-      final response = isCorrect
-          ? (_questionHadError ? SRResponse.hard : SRResponse.good)
-          : SRResponse.again;
-      final result = _srScheduler.schedule(item: currentItem, response: response);
-      ref.read(srItemsProvider.notifier).updateItem(result.updatedItem);
-      if (isCorrect) _srQueueIndex++;
-    }
-    if (!isCorrect) _questionHadError = true;
-
     setState(() {
       _showFeedback = true;
-      _feedback = isCorrect ? 'Perfect!' : 'Try ${_targetNote!.name}';
+      _feedback = isCorrect ? 'Perfect!' : 'Try ${target.name}';
     });
 
     ref.read(masteryProvider.notifier).recordAttempt(
@@ -472,20 +414,6 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
     );
   }
 
-  /// Recompute and persist weak notes after each answer.
-  /// A note is "weak" if it has ≥3 attempts and >50% miss rate.
-  void _updateWeakNotes() {
-    final weak = <int>[];
-    for (final entry in _noteHistory.entries) {
-      if (entry.value.length >= 3) {
-        final missRate =
-            entry.value.where((b) => !b).length / entry.value.length;
-        if (missRate > 0.5) weak.add(entry.key);
-      }
-    }
-    ref.read(playerProgressProvider.notifier).updateWeakNotes(weak);
-  }
-
   @override
   Widget build(BuildContext context) {
     final confidence = ref.watch(confidenceProvider);
@@ -603,20 +531,29 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
 
             const SizedBox(height: 24),
 
-            // Staff with target note.
-            SizedBox(
-              height: 100,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  // Staff lines (fade in with confidence).
-                  CustomPaint(
-                    size: const Size(300, 100),
-                    painter: StaffPainter(confidence: confidence),
-                  ),
-                  // Target note.
-                  ScaffoldedNote(note: _targetNote!, size: 50),
-                ],
+            // Staff with target note. Semantics label mirrors the same
+            // confidence gate as the visual name hint below — a screen
+            // reader should not be told the answer once the visual hint
+            // has faded out for a high-confidence player.
+            Semantics(
+              label: confidence < 0.5
+                  ? 'Target note: ${_targetNote!.name}'
+                  : 'Target note',
+              excludeSemantics: true,
+              child: SizedBox(
+                height: 100,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Staff lines (fade in with confidence).
+                    CustomPaint(
+                      size: const Size(300, 100),
+                      painter: StaffPainter(confidence: confidence),
+                    ),
+                    // Target note.
+                    ScaffoldedNote(note: _targetNote!, size: 50),
+                  ],
+                ),
               ),
             ),
 
@@ -631,18 +568,24 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
               ),
             ),
 
-            // Note name hint (fades with confidence).
+            // Note name hint (fades with confidence). Excluded from
+            // semantics: the name is already announced once by the target
+            // note's own Semantics label above — without this, a screen
+            // reader would hit the same note name twice (once from that
+            // label, once implicitly from this Text).
             if (confidence < 0.5)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  _targetNote!.name,
-                  style: TextStyle(
-                    color: Colors.white.withAlpha(
-                      (255 * (1.0 - confidence * 2)).round().clamp(0, 255),
+              ExcludeSemantics(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    _targetNote!.name,
+                    style: TextStyle(
+                      color: Colors.white.withAlpha(
+                        (255 * (1.0 - confidence * 2)).round().clamp(0, 255),
+                      ),
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
                     ),
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
@@ -796,42 +739,52 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
     final isCorrect = note.midi == _targetNote?.midi;
     final showResult = _showFeedback;
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: _showFeedback ? null : () => _handleAnswer(note),
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          width: 80,
-          height: 80,
-          decoration: BoxDecoration(
-            color: showResult && isCorrect
-                ? const Color(0xFF2E7D32).withAlpha(100)
-                : Colors.grey.shade900,
-            border: Border.all(
-              color: confidence < 0.5
-                  ? note.figureNoteColor.withAlpha(150)
-                  : Colors.grey.shade700,
-              width: 2,
+    // One explicit, authoritative semantics node per answer choice: the
+    // note name is always exposed here (unlike the target note above) since
+    // without it a screen reader or switch-access user has no way to tell
+    // these choices apart at all, let alone pick one.
+    return Semantics(
+      label: note.name,
+      button: true,
+      enabled: !_showFeedback,
+      excludeSemantics: true,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _showFeedback ? null : () => _handleAnswer(note),
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: showResult && isCorrect
+                  ? const Color(0xFF2E7D32).withAlpha(100)
+                  : Colors.grey.shade900,
+              border: Border.all(
+                color: confidence < 0.5
+                    ? note.figureNoteColor.withAlpha(150)
+                    : Colors.grey.shade700,
+                width: 2,
+              ),
+              borderRadius: BorderRadius.circular(16),
             ),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ScaffoldedNote(note: note, size: 36),
-              const SizedBox(height: 4),
-              if (confidence < 0.7)
-                Text(
-                  note.name,
-                  style: TextStyle(
-                    color: Colors.white.withAlpha(
-                      (255 * (1.0 - confidence)).round().clamp(80, 255),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ScaffoldedNote(note: note, size: 36),
+                const SizedBox(height: 4),
+                if (confidence < 0.7)
+                  Text(
+                    note.name,
+                    style: TextStyle(
+                      color: Colors.white.withAlpha(
+                        (255 * (1.0 - confidence)).round().clamp(80, 255),
+                      ),
+                      fontSize: 12,
                     ),
-                    fontSize: 12,
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

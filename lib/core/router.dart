@@ -22,10 +22,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 final appRouter = GoRouter(
   initialLocation: '/',
   redirect: (context, state) async {
-    final prefs = await SharedPreferences.getInstance();
-
     // Show onboarding on first launch only (redirect from home, not from within onboarding).
+    // SharedPreferences is only touched here — not on every navigation — since
+    // this is the one branch that needs it.
     if (state.matchedLocation == '/') {
+      final prefs = await SharedPreferences.getInstance();
       final done = prefs.getBool('onboarding_done') ?? false;
       if (!done) return '/onboarding';
     }
