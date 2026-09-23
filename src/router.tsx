@@ -1,0 +1,105 @@
+import { useEffect } from "react";
+import {
+  createRootRoute,
+  createRoute,
+  createRouter,
+  Link,
+  Outlet,
+  RouterProvider,
+  useNavigate,
+} from "@tanstack/react-router";
+import { stopAll } from "./lib/game/audio.ts";
+import { cancelEffects, setMotionPolicy } from "./lib/game/effects.ts";
+import { useStore } from "./lib/game/store.ts";
+import { EffectLayer } from "./components/game/EffectLayer.tsx";
+import { HomeScreen, LearningPathScreen, OnboardingScreen } from "./routes/Screens.tsx";
+import { PracticeScreen } from "./routes/PracticeScreen.tsx";
+import { LessonScreen } from "./routes/LessonScreen.tsx";
+import { SettingsScreen } from "./routes/SettingsScreen.tsx";
+
+function Shell() {
+  const settings = useStore((s) => s.save.settings);
+  const onboarded = useStore((s) => s.save.onboarded);
+  const navigate = useNavigate();
+
+  // Apply motion/audio policy from saved settings on boot.
+  useEffect(() => {
+    setMotionPolicy({
+      reducedMotion: settings.reducedMotion,
+      highContrast: settings.highContrast,
+      focusMode: settings.focusMode,
+      muted: settings.muted,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Tab hiding pauses everything: audio, effects, timers.
+  useEffect(() => {
+    const onVis = () => {
+      if (document.hidden) {
+        stopAll();
+        cancelEffects();
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
+
+  useEffect(() => {
+    if (!onboarded) navigate({ to: "/onboarding" });
+  }, [onboarded, navigate]);
+
+  return (
+    <div className="min-h-screen">
+      <EffectLayer />
+      <header className="border-b border-white/10">
+        <nav className="mx-auto flex max-w-2xl items-center gap-4 p-3 text-sm">
+          <Link to="/" className="font-bold text-amber-200">
+            ⚔️ Harmony Knight
+          </Link>
+          <Link to="/path" className="text-white/70 hover:text-white">
+            Path
+          </Link>
+          <Link to="/practice" className="text-white/70 hover:text-white">
+            Practice
+          </Link>
+          <Link to="/settings" className="ml-auto text-white/70 hover:text-white">
+            Settings
+          </Link>
+        </nav>
+      </header>
+      <main>
+        <Outlet />
+      </main>
+    </div>
+  );
+}
+
+const rootRoute = createRootRoute({ component: Shell });
+const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: "/", component: HomeScreen });
+const onboardingRoute = createRoute({ getParentRoute: () => rootRoute, path: "/onboarding", component: OnboardingScreen });
+const pathRoute = createRoute({ getParentRoute: () => rootRoute, path: "/path", component: LearningPathScreen });
+const settingsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/settings", component: SettingsScreen });
+const lessonRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/lesson/$lessonId",
+  component: function LessonRoute() {
+    const { lessonId } = lessonRoute.useParams();
+    return <LessonScreen lessonId={lessonId} />;
+  },
+});
+
+const practiceRoute = createRoute({ getParentRoute: () => rootRoute, path: "/practice", component: PracticeScreen });
+
+const routeTree = rootRoute.addChildren([indexRoute, onboardingRoute, pathRoute, practiceRoute, settingsRoute, lessonRoute]);
+const router = createRouter({ routeTree });
+
+declare module "@tanstack/react-router" {
+  interface Register {
+    router: typeof router;
+  }
+}
+
+export function App() {
+  return <RouterProvider router={router} />;
+}
