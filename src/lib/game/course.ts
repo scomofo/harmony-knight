@@ -30,7 +30,8 @@ export type RecallCheck = {
 
 import type { TaskKind } from "./tasks.ts";
 
-export type TaskSpec = { kind: TaskKind; seed: number };
+/** Authored task reference: deterministic per kind+seed. */
+export type TaskSpec = { kind: TaskKind; seed: number; prompt?: string };
 
 export type LessonBody = {
   id: string;
@@ -766,8 +767,210 @@ const CHAPTER_3: LessonBody[] = [
   },
 ];
 
+const CHAPTER_4: LessonBody[] = [
+  {
+    id: "ch4-l1-major",
+    chapterId: "ch4-tonality",
+    title: "Major Scales",
+    estimateMinutes: 4,
+    tryTask: { kind: "scale-id", seed: 41 },
+    learn: [
+      {
+        kind: "text",
+        body: "A major scale is the familiar do-re-mi: whole-whole-half-whole-whole-whole-half. From C it is simply the white keys in order: C D E F G A B C.",
+      },
+      {
+        kind: "listen",
+        caption: "C major, ascending: do re mi fa sol la ti do.",
+        midis: [60, 62, 64, 65, 67, 69, 71, 72],
+        noteDuration: 0.4,
+      },
+      {
+        kind: "text",
+        body: "Start on any note and follow the same whole/half pattern to build that key's major scale. G major: G A B C D E F# G — the pattern forces one sharp.",
+      },
+      {
+        kind: "listen",
+        caption: "G major: the same pattern, one sharp (F#).",
+        midis: [67, 69, 71, 72, 74, 76, 78, 79],
+        noteDuration: 0.4,
+      },
+    ],
+    checks: [
+      {
+        id: "ch4-l1-c1",
+        conceptId: "major-scale",
+        question: "The major scale pattern of whole (W) and half (H) steps is…",
+        choices: ["W W H W W W H", "W H W W H W W", "H W W H W W W", "W W W H W W H"],
+        answerIndex: 0,
+        explanation: "Whole-whole-half-whole-whole-whole-half — sing do-re-mi and feel the half steps tuck in at mi-fa and ti-do.",
+        hint: "Where are the half steps? Between mi-fa and ti-do.",
+      },
+      {
+        id: "ch4-l1-c2",
+        conceptId: "major-scale",
+        question: "G major has…",
+        choices: ["One sharp (F#)", "One flat (Bb)", "Two sharps", "No sharps or flats"],
+        answerIndex: 0,
+        explanation: "Walk WWHWWWH up from G: G A B C D E F# G — the seventh step must be F#.",
+        hint: "Walk the pattern up from G and watch what happens at the seventh step.",
+        audio: { midis: [67, 69, 71, 72, 74, 76, 78, 79] },
+      },
+    ],
+  },
+  {
+    id: "ch4-l2-signatures",
+    chapterId: "ch4-tonality",
+    title: "Key Signatures",
+    estimateMinutes: 4,
+    tryTask: {
+      kind: "self-attempt",
+      seed: 0,
+      prompt:
+        "On paper (or in your head), write the order of sharps, then the key signatures for G, D, A, F, and Bb major from memory. Check yourself against the lesson — then mark this done. Honest recall is the whole exercise.",
+    },
+    learn: [
+      {
+        kind: "text",
+        body: "A key signature — the sharps or flats printed at the start of every staff — names the key at a glance, so accidentals don't clutter every bar.",
+      },
+      {
+        kind: "text",
+        body: "Sharps always arrive in the same order: F# C# G# D# A# E# B#. Flats mirror it: Bb Eb Ab Db Gb Cb Fb. Memorize the two orders and every signature follows.",
+      },
+      {
+        kind: "listen",
+        caption: "D major scale: two sharps (F#, C#).",
+        midis: [62, 64, 66, 67, 69, 71, 73, 74],
+        noteDuration: 0.4,
+      },
+      {
+        kind: "text",
+        body: "One sharp = G major, two = D major, three = A major… One flat = F major, two = Bb major. And a shortcut: the last sharp in a signature is ti — one half-step below do.",
+      },
+    ],
+    checks: [
+      {
+        id: "ch4-l2-c1",
+        conceptId: "key-signatures",
+        question: "The order in which sharps appear in key signatures is…",
+        choices: ["F# C# G# D#…", "Bb Eb Ab Db…", "C# F# G# D#…", "G# D# A# E#…"],
+        answerIndex: 0,
+        explanation: "“Father Charles Goes Down And Ends Battle”: F# C# G# D# A# E# B#.",
+        hint: "Think “Father Charles” — what letter does “Father” start with?",
+      },
+      {
+        id: "ch4-l2-c2",
+        conceptId: "key-signatures",
+        question: "Two flats in the key signature means the key is…",
+        choices: ["Bb major", "Eb major", "F major", "Ab major"],
+        answerIndex: 0,
+        explanation: "One flat = F major, two flats = Bb major, three = Eb major…",
+        hint: "Count through the flat order: Bb first, then…",
+      },
+    ],
+  },
+  {
+    id: "ch4-l3-circle",
+    chapterId: "ch4-tonality",
+    title: "Circle of Fifths",
+    estimateMinutes: 4,
+    tryTask: { kind: "scale-id", seed: 43 },
+    learn: [
+      {
+        kind: "text",
+        body: "The circle of fifths arranges all twelve keys in a ring: each step clockwise climbs a perfect fifth and adds one sharp; each step counterclockwise adds one flat.",
+      },
+      {
+        kind: "text",
+        body: "C sits at the top with no sharps or flats. Clockwise: G (1#), D (2#), A (3#)… Counterclockwise: F (1b), Bb (2b), Eb (3b)…",
+      },
+      {
+        kind: "listen",
+        caption: "The sharp side, climbing by fifths: C → G → D → A.",
+        midis: [60, 67, 62, 69],
+        noteDuration: 0.5,
+      },
+      {
+        kind: "text",
+        body: "Neighboring keys on the circle share almost all their notes, so closely-related keys sound close. Jump across the circle and the new key feels far away.",
+      },
+    ],
+    checks: [
+      {
+        id: "ch4-l3-c1",
+        conceptId: "circle-of-fifths",
+        question: "Moving one step clockwise around the circle of fifths…",
+        choices: ["Adds one sharp", "Adds one flat", "Removes one sharp", "Changes nothing"],
+        answerIndex: 0,
+        explanation: "Clockwise = up a perfect fifth = one more sharp (or one fewer flat).",
+        hint: "Clockwise climbs — sharps pile up as you go around.",
+      },
+      {
+        id: "ch4-l3-c2",
+        conceptId: "circle-of-fifths",
+        question: "The key a perfect fifth above D major is…",
+        choices: ["A major", "G major", "E major", "C major"],
+        answerIndex: 0,
+        explanation: "D → A is a fifth up; A major carries three sharps.",
+        hint: "Count five scale steps up from D: D E F# G A.",
+      },
+    ],
+  },
+  {
+    id: "ch4-l4-minor",
+    chapterId: "ch4-tonality",
+    title: "Natural, Harmonic, Melodic Minor",
+    estimateMinutes: 4,
+    tryTask: { kind: "scale-id", seed: 44 },
+    learn: [
+      {
+        kind: "text",
+        body: "Every major key has a relative minor sharing its key signature — find la, the sixth degree. A minor shares C major's empty signature.",
+      },
+      {
+        kind: "listen",
+        caption: "A natural minor: A B C D E F G A — the same notes as C major, but A is home.",
+        midis: [69, 71, 72, 74, 76, 77, 79, 81],
+        noteDuration: 0.4,
+      },
+      {
+        kind: "text",
+        body: "Harmonic minor raises the seventh for a stronger pull home — G# in A minor, with an exotic leap as its fingerprint. Melodic minor raises the sixth and seventh ascending, then falls back to natural minor descending.",
+      },
+      {
+        kind: "listen",
+        caption: "A harmonic minor: hear the raised seventh (G#) lean into A.",
+        midis: [69, 71, 72, 74, 76, 77, 80, 81],
+        noteDuration: 0.4,
+      },
+    ],
+    checks: [
+      {
+        id: "ch4-l4-c1",
+        conceptId: "minor-scales",
+        question: "The relative minor of C major is…",
+        choices: ["A minor", "E minor", "G minor", "D minor"],
+        answerIndex: 0,
+        explanation: "Count to the sixth degree of C major: C(1) D(2) E(3) F(4) G(5) A(6).",
+        hint: "La — the sixth note of do-re-mi.",
+      },
+      {
+        id: "ch4-l4-c2",
+        conceptId: "minor-scales",
+        question: "Harmonic minor differs from natural minor by…",
+        choices: ["A raised seventh", "A lowered third", "A raised fourth", "Two extra notes"],
+        answerIndex: 0,
+        explanation: "Raising the seventh builds a leading tone with a strong pull back to the tonic.",
+        hint: "Which change gives minor its “exotic” leading-tone pull home?",
+        audio: { midis: [69, 71, 72, 74, 76, 77, 80, 81] },
+      },
+    ],
+  },
+];
+
 const AUTHORED = new Map<string, LessonBody>(
-  [...CHAPTER_1, ...CHAPTER_2, ...CHAPTER_3].map((l) => [l.id, l]),
+  [...CHAPTER_1, ...CHAPTER_2, ...CHAPTER_3, ...CHAPTER_4].map((l) => [l.id, l]),
 );
 
 /** Authored body for a lesson, or undefined when not yet written. */

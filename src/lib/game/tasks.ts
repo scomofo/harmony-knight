@@ -7,10 +7,11 @@
  * deterministic judgment. The UI layer renders it and the store persists it.
  */
 
-import { midiToName } from "./music.ts";
+import { majorScale, midiToName, naturalMinorScale } from "./music.ts";
+import type { TaskSpec } from "./course.ts";
 
 /** Stable identifiers for every task family, keyed in course.ts lesson bodies. */
-export type TaskKind = "self-attempt" | "compare-pitch" | "note-id" | "rhythm-echo";
+export type TaskKind = "self-attempt" | "compare-pitch" | "note-id" | "rhythm-echo" | "scale-id";
 
 export interface PracticalTask {
   kind: TaskKind;
@@ -191,8 +192,40 @@ export function buildRhythmEchoTask(seed: number): PracticalTask {
   };
 }
 
+/**
+ * "Major or minor?": a one-octave scale on a seeded tonic, ascending.
+ * The learner identifies the quality by ear — the third degree is the
+ * tell. Deterministic per seed; judgment is strict on the quality name.
+ */
+export function buildScaleIdTask(seed: number): PracticalTask {
+  const rand = mulberry32(seed);
+  const tonics = [60, 62, 64, 65, 67]; // C D E F G — singable, familiar
+  const tonic = tonics[Math.floor(rand() * tonics.length)]!;
+  const isMajor = rand() < 0.5;
+  const steps = isMajor ? majorScale(tonic) : naturalMinorScale(tonic);
+  const notes = [...steps, tonic + 12];
+  const answer = isMajor ? "Major" : "Minor";
+  const tonicName = midiToName(tonic).replace(/\d/, "");
+
+  return {
+    kind: "scale-id",
+    taskId: taskIdFor("scale-id", seed),
+    prompt: "Listen to the scale, ascending one octave. Is it major or minor?",
+    audio: { notes },
+    choices: ["Major", "Minor"],
+    hints: [
+      "Listen to the third note of the scale — major thirds sound bright and open; minor thirds sound darker, more tender.",
+      "Sing the first three notes along with it: does it go “do-mi” (bright) or “do-me” (soft)?",
+      `It is ${answer} — ${tonicName} ${answer.toLowerCase()}. Listen once more and lock in the color.`,
+    ],
+    judge: (attempt) => attempt === answer,
+    praise: `Exactly — ${tonicName} ${answer.toLowerCase()}. You're hearing quality, not just notes.`,
+    nudge: "Listen once more, and lean into the third note — bright or tender?",
+  };
+}
+
 /** Build a concrete task from an authored spec (deterministic per seed). */
-export function buildTask(lessonId: string, spec: { kind: TaskKind; seed: number }): PracticalTask {
+export function buildTask(lessonId: string, spec: TaskSpec): PracticalTask {
   switch (spec.kind) {
     case "compare-pitch":
       return buildComparePitchTask(spec.seed);
@@ -200,17 +233,21 @@ export function buildTask(lessonId: string, spec: { kind: TaskKind; seed: number
       return buildNoteIdTask(spec.seed);
     case "rhythm-echo":
       return buildRhythmEchoTask(spec.seed);
+    case "scale-id":
+      return buildScaleIdTask(spec.seed);
     case "self-attempt":
-      return buildSelfAttemptTask(lessonId);
+      return buildSelfAttemptTask(lessonId, spec.prompt);
   }
 }
 
 /** The fallback every unauthored lesson gets: honest practice, no judgment. */
-export function buildSelfAttemptTask(lessonId: string): PracticalTask {
+export function buildSelfAttemptTask(lessonId: string, prompt?: string): PracticalTask {
   return {
     kind: "self-attempt",
     taskId: taskIdFor("self-attempt", lessonId),
-    prompt: `Try the key idea from this lesson at your instrument (or hum it). When you've given it an honest attempt, mark it done. There is no wrong attempt here; trying is the step.`,
+    prompt:
+      prompt ??
+      `Try the key idea from this lesson at your instrument (or hum it). When you've given it an honest attempt, mark it done. There is no wrong attempt here; trying is the step.`,
     hints: [],
     judge: () => true,
     praise: "Done is better than perfect. The idea is in your hands now.",

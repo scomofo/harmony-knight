@@ -93,6 +93,7 @@ describe("buildTask dispatcher", () => {
     expect(buildTask("l", { kind: "compare-pitch", seed: 1 }).kind).toBe("compare-pitch");
     expect(buildTask("l", { kind: "note-id", seed: 1 }).kind).toBe("note-id");
     expect(buildTask("l", { kind: "rhythm-echo", seed: 1 }).kind).toBe("rhythm-echo");
+    expect(buildTask("l", { kind: "scale-id", seed: 1 }).kind).toBe("scale-id");
     expect(buildTask("l", { kind: "self-attempt", seed: 1 }).kind).toBe("self-attempt");
   });
 });

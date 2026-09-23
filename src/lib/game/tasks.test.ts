@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildComparePitchTask, buildNoteIdTask, buildRhythmEchoTask, buildSelfAttemptTask, buildTask, mulberry32 } from "./tasks.ts";
-import { midiToName } from "./music.ts";
+import { buildComparePitchTask, buildNoteIdTask, buildRhythmEchoTask, buildScaleIdTask, buildSelfAttemptTask, buildTask, mulberry32 } from "./tasks.ts";
+import { majorScale, midiToName, naturalMinorScale } from "./music.ts";
 
 describe("mulberry32", () => {
   it("is deterministic for the same seed", () => {
@@ -125,6 +125,41 @@ describe("buildRhythmEchoTask", () => {
   });
 });
 
+describe("buildScaleIdTask", () => {
+  it("is deterministic per seed with exactly one correct quality", () => {
+    const a = buildScaleIdTask(41);
+    const b = buildScaleIdTask(41);
+    expect(a.taskId).toBe(b.taskId);
+    expect(a.audio!.notes).toEqual(b.audio!.notes);
+    const answers = a.choices!.filter((c) => a.judge(c));
+    expect(answers).toHaveLength(1);
+    expect(["Major", "Minor"]).toContain(answers[0]);
+  });
+
+  it("plays a true one-octave major or minor scale", () => {
+    for (const seed of [41, 42, 43, 44, 45]) {
+      const t = buildScaleIdTask(seed);
+      const notes = t.audio!.notes;
+      expect(notes).toHaveLength(8);
+      expect(notes[7]! - notes[0]!).toBe(12);
+      const answer = t.choices!.find((c) => t.judge(c))!;
+      const expected = answer === "Major" ? majorScale(notes[0]!) : naturalMinorScale(notes[0]!);
+      expect(notes.slice(0, 7)).toEqual(expected);
+    }
+  });
+
+  it("offers three progressive hints ending in the answer", () => {
+    const t = buildScaleIdTask(41);
+    expect(t.hints).toHaveLength(3);
+    const answer = t.choices!.find((c) => t.judge(c));
+    expect(t.hints[2]).toContain(answer!);
+  });
+
+  it("buildTask dispatches scale-id", () => {
+    expect(buildTask("ch4-l1-major", { kind: "scale-id", seed: 41 }).taskId).toBe("scale-id:41");
+  });
+});
+
 describe("buildSelfAttemptTask", () => {
   it("always accepts and never shames", () => {
     const t = buildSelfAttemptTask("ch1-l3-timbre");
@@ -135,5 +170,15 @@ describe("buildSelfAttemptTask", () => {
   it("task ids are stable across builds (first-attempt evidence survives remounts)", () => {
     expect(buildComparePitchTask(7).taskId).toBe(buildComparePitchTask(7).taskId);
     expect(buildSelfAttemptTask("x").taskId).toBe(buildSelfAttemptTask("x").taskId);
+  });
+  it("uses an authored custom prompt when one is given", () => {
+    const custom = "Write the order of sharps from memory.";
+    const t = buildTask("ch4-l2-signatures", { kind: "self-attempt", seed: 0, prompt: custom });
+    expect(t.prompt).toBe(custom);
+    expect(t.taskId).toBe("self-attempt:ch4-l2-signatures");
+  });
+  it("falls back to the generic prompt otherwise", () => {
+    const t = buildTask("ch2-l2-staff", { kind: "self-attempt", seed: 0 });
+    expect(t.prompt).toContain("honest attempt");
   });
 });
