@@ -102,6 +102,7 @@ describe("buildTask dispatcher", () => {
     expect(buildTask("l", { kind: "seventh-id", seed: 1 }).kind).toBe("seventh-id");
     expect(buildTask("l", { kind: "meter-id", seed: 1 }).kind).toBe("meter-id");
     expect(buildTask("l", { kind: "species-id", seed: 1, variant: "early" }).kind).toBe("species-id");
+    expect(buildTask("l", { kind: "transform-id", seed: 1 }).kind).toBe("transform-id");
     expect(buildTask("l", { kind: "self-attempt", seed: 1 }).kind).toBe("self-attempt");
   });
 });

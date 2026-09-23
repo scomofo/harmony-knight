@@ -259,6 +259,12 @@ const CHAPTER_1: LessonBody[] = [
     chapterId: "ch1-sound",
     title: "Loud and Soft: Dynamics",
     estimateMinutes: 3,
+    tryTask: {
+      kind: "self-attempt",
+      seed: 0,
+      prompt:
+        "Clap twice: once piano (soft), once forte (loud). Then clap four beats as a crescendo — each clap a little louder than the last. Mark this done when your own hands have played all three dynamics.",
+    },
     learn: [
       {
         kind: "text",
@@ -300,6 +306,12 @@ const CHAPTER_1: LessonBody[] = [
     chapterId: "ch1-sound",
     title: "Tone Color: Timbre",
     estimateMinutes: 3,
+    tryTask: {
+      kind: "self-attempt",
+      seed: 0,
+      prompt:
+        "Hum a comfortable note on 'ah', then sing the same note on 'ee'. Same pitch — different color. That's timbre, made by your own voice. Mark this done when you've heard your tone change.",
+    },
     learn: [
       {
         kind: "text",
@@ -341,6 +353,7 @@ const CHAPTER_1: LessonBody[] = [
     chapterId: "ch1-sound",
     title: "Steady Pulse",
     estimateMinutes: 3,
+    tryTask: { kind: "rhythm-echo", seed: 33 },
     learn: [
       {
         kind: "text",
@@ -2230,8 +2243,205 @@ const CHAPTER_10: LessonBody[] = [
   },
 ];
 
+const CHAPTER_11: LessonBody[] = [
+  {
+    id: "ch11-l1-fugue",
+    chapterId: "ch11-development",
+    title: "Fugue Subjects and Answers",
+    estimateMinutes: 4,
+    tryTask: { kind: "modulation-id", seed: 111, variant: "fugue" },
+    learn: [
+      {
+        kind: "text",
+        body: "A fugue begins with a subject — a short, characterful idea, alone. Then a second voice enters with the answer: the subject transposed to the dominant, a fifth higher.",
+      },
+      {
+        kind: "listen",
+        caption: "Subject on C, then the answer on G — same shape, new home.",
+        midis: [60, 62, 64, 65, 64, 67, 69, 71, 72, 71],
+        durations: [0.35, 0.35, 0.35, 0.5, 0.9, 0.35, 0.35, 0.35, 0.5, 1.1],
+      },
+      {
+        kind: "text",
+        body: "Tonal answers tweak an interval or two to stay in key; real answers transpose exactly. Either way, the dialogue is tonic → dominant.",
+      },
+      {
+        kind: "text",
+        body: "After the exposition, the subject keeps returning — in new keys, upside down, stretched out. Learn the subject and you can track it through the whole fugue.",
+      },
+    ],
+    checks: [
+      {
+        id: "ch11-l1-c1",
+        conceptId: "fugue",
+        question: "A fugue answer is…",
+        choices: ["The subject transposed to the dominant", "A completely new melody", "The subject played backwards", "A drum solo"],
+        answerIndex: 0,
+        explanation: "Same idea, a fifth higher — the fugue's opening dialogue.",
+        hint: "Subject, then… where does the second voice enter?",
+      },
+      {
+        id: "ch11-l1-c2",
+        conceptId: "fugue",
+        question: "The subject and answer establish…",
+        choices: ["Tonic and dominant", "Two unrelated keys", "Rhythm only", "The tempo"],
+        answerIndex: 0,
+        explanation: "The fugue's home turf is mapped in its first two entries.",
+        hint: "Which two scale degrees open every fugue?",
+      },
+    ],
+  },
+  {
+    id: "ch11-l2-form",
+    chapterId: "ch11-development",
+    title: "Development and Form",
+    estimateMinutes: 4,
+    tryTask: {
+      kind: "self-attempt",
+      seed: 0,
+      prompt:
+        "Take the motif C – D – E and develop it three ways: sequence it up a step (D – E – F), invert it (mirror the shape downward), and fragment it (just E – D, repeated). Mark this done when you've made three transformations.",
+    },
+    learn: [
+      {
+        kind: "text",
+        body: "Development takes a small idea and sends it on adventures: sequenced upward, turned upside down, broken into fragments — then brings it home transformed.",
+      },
+      {
+        kind: "listen",
+        caption: "A motif sequenced upward, then fragmented.",
+        midis: [60, 62, 64, 62, 64, 65, 64, 62, 60],
+        durations: [0.35, 0.35, 0.6, 0.35, 0.35, 0.6, 0.35, 0.35, 0.9],
+      },
+      {
+        kind: "text",
+        body: "Form is the floor plan: exposition states the ideas, development adventures with them, recapitulation brings them home. Sonata form is this journey writ large.",
+      },
+      {
+        kind: "text",
+        body: "Listen for return: when the opening idea comes back changed by its journey, you feel form in your bones.",
+      },
+    ],
+    checks: [
+      {
+        id: "ch11-l2-c1",
+        conceptId: "musical-form",
+        question: "Development does what to a musical idea?",
+        choices: ["Transforms it via sequence, inversion, fragmentation", "Repeats it exactly forever", "Makes it louder only", "Deletes it"],
+        answerIndex: 0,
+        explanation: "Adventure, not repetition — the idea returns changed.",
+        hint: "Develop: what happens to a photograph in a darkroom?",
+      },
+      {
+        id: "ch11-l2-c2",
+        conceptId: "musical-form",
+        question: "Sonata form's middle section is the…",
+        choices: ["Development", "Coda", "Introduction", "Encore"],
+        answerIndex: 0,
+        explanation: "Exposition → development → recapitulation: the classic journey.",
+        hint: "Which section adventures?",
+      },
+    ],
+  },
+  {
+    id: "ch11-l3-modes",
+    chapterId: "ch11-development",
+    title: "Modes",
+    estimateMinutes: 4,
+    tryTask: { kind: "scale-id", seed: 113, variant: "modes" },
+    learn: [
+      {
+        kind: "text",
+        body: "Modes are scales with different home notes: play C major's white notes from D to D and you get Dorian — minor-ish, but with a bright raised sixth.",
+      },
+      {
+        kind: "listen",
+        caption: "D Dorian ascending: D E F G A B C D — hear the bright sixth.",
+        midis: [62, 64, 65, 67, 69, 71, 72, 74],
+        durations: [0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.9],
+      },
+      {
+        kind: "text",
+        body: "Each mode has a mood: Ionian (major) is sunny, Dorian is bittersweet, Phrygian is dark and Spanish, Mixolydian is bluesy, Aeolian is the natural minor you know.",
+      },
+      {
+        kind: "text",
+        body: "The trick: same notes, different home. Change where “home” feels, and the whole emotional world changes.",
+      },
+    ],
+    checks: [
+      {
+        id: "ch11-l3-c1",
+        conceptId: "modes",
+        question: "Dorian differs from natural minor by…",
+        choices: ["A raised sixth", "A raised seventh", "A lowered third", "Nothing at all"],
+        answerIndex: 0,
+        explanation: "Dorian is minor with a bright sixth — its bittersweet fingerprint.",
+        hint: "Compare D natural minor and D Dorian note by note.",
+      },
+      {
+        id: "ch11-l3-c2",
+        conceptId: "modes",
+        question: "Modes reuse…",
+        choices: ["The same notes with a different home", "Completely different notes", "Only black keys", "No tonic at all"],
+        answerIndex: 0,
+        explanation: "Same collection, shifted center — home is where the mode starts.",
+        hint: "C major's notes from D to D: new notes, or new home?",
+        audio: { midis: [62, 64, 65, 67, 69, 71, 72, 74], durations: [0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.9] },
+      },
+    ],
+  },
+  {
+    id: "ch11-l4-pcset",
+    chapterId: "ch11-development",
+    title: "Pitch-Class Transformations",
+    estimateMinutes: 5,
+    tryTask: { kind: "transform-id", seed: 114 },
+    learn: [
+      {
+        kind: "text",
+        body: "Three moves transform any motif: transposition (same shape, new pitch), inversion (mirrored contour), retrograde (backwards).",
+      },
+      {
+        kind: "listen",
+        caption: "Motif, then its inversion — the contour mirrored.",
+        midis: [60, 64, 67, 65, 60, 56, 53, 55],
+        durations: [0.35, 0.35, 0.35, 0.7, 0.35, 0.35, 0.35, 0.9],
+      },
+      {
+        kind: "text",
+        body: "Twelve-tone composers built whole pieces from these moves — a motif and its shadows, developed with total logic.",
+      },
+      {
+        kind: "text",
+        body: "Hear transformations and you hear how music thinks: one idea, many faces.",
+      },
+    ],
+    checks: [
+      {
+        id: "ch11-l4-c1",
+        conceptId: "transformations",
+        question: "Retrograde means…",
+        choices: ["The motif backwards", "The motif upside down", "The motif louder", "The motif in a new key"],
+        answerIndex: 0,
+        explanation: "Retro = backwards: last note first.",
+        hint: "What does “retrograde” suggest?",
+      },
+      {
+        id: "ch11-l4-c2",
+        conceptId: "transformations",
+        question: "Inversion keeps…",
+        choices: ["The rhythm, mirroring the contour", "Every pitch the same", "Nothing at all", "Only the key"],
+        answerIndex: 0,
+        explanation: "Ups become downs and vice versa — the shape in a mirror.",
+        hint: "What does a mirror do?",
+      },
+    ],
+  },
+];
+
 const AUTHORED = new Map<string, LessonBody>(
-  [...CHAPTER_1, ...CHAPTER_2, ...CHAPTER_3, ...CHAPTER_4, ...CHAPTER_5, ...CHAPTER_6, ...CHAPTER_7, ...CHAPTER_8, ...CHAPTER_9, ...CHAPTER_10].map((l) => [l.id, l]),
+  [...CHAPTER_1, ...CHAPTER_2, ...CHAPTER_3, ...CHAPTER_4, ...CHAPTER_5, ...CHAPTER_6, ...CHAPTER_7, ...CHAPTER_8, ...CHAPTER_9, ...CHAPTER_10, ...CHAPTER_11].map((l) => [l.id, l]),
 );
 
 /** Authored body for a lesson, or undefined when not yet written. */

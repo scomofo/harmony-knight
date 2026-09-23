@@ -161,6 +161,13 @@ export function naturalMinorScale(tonicMidi: number): number[] {
   return NATURAL_MINOR_STEPS.map((s) => tonicMidi + s);
 }
 
+/** Dorian mode semitone offsets: minor with a raised (major) sixth. */
+export const DORIAN_STEPS = [0, 2, 3, 5, 7, 9, 10] as const;
+
+export function dorianScale(tonicMidi: number): number[] {
+  return DORIAN_STEPS.map((s) => tonicMidi + s);
+}
+
 /** Order of sharps and flats for key signatures. */
 export const ORDER_OF_SHARPS = ["F#", "C#", "G#", "D#", "A#", "E#", "B#"] as const;
 export const ORDER_OF_FLATS = ["Bb", "Eb", "Ab", "Db", "Gb", "Cb", "Fb"] as const;

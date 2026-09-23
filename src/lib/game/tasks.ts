@@ -7,7 +7,7 @@
  * deterministic judgment. The UI layer renders it and the store persists it.
  */
 
-import { buildTriad, majorScale, midiToName, naturalMinorScale } from "./music.ts";
+import { buildTriad, dorianScale, majorScale, midiToName, naturalMinorScale } from "./music.ts";
 import type { TaskSpec } from "./course.ts";
 
 /** Stable identifiers for every task family, keyed in course.ts lesson bodies. */
@@ -24,7 +24,8 @@ export type TaskKind =
   | "modulation-id"
   | "seventh-id"
   | "meter-id"
-  | "species-id";
+  | "species-id"
+  | "transform-id";
 
 export interface PracticalTask {
   kind: TaskKind;
@@ -214,32 +215,48 @@ export function buildRhythmEchoTask(seed: number): PracticalTask {
 /**
  * "Major or minor?": a one-octave scale on a seeded tonic, ascending.
  * The learner identifies the quality by ear — the third degree is the
- * tell. Deterministic per seed; judgment is strict on the quality name.
+ * tell. The "modes" variant instead contrasts major (Ionian) with Dorian
+ * (minor color, bright sixth). Deterministic per seed; judgment is strict
+ * on the quality name.
  */
-export function buildScaleIdTask(seed: number): PracticalTask {
+export function buildScaleIdTask(seed: number, variant?: string): PracticalTask {
+  if (variant !== undefined && variant !== "modes") {
+    throw new Error(`Unknown scale-id variant: "${variant}"`);
+  }
   const rand = mulberry32(seed);
   const tonics = [60, 62, 64, 65, 67]; // C D E F G — singable, familiar
   const tonic = tonics[Math.floor(rand() * tonics.length)]!;
+  const modes = variant === "modes";
   const isMajor = rand() < 0.5;
-  const steps = isMajor ? majorScale(tonic) : naturalMinorScale(tonic);
+  const steps = modes ? (isMajor ? majorScale(tonic) : dorianScale(tonic)) : isMajor ? majorScale(tonic) : naturalMinorScale(tonic);
   const notes = [...steps, tonic + 12];
-  const answer = isMajor ? "Major" : "Minor";
+  const answer = isMajor ? (modes ? "Major (Ionian)" : "Major") : modes ? "Dorian" : "Minor";
   const tonicName = midiToName(tonic).replace(/\d/, "");
 
   return {
     kind: "scale-id",
-    taskId: taskIdFor("scale-id", seed),
-    prompt: "Listen to the scale, ascending one octave. Is it major or minor?",
+    taskId: taskIdFor("scale-id", modes ? `modes:${seed}` : `${seed}`),
+    prompt: modes
+      ? "Listen to the scale, ascending one octave. Major (Ionian) — or Dorian?"
+      : "Listen to the scale, ascending one octave. Is it major or minor?",
     audio: { notes },
-    choices: ["Major", "Minor"],
-    hints: [
-      "Listen to the third note of the scale — major thirds sound bright and open; minor thirds sound darker, more tender.",
-      "Sing the first three notes along with it: does it go “do-mi” (bright) or “do-me” (soft)?",
-      `It is ${answer} — ${tonicName} ${answer.toLowerCase()}. Listen once more and lock in the color.`,
-    ],
+    choices: modes ? ["Major (Ionian)", "Dorian"] : ["Major", "Minor"],
+    hints: modes
+      ? [
+          "Dorian sounds minor — but listen to the sixth note: bright and raised, unlike natural minor.",
+          "Sing the first three notes: “do-me” either way — now check the sixth: does it lift?",
+          `It is ${answer} — ${tonicName} ${answer.toLowerCase()}. Listen once more and catch the sixth.`,
+        ]
+      : [
+          "Listen to the third note of the scale — major thirds sound bright and open; minor thirds sound darker, more tender.",
+          "Sing the first three notes along with it: does it go “do-mi” (bright) or “do-me” (soft)?",
+          `It is ${answer} — ${tonicName} ${answer.toLowerCase()}. Listen once more and lock in the color.`,
+        ],
     judge: (attempt) => attempt === answer,
     praise: `Exactly — ${tonicName} ${answer.toLowerCase()}. You're hearing quality, not just notes.`,
-    nudge: "Listen once more, and lean into the third note — bright or tender?",
+    nudge: modes
+      ? "Listen once more, and lean into the sixth note — bright or dark?"
+      : "Listen once more, and lean into the third note — bright or tender?",
   };
 }
 
@@ -520,7 +537,7 @@ export function buildMotionIdTask(seed: number): PracticalTask {
  *   a fifth (warmer).
  */
 export function buildModulationIdTask(seed: number, variant: string | undefined): PracticalTask {
-  if (variant !== undefined && variant !== "detect" && variant !== "where") {
+  if (variant !== undefined && variant !== "detect" && variant !== "where" && variant !== "fugue") {
     throw new Error(`Unknown modulation-id variant: "${variant}"`);
   }
   const mode = variant ?? "detect";
@@ -535,6 +552,15 @@ export function buildModulationIdTask(seed: number, variant: string | undefined)
     return {
       notes: [...I, ...V, ...I],
       durations: [0.3, 0.3, 0.7, 0.3, 0.3, 0.7, 0.4, 0.4, finalHold],
+    };
+  };
+
+  /** Fugue subject: a short 5-note motif, stated then restated. */
+  const subject = (t: number, finalHold: number) => {
+    const contour = [0, 2, 4, 5, 4];
+    return {
+      notes: contour.map((s) => t + s),
+      durations: [0.35, 0.35, 0.35, 0.5, finalHold],
     };
   };
 
@@ -571,8 +597,23 @@ export function buildModulationIdTask(seed: number, variant: string | undefined)
     praise = `Exactly — ${same ? "same key" : "a new key"}. Your ear is tracking tonal home.`;
   }
 
-  const p1 = phrase(tonic, 1.6); // longer hold = the gap between phrases
-  const p2 = phrase(secondTonic, 1.2);
+  if (mode === "fugue") {
+    const isAnswer = rand() < 0.5;
+    secondTonic = isAnswer ? tonic + 7 : tonic;
+    answer = isAnswer ? "Dominant — the answer" : "Tonic — subject again";
+    prompt = "A fugue subject sounds, then returns. Does it come back on the tonic — or answer on the dominant?";
+    choices = ["Tonic — subject again", "Dominant — the answer"];
+    hints = [
+      "The answer is the subject transposed up a fifth — hear whether the second phrase sits higher.",
+      "Hum the first note of each phrase: same pitch, or a fifth higher?",
+      `It ${isAnswer ? "answers on the dominant" : "stays on the tonic"}. Listen once more and track the opening note.`,
+    ];
+    praise = `Exactly — ${isAnswer ? "the answer on the dominant" : "the subject again on the tonic"}. You're hearing a fugue's opening dialogue.`;
+  }
+
+  const render = mode === "fugue" ? subject : phrase;
+  const p1 = render(tonic, 1.6); // longer hold = the gap between phrases
+  const p2 = render(secondTonic, 1.2);
   return {
     kind: "modulation-id",
     taskId: taskIdFor("modulation-id", `${mode}:${seed}`),
@@ -783,6 +824,73 @@ export function buildSpeciesIdTask(seed: number, variant: string | undefined): P
   };
 }
 
+/**
+ * "What happened to the motif?": a short motif sounds, then returns
+ * transformed — transposed (same shape, new pitch), inverted (contour
+ * mirrored around the first note), or retrograde (backwards). The learner
+ * names the transformation. Deterministic per seed.
+ */
+export function buildTransformIdTask(seed: number): PracticalTask {
+  const rand = mulberry32(seed);
+  const pick = <T>(arr: readonly T[]): T => arr[Math.floor(rand() * arr.length)]!;
+  // Asymmetric diatonic motifs: every transform stays distinct.
+  const motifs = [
+    [60, 62, 64, 62],
+    [60, 64, 67, 65],
+    [62, 64, 67, 64],
+    [60, 62, 65, 64],
+  ];
+  const motif = pick(motifs);
+  const first = motif[0]!;
+
+  const kind = pick(["transposition", "inversion", "retrograde"] as const);
+  let transformed: number[];
+  let answer: string;
+  if (kind === "transposition") {
+    const shift = pick([5, 7, -5, 4]);
+    transformed = motif.map((n) => n + shift);
+    answer = "Transposition";
+  } else if (kind === "inversion") {
+    transformed = motif.map((n) => first - (n - first));
+    answer = "Inversion";
+  } else {
+    transformed = [...motif].reverse();
+    answer = "Retrograde";
+  }
+
+  const choices = ["Transposition", "Inversion", "Retrograde"];
+  for (let i = choices.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [choices[i], choices[j]] = [choices[j]!, choices[i]!];
+  }
+
+  const describe =
+    kind === "transposition"
+      ? "the same shape on new pitches"
+      : kind === "inversion"
+        ? "the contour mirrored — ups become downs"
+        : "the motif played backwards";
+
+  return {
+    kind: "transform-id",
+    taskId: taskIdFor("transform-id", seed),
+    prompt: "A short motif sounds, then returns transformed. Was it transposed, inverted, or played in retrograde?",
+    audio: {
+      notes: [...motif, ...transformed],
+      durations: [0.4, 0.4, 0.4, 0.9, 0.4, 0.4, 0.4, 1.2],
+    },
+    choices,
+    hints: [
+      "Does the second phrase keep the shape (transposition), mirror it (inversion), or run it backwards (retrograde)?",
+      "Follow the contour: same ups-and-downs, opposite ups-and-downs, or reversed note order?",
+      `It is ${answer.toLowerCase()} — ${describe}. Listen once more and follow the shape.`,
+    ],
+    judge: (attempt) => attempt === answer,
+    praise: `Exactly — ${answer.toLowerCase()}. You're hearing musical ideas transformed.`,
+    nudge: "Listen once more — trace the shape of each phrase with your finger.",
+  };
+}
+
 /** Build a concrete task from an authored spec (deterministic per seed). */
 export function buildTask(lessonId: string, spec: TaskSpec): PracticalTask {
   switch (spec.kind) {
@@ -793,7 +901,7 @@ export function buildTask(lessonId: string, spec: TaskSpec): PracticalTask {
     case "rhythm-echo":
       return buildRhythmEchoTask(spec.seed);
     case "scale-id":
-      return buildScaleIdTask(spec.seed);
+      return buildScaleIdTask(spec.seed, spec.variant);
     case "interval-id":
       return buildIntervalIdTask(spec.seed);
     case "chord-id":
@@ -810,6 +918,8 @@ export function buildTask(lessonId: string, spec: TaskSpec): PracticalTask {
       return buildMeterIdTask(spec.seed);
     case "species-id":
       return buildSpeciesIdTask(spec.seed, spec.variant);
+    case "transform-id":
+      return buildTransformIdTask(spec.seed);
     case "self-attempt":
       return buildSelfAttemptTask(lessonId, spec.prompt);
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCadenceIdTask, buildChordIdTask, buildComparePitchTask, buildIntervalIdTask, buildMeterIdTask, buildModulationIdTask, buildMotionIdTask, buildNoteIdTask, buildRhythmEchoTask, buildScaleIdTask, buildSeventhIdTask, buildSelfAttemptTask, buildSpeciesIdTask, buildTask, mulberry32, type PracticalTask } from "./tasks.ts";
+import { buildCadenceIdTask, buildChordIdTask, buildComparePitchTask, buildIntervalIdTask, buildMeterIdTask, buildModulationIdTask, buildMotionIdTask, buildNoteIdTask, buildRhythmEchoTask, buildScaleIdTask, buildSeventhIdTask, buildSelfAttemptTask, buildSpeciesIdTask, buildTransformIdTask, buildTask, mulberry32, type PracticalTask } from "./tasks.ts";
 import { buildTriad, majorScale, midiToName, naturalMinorScale } from "./music.ts";
 
 describe("mulberry32", () => {
@@ -539,6 +539,107 @@ describe("buildSpeciesIdTask", () => {
     expect(buildTask("ch10-l3-species23", { kind: "species-id", seed: 101, variant: "early" }).taskId).toBe(
       "species-id:early:101",
     );
+  });
+});
+
+describe("buildTransformIdTask", () => {
+  it("is deterministic per seed with exactly one correct transform", () => {
+    const a = buildTransformIdTask(114);
+    const b = buildTransformIdTask(114);
+    expect(a.taskId).toBe(b.taskId);
+    expect(a.audio!.notes).toEqual(b.audio!.notes);
+    const answers = a.choices!.filter((c) => a.judge(c));
+    expect(answers).toHaveLength(1);
+    expect(["Transposition", "Inversion", "Retrograde"]).toContain(answers[0]);
+  });
+
+  it("voices a 4-note motif plus its true transformation", () => {
+    for (const seed of [114, 115, 116, 117, 118, 119]) {
+      const t = buildTransformIdTask(seed);
+      const notes = t.audio!.notes;
+      expect(notes).toHaveLength(8);
+      const motif = notes.slice(0, 4);
+      const transformed = notes.slice(4);
+      const answer = t.choices!.find((c) => t.judge(c))!;
+      if (answer === "Transposition") {
+        const shifts = transformed.map((n, i) => n - motif[i]!);
+        expect(new Set(shifts).size).toBe(1);
+        expect(shifts[0]).not.toBe(0);
+      } else if (answer === "Inversion") {
+        const first = motif[0]!;
+        transformed.forEach((n, i) => expect(n).toBe(2 * first - motif[i]!));
+      } else {
+        expect(answer).toBe("Retrograde");
+        expect(transformed).toEqual([...motif].reverse());
+      }
+    }
+  });
+
+  it("buildTask dispatches transform-id", () => {
+    expect(buildTask("ch11-l4-pcset", { kind: "transform-id", seed: 114 }).taskId).toBe("transform-id:114");
+  });
+});
+
+describe("buildModulationIdTask fugue variant", () => {
+  it("states a 5-note subject, restated on the tonic or the dominant", () => {
+    for (const seed of [111, 112, 113, 114, 115, 116]) {
+      const t = buildModulationIdTask(seed, "fugue");
+      const notes = t.audio!.notes;
+      expect(notes).toHaveLength(10);
+      const answer = t.choices!.find((c) => t.judge(c))!;
+      const tonic = notes[0]!;
+      expect(notes.slice(0, 5)).toEqual([0, 2, 4, 5, 4].map((s) => tonic + s));
+      const shift = notes[5]! - tonic;
+      if (answer === "Dominant — the answer") expect(shift).toBe(7);
+      else {
+        expect(answer).toBe("Tonic — subject again");
+        expect(shift).toBe(0);
+      }
+      expect(notes.slice(5)).toEqual([0, 2, 4, 5, 4].map((s) => tonic + shift + s));
+    }
+  });
+
+  it("buildTask dispatches the fugue variant", () => {
+    expect(buildTask("ch11-l1-fugue", { kind: "modulation-id", seed: 111, variant: "fugue" }).taskId).toBe(
+      "modulation-id:fugue:111",
+    );
+  });
+});
+
+describe("buildScaleIdTask modes variant", () => {
+  it("contrasts major with true Dorian, deterministic per seed", () => {
+    const a = buildScaleIdTask(113, "modes");
+    const b = buildScaleIdTask(113, "modes");
+    expect(a.taskId).toBe("scale-id:modes:113");
+    expect(a.audio!.notes).toEqual(b.audio!.notes);
+    const answers = a.choices!.filter((c) => a.judge(c));
+    expect(answers).toHaveLength(1);
+    for (const seed of [113, 114, 115, 116, 117]) {
+      const t = buildScaleIdTask(seed, "modes");
+      const notes = t.audio!.notes;
+      const answer = t.choices!.find((c) => t.judge(c))!;
+      const tonic = notes[0]!;
+      const steps = notes.slice(0, 8).map((n) => n - tonic);
+      if (answer === "Major (Ionian)") expect(steps).toEqual([0, 2, 4, 5, 7, 9, 11, 12]);
+      else {
+        expect(answer).toBe("Dorian");
+        expect(steps).toEqual([0, 2, 3, 5, 7, 9, 10, 12]);
+      }
+    }
+  });
+
+  it("keeps the classic major/minor behavior when no variant is given", () => {
+    const t = buildScaleIdTask(41);
+    expect(t.taskId).toBe("scale-id:41");
+    expect(t.choices).toEqual(["Major", "Minor"]);
+  });
+
+  it("rejects unknown variants", () => {
+    expect(() => buildScaleIdTask(1, "lydian")).toThrow(/Unknown scale-id variant/);
+  });
+
+  it("buildTask dispatches scale-id with the spec variant", () => {
+    expect(buildTask("ch11-l3-modes", { kind: "scale-id", seed: 113, variant: "modes" }).taskId).toBe("scale-id:modes:113");
   });
 });
 
