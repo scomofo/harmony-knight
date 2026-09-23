@@ -9,6 +9,7 @@ import {
 } from "../lib/game/course.ts";
 import { canTransition, dueConcepts, scheduleRecall } from "../lib/game/learning.ts";
 import { stopAll } from "../lib/game/audio.ts";
+import { DuetPlayer } from "../components/game/DuetPlayer.tsx";
 import { cancelEffects, emitEffect } from "../lib/game/effects.ts";
 import { useStore } from "../lib/game/store.ts";
 import type { LessonStep } from "../lib/game/schema.ts";
@@ -25,6 +26,14 @@ function LearnBlockView({ block, index }: { block: LearnBlock; index: number }) 
         <LessonVisualView visual={block.visual} />
         <figcaption className="mt-1 text-sm text-white/60">{block.caption}</figcaption>
       </figure>
+    );
+  if (block.kind === "duet")
+    return (
+      <DuetPlayer
+        voices={block.voices.map((v) => ({ label: v.label, notes: v.midis, durations: v.durations }))}
+        caption={block.caption}
+        lane={`learn-duet-${index}`}
+      />
     );
   return (
     <TeachingPlayer

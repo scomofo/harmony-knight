@@ -9,6 +9,11 @@
 export type LearnBlock =
   | { kind: "text"; body: string }
   | { kind: "listen"; caption: string; midis: number[]; noteDuration?: number; durations?: number[] }
+  | {
+      kind: "duet";
+      caption: string;
+      voices: { label: string; midis: number[]; durations?: number[] }[];
+    }
   | { kind: "visual"; caption: string; visual: LessonVisual };
 
 export type LessonVisual =
@@ -2003,8 +2008,230 @@ const CHAPTER_9: LessonBody[] = [
   },
 ];
 
+const CHAPTER_10: LessonBody[] = [
+  {
+    id: "ch10-l1-shape",
+    chapterId: "ch10-counterpoint",
+    title: "Melodic Shape",
+    estimateMinutes: 4,
+    tryTask: {
+      kind: "self-attempt",
+      seed: 0,
+      prompt:
+        "Sing or play a four-note line that climbs to one clear peak and comes home (try C – E – G – E, then make your own). If you can't sing it smoothly, reshape it until you can. Mark this done when your line has one hill, not a flat road.",
+    },
+    learn: [
+      {
+        kind: "text",
+        body: "A melody is a line with a shape: it climbs to a peak, then comes home. Great melodies have one clear high point — everything leans toward it and away.",
+      },
+      {
+        kind: "text",
+        body: "Conjunct motion (steps) feels smooth and singable; disjunct motion (leaps) adds drama. Counterpoint mixes both: mostly steps, leaps for spice.",
+      },
+      {
+        kind: "duet",
+        caption: "An arching line over a steady bass — hear the shape rise and fall.",
+        voices: [
+          { label: "Bass (steady)", midis: [48, 48, 48, 48], durations: [0.9, 0.9, 0.9, 0.9] },
+          {
+            label: "Melody (arch)",
+            midis: [60, 64, 67, 64, 62, 60],
+            durations: [0.45, 0.45, 0.7, 0.45, 0.45, 0.9],
+          },
+        ],
+      },
+      {
+        kind: "text",
+        body: "Sing every line you write. If you can't sing it, the shape needs work — the voice is counterpoint's first instrument.",
+      },
+    ],
+    checks: [
+      {
+        id: "ch10-l1-c1",
+        conceptId: "melodic-shape",
+        question: "Good melodic shape usually has…",
+        choices: ["One clear high point", "Constant leaping", "No direction at all", "Only repeated notes"],
+        answerIndex: 0,
+        explanation: "A single peak gives the line direction — everything leans toward it and away.",
+        hint: "Think of a hill, not a flat road.",
+      },
+      {
+        id: "ch10-l1-c2",
+        conceptId: "melodic-shape",
+        question: "Conjunct motion means…",
+        choices: ["Moving by step", "Moving by leap", "Standing still", "Playing loudly"],
+        answerIndex: 0,
+        explanation: "Steps are smooth and singable — the backbone of good lines.",
+        hint: "Conjunct = joined, like links in a chain.",
+      },
+    ],
+  },
+  {
+    id: "ch10-l2-closing",
+    chapterId: "ch10-counterpoint",
+    title: "Closing Gestures",
+    estimateMinutes: 4,
+    tryTask: {
+      kind: "self-attempt",
+      seed: 0,
+      prompt:
+        "Play or sing a 7–6 close: hold F over a G bass, then sigh down to E while the bass stays put (then resolve both to C). Feel the tension melt. Mark this done when you've felt the sigh.",
+    },
+    learn: [
+      {
+        kind: "text",
+        body: "Every phrase needs a good goodbye: the closing gesture. In counterpoint the classic close is 7–6 or 9–8: tension leaning into rest.",
+      },
+      {
+        kind: "duet",
+        caption: "A 7–6 close: the upper line holds the seventh, sighs to the sixth, then both settle home.",
+        voices: [
+          { label: "Bass", midis: [55, 55, 48], durations: [0.9, 0.9, 1.4] },
+          { label: "Upper line", midis: [65, 64, 60], durations: [0.9, 0.9, 1.4] },
+        ],
+      },
+      {
+        kind: "text",
+        body: "The recipe: approach by step, lean on the dissonance while the bass holds, resolve down by step. Tension → sigh → rest.",
+      },
+      {
+        kind: "text",
+        body: "Endings are promises kept: the whole phrase points at its close, and the close delivers.",
+      },
+    ],
+    checks: [
+      {
+        id: "ch10-l2-c1",
+        conceptId: "closing-gestures",
+        question: "A 7–6 closing gesture is…",
+        choices: ["A seventh sighing down to a sixth", "Seven instruments", "A very loud ending", "Six repeated notes"],
+        answerIndex: 0,
+        explanation: "Dissonance leaning into consonance, down by step — the classic sigh.",
+        hint: "The numbers name intervals above the bass.",
+      },
+      {
+        id: "ch10-l2-c2",
+        conceptId: "closing-gestures",
+        question: "Suspensions resolve…",
+        choices: ["Down by step", "Up by leap", "By getting louder", "By stopping"],
+        answerIndex: 0,
+        explanation: "The held note sighs down into its resolution — gravity does the work.",
+        hint: "Which way does a sigh fall?",
+        audio: { midis: [65, 64, 60], durations: [0.9, 0.9, 1.4] },
+      },
+    ],
+  },
+  {
+    id: "ch10-l3-species23",
+    chapterId: "ch10-counterpoint",
+    title: "Second and Third Species",
+    estimateMinutes: 5,
+    tryTask: { kind: "species-id", seed: 101, variant: "early" },
+    learn: [
+      {
+        kind: "text",
+        body: "First species is note-against-note: two lines in lockstep. Second species sets two notes against one — the counterpoint starts to dance.",
+      },
+      {
+        kind: "duet",
+        caption: "Second species: two dancing notes for every slow cantus note.",
+        voices: [
+          { label: "Cantus firmus", midis: [48, 50, 52, 48], durations: [0.9, 0.9, 0.9, 0.9] },
+          {
+            label: "Counterpoint",
+            midis: [64, 62, 65, 64, 67, 65, 64, 62],
+            durations: [0.45, 0.45, 0.45, 0.45, 0.45, 0.45, 0.45, 0.45],
+          },
+        ],
+      },
+      {
+        kind: "text",
+        body: "Third species runs four notes against one — a flowing quarter-note line. The rule: start each bar consonant; the middle beats may pass through.",
+      },
+      {
+        kind: "text",
+        body: "More notes, more freedom — but the slow voice still rules. Every downbeat must agree with the cantus.",
+      },
+    ],
+    checks: [
+      {
+        id: "ch10-l3-c1",
+        conceptId: "species-23",
+        question: "Second species means…",
+        choices: ["Two notes against one", "Two instruments", "Twice as loud", "Two keys at once"],
+        answerIndex: 0,
+        explanation: "The ratio counts counterpoint notes per cantus note.",
+        hint: "Species are ratios: 2:1.",
+      },
+      {
+        id: "ch10-l3-c2",
+        conceptId: "species-23",
+        question: "In third species, the line may…",
+        choices: ["Pass through dissonance between beats", "Ignore the cantus", "Change key freely", "Stop halfway"],
+        answerIndex: 0,
+        explanation: "Downbeats stay consonant; weak quarters may pass through.",
+        hint: "Which beats must agree with the cantus?",
+      },
+    ],
+  },
+  {
+    id: "ch10-l4-florid",
+    chapterId: "ch10-counterpoint",
+    title: "Fourth and Fifth Species",
+    estimateMinutes: 5,
+    tryTask: { kind: "species-id", seed: 102, variant: "late" },
+    learn: [
+      {
+        kind: "text",
+        body: "Fourth species syncopates: each note enters late and hangs across the barline — the beautiful ache of the suspension.",
+      },
+      {
+        kind: "duet",
+        caption: "Fourth species: every note arrives off the beat and sustains.",
+        voices: [
+          { label: "Cantus firmus", midis: [48, 50, 52, 48], durations: [0.9, 0.9, 0.9, 0.9] },
+          {
+            label: "Counterpoint (syncopated)",
+            midis: [-1, 64, 65, 67, 64],
+            durations: [0.45, 0.9, 0.9, 0.9, 0.9],
+          },
+        ],
+      },
+      {
+        kind: "text",
+        body: "Fifth species — florid — mixes everything: halves, quarters, syncopation. Freedom, but every freedom must still sing against the cantus.",
+      },
+      {
+        kind: "text",
+        body: "The arc of the species: from lockstep (1st) to dance (2nd, 3rd) to ache (4th) to freedom (5th). Each new rhythm is a new relationship with time.",
+      },
+    ],
+    checks: [
+      {
+        id: "ch10-l4-c1",
+        conceptId: "species-45",
+        question: "Fourth species is defined by…",
+        choices: ["Syncopation across the barline", "Four instruments", "Playing very fast", "Silence"],
+        answerIndex: 0,
+        explanation: "Notes tied over the bar create suspensions — tension that resolves late.",
+        hint: "What does “tied over” do to the beat?",
+      },
+      {
+        id: "ch10-l4-c2",
+        conceptId: "species-45",
+        question: "Florid counterpoint (fifth species)…",
+        choices: ["Mixes all the rhythms freely", "Uses only whole notes", "Has no cantus", "Is always fast"],
+        answerIndex: 0,
+        explanation: "The graduate species: every rhythm learned, combined at will.",
+        hint: "Florid means flowery — many shapes.",
+      },
+    ],
+  },
+];
+
 const AUTHORED = new Map<string, LessonBody>(
-  [...CHAPTER_1, ...CHAPTER_2, ...CHAPTER_3, ...CHAPTER_4, ...CHAPTER_5, ...CHAPTER_6, ...CHAPTER_7, ...CHAPTER_8, ...CHAPTER_9].map((l) => [l.id, l]),
+  [...CHAPTER_1, ...CHAPTER_2, ...CHAPTER_3, ...CHAPTER_4, ...CHAPTER_5, ...CHAPTER_6, ...CHAPTER_7, ...CHAPTER_8, ...CHAPTER_9, ...CHAPTER_10].map((l) => [l.id, l]),
 );
 
 /** Authored body for a lesson, or undefined when not yet written. */

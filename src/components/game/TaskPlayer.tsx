@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { TeachingPlayer } from "./TeachingPlayer.tsx";
+import { DuetPlayer } from "./DuetPlayer.tsx";
 import { emitEffect } from "../../lib/game/effects.ts";
 import { useStore } from "../../lib/game/store.ts";
 import type { PracticalTask } from "../../lib/game/tasks.ts";
@@ -55,7 +56,13 @@ export function TaskPlayer({ lessonId, task }: { lessonId: string; task: Practic
 
       {task.audio && (
         <div className="mt-3 space-y-2">
-          {task.audio.segments ? (
+          {task.audio.voices ? (
+            <DuetPlayer
+              voices={task.audio.voices}
+              caption="Play both voices together, then answer."
+              lane={`task-${task.taskId}-duet`}
+            />
+          ) : task.audio.segments ? (
             task.audio.segments.map((seg, i) => (
               <TeachingPlayer
                 key={seg.label}

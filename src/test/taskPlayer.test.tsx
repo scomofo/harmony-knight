@@ -101,6 +101,7 @@ describe("buildTask dispatcher", () => {
     expect(buildTask("l", { kind: "modulation-id", seed: 1, variant: "detect" }).kind).toBe("modulation-id");
     expect(buildTask("l", { kind: "seventh-id", seed: 1 }).kind).toBe("seventh-id");
     expect(buildTask("l", { kind: "meter-id", seed: 1 }).kind).toBe("meter-id");
+    expect(buildTask("l", { kind: "species-id", seed: 1, variant: "early" }).kind).toBe("species-id");
     expect(buildTask("l", { kind: "self-attempt", seed: 1 }).kind).toBe("self-attempt");
   });
 });
@@ -172,5 +173,19 @@ describe("TaskPlayer (UI)", () => {
     const rec = useStore.getState().save.lessons["ch2-l1-alphabet"]!.tasks[0];
     expect(rec.firstCheckCorrect).toBe(true);
     expect(rec.draft).toBe(answer);
+  });
+
+  it("renders a duet player for species-id and judges the species", () => {
+    const task = buildTask("ch10-l3-species23", { kind: "species-id", seed: 101, variant: "early" });
+    const answer = task.choices!.find((c) => task.judge(c))!;
+    render(<TaskPlayer lessonId="ch10-l3-species23" task={task} />);
+    expect(screen.getByTestId("duet-player")).toBeTruthy();
+    expect(screen.getByText(/both voices together/)).toBeTruthy();
+    expect(screen.getByText("Cantus firmus (slow)")).toBeTruthy();
+    expect(screen.getByText("Counterpoint")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: answer }));
+    expect(screen.getByText(/how independent lines share time/)).toBeTruthy();
+    const rec = useStore.getState().save.lessons["ch10-l3-species23"]!.tasks[0];
+    expect(rec.firstCheckCorrect).toBe(true);
   });
 });

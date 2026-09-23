@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCadenceIdTask, buildChordIdTask, buildComparePitchTask, buildIntervalIdTask, buildMeterIdTask, buildModulationIdTask, buildMotionIdTask, buildNoteIdTask, buildRhythmEchoTask, buildScaleIdTask, buildSeventhIdTask, buildSelfAttemptTask, buildTask, mulberry32 } from "./tasks.ts";
+import { buildCadenceIdTask, buildChordIdTask, buildComparePitchTask, buildIntervalIdTask, buildMeterIdTask, buildModulationIdTask, buildMotionIdTask, buildNoteIdTask, buildRhythmEchoTask, buildScaleIdTask, buildSeventhIdTask, buildSelfAttemptTask, buildSpeciesIdTask, buildTask, mulberry32, type PracticalTask } from "./tasks.ts";
 import { buildTriad, majorScale, midiToName, naturalMinorScale } from "./music.ts";
 
 describe("mulberry32", () => {
@@ -455,6 +455,90 @@ describe("buildMeterIdTask", () => {
 
   it("buildTask dispatches meter-id", () => {
     expect(buildTask("ch9-l4-polyrhythm", { kind: "meter-id", seed: 94 }).taskId).toBe("meter-id:94");
+  });
+});
+
+describe("buildSpeciesIdTask", () => {
+  const cfVoice = (t: PracticalTask) => t.audio!.voices![0]!;
+  const cpVoice = (t: PracticalTask) => t.audio!.voices![1]!;
+
+  it("is deterministic per seed+variant with exactly one correct species", () => {
+    const a = buildSpeciesIdTask(101, "early");
+    const b = buildSpeciesIdTask(101, "early");
+    expect(a.taskId).toBe(b.taskId);
+    expect(a.audio!.voices).toEqual(b.audio!.voices);
+    const answers = a.choices!.filter((c) => a.judge(c));
+    expect(answers).toHaveLength(1);
+  });
+
+  it("always voices a 4-note cantus firmus of whole notes", () => {
+    for (const seed of [101, 102, 103]) {
+      for (const variant of ["early", "late"] as const) {
+        const cf = cfVoice(buildSpeciesIdTask(seed, variant));
+        expect(cf.notes).toHaveLength(4);
+        expect(cf.durations).toEqual([0.9, 0.9, 0.9, 0.9]);
+      }
+    }
+  });
+
+  it("early variant covers first/second/third with the right note counts", () => {
+    const seen = new Set<string>();
+    for (const seed of [101, 102, 103, 104, 105, 106, 107, 108]) {
+      const t = buildSpeciesIdTask(seed, "early");
+      const answer = t.choices!.find((c) => t.judge(c))!;
+      seen.add(answer);
+      const cp = cpVoice(t);
+      const cf = cfVoice(t);
+      if (answer === "First species") {
+        expect(cp.notes).toHaveLength(4);
+        // Consonant skeleton: thirds/sixths above each cantus note.
+        cp.notes.forEach((n, i) => expect([3, 4]).toContain(n - cf.notes[i]! - 12));
+      } else if (answer === "Second species") {
+        expect(cp.notes).toHaveLength(8);
+        for (let i = 0; i < 4; i++) expect([3, 4]).toContain(cp.notes[2 * i]! - cf.notes[i]! - 12);
+      } else {
+        expect(answer).toBe("Third species");
+        expect(cp.notes).toHaveLength(16);
+      }
+    }
+    expect(seen).toEqual(new Set(["First species", "Second species", "Third species"]));
+  });
+
+  it("late variant covers second/fourth/fifth with the right rhythmic profiles", () => {
+    const seen = new Set<string>();
+    for (const seed of [101, 102, 103, 104, 105, 106, 107, 108, 109, 110]) {
+      const t = buildSpeciesIdTask(seed, "late");
+      const answer = t.choices!.find((c) => t.judge(c))!;
+      seen.add(answer);
+      const cp = cpVoice(t);
+      const cf = cfVoice(t);
+      if (answer === "Second species") {
+        expect(cp.notes).toHaveLength(8);
+        expect(new Set(cp.durations)).toEqual(new Set([0.45]));
+      } else if (answer === "Fourth species") {
+        // Leading rest offsets the voice: syncopation.
+        expect(cp.notes[0]).toBe(-1);
+        expect(cp.notes).toHaveLength(5);
+      } else {
+        expect(answer).toBe("Fifth species (florid)");
+        expect(cp.notes).toHaveLength(8);
+        expect(new Set(cp.durations).size).toBeGreaterThan(1);
+        // Resolves home: consonant with the final cantus note.
+        const last = cp.notes[cp.notes.length - 1]!;
+        expect([3, 4]).toContain(last - cf.notes[3]! - 12);
+      }
+    }
+    expect(seen).toEqual(new Set(["Second species", "Fourth species", "Fifth species (florid)"]));
+  });
+
+  it("rejects unknown variants with a clear error", () => {
+    expect(() => buildSpeciesIdTask(1, "baroque")).toThrow(/Unknown species-id variant/);
+  });
+
+  it("buildTask dispatches species-id with the spec variant", () => {
+    expect(buildTask("ch10-l3-species23", { kind: "species-id", seed: 101, variant: "early" }).taskId).toBe(
+      "species-id:early:101",
+    );
   });
 });
 

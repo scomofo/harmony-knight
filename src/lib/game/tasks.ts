@@ -23,7 +23,8 @@ export type TaskKind =
   | "motion-id"
   | "modulation-id"
   | "seventh-id"
-  | "meter-id";
+  | "meter-id"
+  | "species-id";
 
 export interface PracticalTask {
   kind: TaskKind;
@@ -44,6 +45,12 @@ export interface PracticalTask {
      * When present, the UI renders one player per segment.
      */
     segments?: { label: string; notes: number[]; durations?: number[] }[];
+    /**
+     * Optional simultaneous voices (e.g. two-part counterpoint). When
+     * present, the UI renders a single control that starts one sequence
+     * per voice on the same lane, so they sound together and stop together.
+     */
+    voices?: { label: string; notes: number[]; durations?: number[] }[];
   };
   /**
    * Optional fixed answer choices (rendered as buttons); the attempt value
@@ -647,6 +654,135 @@ export function buildMeterIdTask(seed: number): PracticalTask {
   };
 }
 
+/**
+ * "Which species?": a slow cantus firmus (4 whole notes) with a counterpoint
+ * voice above, played together as a duet. Two variants:
+ * - "early": first (1:1), second (2:1), or third (4:1) species.
+ * - "late": second (2:1), fourth (syncopated), or fifth (florid) species.
+ * The cantus is a seeded 4-note phrase; the counterpoint skeleton moves in
+ * seeded thirds/sixths above it. Deterministic per seed.
+ */
+export function buildSpeciesIdTask(seed: number, variant: string | undefined): PracticalTask {
+  if (variant !== "early" && variant !== "late") {
+    throw new Error(`Unknown species-id variant: "${variant}"`);
+  }
+  const rand = mulberry32(seed);
+  const pick = <T>(arr: readonly T[]): T => arr[Math.floor(rand() * arr.length)]!;
+
+  const cfs = [
+    [48, 50, 52, 48],
+    [48, 52, 50, 48],
+    [48, 53, 52, 48],
+    [48, 50, 53, 48],
+  ];
+  const cf = cfs[Math.floor(rand() * cfs.length)]!;
+  const CF_DUR = 0.9;
+
+  // Consonant skeleton: seeded thirds/sixths above each cantus note.
+  const skeleton: number[] = [];
+  let iv = pick([3, 4]);
+  for (let i = 0; i < cf.length; i++) {
+    if (i > 0 && rand() < 0.4) iv = iv === 3 ? 4 : 3;
+    skeleton.push(cf[i]! + 12 + iv);
+  }
+
+  const species: "first" | "second" | "third" | "fourth" | "fifth" =
+    variant === "early" ? pick(["first", "second", "third"] as const) : pick(["second", "fourth", "fifth"] as const);
+
+  let cpNotes: number[];
+  let cpDurations: number[];
+  let answer: string;
+  let choices: string[];
+
+  if (species === "first") {
+    cpNotes = [...skeleton];
+    cpDurations = skeleton.map(() => CF_DUR);
+    answer = "First species";
+    choices = ["First species", "Second species", "Third species"];
+  } else if (species === "second") {
+    cpNotes = [];
+    cpDurations = [];
+    for (let i = 0; i < cf.length; i++) {
+      const next = skeleton[Math.min(i + 1, cf.length - 1)]!;
+      const step = Math.sign(next - skeleton[i]!) * (rand() < 0.5 ? 1 : 2);
+      const passing = i < cf.length - 1 ? skeleton[i]! + step : skeleton[i]! - 2;
+      cpNotes.push(skeleton[i]!, passing);
+      cpDurations.push(0.45, 0.45);
+    }
+    answer = "Second species";
+    choices =
+      variant === "early"
+        ? ["First species", "Second species", "Third species"]
+        : ["Second species", "Fourth species", "Fifth species (florid)"];
+  } else if (species === "third") {
+    cpNotes = [];
+    cpDurations = [];
+    for (let i = 0; i < cf.length; i++) {
+      const target = i < cf.length - 1 ? skeleton[i + 1]! : skeleton[i]! - 4;
+      const start = skeleton[i]!;
+      for (let k = 0; k < 4; k++) {
+        cpNotes.push(Math.round(start + ((target - start) * k) / 4));
+        cpDurations.push(0.2);
+      }
+    }
+    answer = "Third species";
+    choices = ["First species", "Second species", "Third species"];
+  } else if (species === "fourth") {
+    // Syncopated: a leading rest offsets the voice so each note enters
+    // halfway through the cantus note and sustains across the barline.
+    cpNotes = [-1, ...skeleton];
+    cpDurations = [0.45, ...skeleton.map(() => CF_DUR)];
+    answer = "Fourth species";
+    choices = ["Second species", "Fourth species", "Fifth species (florid)"];
+  } else {
+    // Florid: mixed rhythm — quarters, a half, running quarters, a half.
+    const rhythm = [0.45, 0.45, CF_DUR, 0.2, 0.2, 0.2, 0.2, CF_DUR];
+    cpNotes = [skeleton[0]!];
+    let n = skeleton[0]!;
+    for (let k = 1; k < rhythm.length; k++) {
+      n = Math.max(cf[0]! + 12, Math.min(cf[0]! + 26, n + pick([-2, -1, 1, 2])));
+      cpNotes.push(n);
+    }
+    cpNotes[cpNotes.length - 1] = skeleton[skeleton.length - 1]!;
+    cpDurations = [...rhythm];
+    answer = "Fifth species (florid)";
+    choices = ["Second species", "Fourth species", "Fifth species (florid)"];
+  }
+
+  for (let i = choices.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [choices[i], choices[j]] = [choices[j]!, choices[i]!];
+  }
+
+  const countHint =
+    variant === "early"
+      ? "Count how many counterpoint notes dance over each slow cantus note: one, two, or four?"
+      : "Is the upper line marching evenly, hanging back off the beat, or mixing long and short notes freely?";
+  const theoryHint =
+    variant === "early"
+      ? "First species moves note-against-note; second puts two against one; third runs four quarters against one."
+      : "Second species: steady two-against-one. Fourth: syncopated, always arriving late. Fifth: florid, freely mixed.";
+
+  return {
+    kind: "species-id",
+    taskId: taskIdFor("species-id", `${variant}:${seed}`),
+    prompt:
+      "Two voices play together — a slow cantus firmus below, a counterpoint line above. Which species is the counterpoint?",
+    audio: {
+      notes: [...cf],
+      voices: [
+        { label: "Cantus firmus (slow)", notes: [...cf], durations: cf.map(() => CF_DUR) },
+        { label: "Counterpoint", notes: cpNotes, durations: cpDurations },
+      ],
+    },
+    choices,
+    hints: [countHint, theoryHint, `It is ${answer.toLowerCase()} — listen once more and feel the rhythmic relationship.`],
+    judge: (attempt) => attempt === answer,
+    praise: `Exactly — ${answer.toLowerCase()}. You're hearing how independent lines share time.`,
+    nudge: "Listen once more — count the upper notes against each slow bass note.",
+  };
+}
+
 /** Build a concrete task from an authored spec (deterministic per seed). */
 export function buildTask(lessonId: string, spec: TaskSpec): PracticalTask {
   switch (spec.kind) {
@@ -672,6 +808,8 @@ export function buildTask(lessonId: string, spec: TaskSpec): PracticalTask {
       return buildSeventhIdTask(spec.seed);
     case "meter-id":
       return buildMeterIdTask(spec.seed);
+    case "species-id":
+      return buildSpeciesIdTask(spec.seed, spec.variant);
     case "self-attempt":
       return buildSelfAttemptTask(lessonId, spec.prompt);
   }
