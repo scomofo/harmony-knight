@@ -54,8 +54,25 @@ export function TaskPlayer({ lessonId, task }: { lessonId: string; task: Practic
       <p className="mt-2 text-white/80">{task.prompt}</p>
 
       {task.audio && (
-        <div className="mt-3">
-          <TeachingPlayer midis={task.audio.notes} caption="Listen, then answer." lane={`task-${task.taskId}`} />
+        <div className="mt-3 space-y-2">
+          {task.audio.segments ? (
+            task.audio.segments.map((seg, i) => (
+              <TeachingPlayer
+                key={seg.label}
+                midis={seg.notes}
+                caption={seg.label}
+                lane={`task-${task.taskId}-${i}`}
+                durations={seg.durations}
+              />
+            ))
+          ) : (
+            <TeachingPlayer
+              midis={task.audio.notes}
+              caption="Listen, then answer."
+              lane={`task-${task.taskId}`}
+              durations={task.audio.durations}
+            />
+          )}
         </div>
       )}
 

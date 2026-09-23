@@ -13,11 +13,13 @@ export function TeachingPlayer({
   caption,
   lane,
   noteDuration = 0.5,
+  durations,
 }: {
   midis: number[];
   caption: string;
   lane: string;
   noteDuration?: number;
+  durations?: number[];
 }) {
   const speed = useStore((s) => s.save.settings.playbackSpeed);
   const muted = useStore((s) => s.save.settings.muted);
@@ -43,6 +45,7 @@ export function TeachingPlayer({
     cancelRef.current = playSequence(midis, {
       lane,
       noteDuration: scaled,
+      durations: durations?.map((d) => d / speed),
       gain: 0.5,
       onNoteStart: (i) => setActiveIndex(i),
       onDone: (cancelled) => {

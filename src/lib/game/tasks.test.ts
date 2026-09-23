@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildComparePitchTask, buildNoteIdTask, buildSelfAttemptTask, buildTask, mulberry32 } from "./tasks.ts";
+import { buildComparePitchTask, buildNoteIdTask, buildRhythmEchoTask, buildSelfAttemptTask, buildTask, mulberry32 } from "./tasks.ts";
 import { midiToName } from "./music.ts";
 
 describe("mulberry32", () => {
@@ -86,6 +86,42 @@ describe("buildNoteIdTask", () => {
     const t = buildTask("ch2-l1-alphabet", { kind: "note-id", seed: 21 });
     expect(t.kind).toBe("note-id");
     expect(t.taskId).toBe("note-id:21");
+  });
+});
+
+describe("buildRhythmEchoTask", () => {
+  it("is deterministic per seed with exactly one matching candidate", () => {
+    const a = buildRhythmEchoTask(31);
+    const b = buildRhythmEchoTask(31);
+    expect(a.taskId).toBe(b.taskId);
+    expect(a.audio!.segments).toHaveLength(3);
+    expect(a.audio!.segments!.map((s) => s.label)).toEqual([
+      "Target rhythm",
+      "Candidate 1",
+      "Candidate 2",
+    ]);
+    const answers = a.choices!.filter((c) => a.judge(c));
+    expect(answers).toHaveLength(1);
+    // Exactly one candidate's rhythm equals the target's.
+    const target = a.audio!.segments![0]!.durations!;
+    const matches = a.audio!.segments!.slice(1).filter((s) => s.durations!.join() === target.join());
+    expect(matches).toHaveLength(1);
+    expect(matches[0]!.label).toBe(`Candidate ${answers[0]}`);
+    // Pitch never varies: rhythm is the only variable.
+    for (const s of a.audio!.segments!) {
+      expect(new Set(s.notes).size).toBe(1);
+    }
+  });
+
+  it("offers three progressive hints ending in the answer", () => {
+    const t = buildRhythmEchoTask(31);
+    expect(t.hints).toHaveLength(3);
+    const answer = t.choices!.find((c) => t.judge(c));
+    expect(t.hints[2]).toContain(`Candidate ${answer}`);
+  });
+
+  it("buildTask dispatches rhythm-echo", () => {
+    expect(buildTask("ch3-l1-durations", { kind: "rhythm-echo", seed: 31 }).taskId).toBe("rhythm-echo:31");
   });
 });
 

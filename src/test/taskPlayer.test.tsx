@@ -7,7 +7,7 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { TaskPlayer } from "../components/game/TaskPlayer.tsx";
-import { buildComparePitchTask, buildNoteIdTask, buildTask } from "../lib/game/tasks.ts";
+import { buildComparePitchTask, buildNoteIdTask, buildRhythmEchoTask, buildTask } from "../lib/game/tasks.ts";
 import { midiToName } from "../lib/game/music.ts";
 import { useStore } from "../lib/game/store.ts";
 
@@ -89,8 +89,11 @@ describe("buildTask dispatcher", () => {
     expect(a.taskId).toBe(b.taskId);
     expect(a.audio!.notes).toEqual(b.audio!.notes);
   });
-  it("throws a clear error for families authored in later waves", () => {
-    expect(() => buildTask("l", { kind: "rhythm-echo", seed: 1 })).toThrow(/later chapter wave/);
+  it("dispatches every authored family without throwing", () => {
+    expect(buildTask("l", { kind: "compare-pitch", seed: 1 }).kind).toBe("compare-pitch");
+    expect(buildTask("l", { kind: "note-id", seed: 1 }).kind).toBe("note-id");
+    expect(buildTask("l", { kind: "rhythm-echo", seed: 1 }).kind).toBe("rhythm-echo");
+    expect(buildTask("l", { kind: "self-attempt", seed: 1 }).kind).toBe("self-attempt");
   });
 });
 
@@ -134,6 +137,19 @@ describe("TaskPlayer (UI)", () => {
     expect(rec.firstCheckCorrect).toBe(true);
     expect(rec.assisted).toBe(false);
     expect(screen.getByText(/First try!/)).toBeTruthy();
+  });
+
+  it("renders one player per rhythm-echo segment and judges the match", () => {
+    const task = buildRhythmEchoTask(31);
+    const answer = task.choices!.find((c) => task.judge(c))!;
+    render(<TaskPlayer lessonId="ch3-l1-durations" task={task} />);
+    expect(screen.getByText("Target rhythm")).toBeTruthy();
+    expect(screen.getByText("Candidate 1")).toBeTruthy();
+    expect(screen.getByText("Candidate 2")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: answer }));
+    expect(screen.getByText(/shape of time/)).toBeTruthy();
+    const rec = useStore.getState().save.lessons["ch3-l1-durations"]!.tasks[0];
+    expect(rec.firstCheckCorrect).toBe(true);
   });
 
   it("renders fixed answer choices for the note-id family and judges them", () => {

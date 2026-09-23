@@ -21,7 +21,17 @@ export interface PracticalTask {
   /** Progressive hints: revealed one at a time, each makes the attempt "assisted". */
   hints: string[];
   /** Audio payload the TeachingPlayer can render as interactive demos. */
-  audio?: { notes: number[]; labels?: string[] };
+  audio?: {
+    notes: number[];
+    labels?: string[];
+    /** Per-note lengths in seconds; onsets accumulate so rhythms keep shape. */
+    durations?: number[];
+    /**
+     * Optional separately-playable segments (e.g. target vs candidates).
+     * When present, the UI renders one player per segment.
+     */
+    segments?: { label: string; notes: number[]; durations?: number[] }[];
+  };
   /**
    * Optional fixed answer choices (rendered as buttons); the attempt value
    * is the chosen string. Absent for open-ended families (compare-pitch
@@ -126,6 +136,61 @@ export function buildNoteIdTask(seed: number): PracticalTask {
   };
 }
 
+/**
+ * "Which one matches?": a target rhythm on one pitch, then two candidates —
+ * one identical, one different. Pure rhythm discrimination: pitch never
+ * varies, so only the shape of time is judged. Deterministic per seed.
+ */
+export function buildRhythmEchoTask(seed: number): PracticalTask {
+  const rand = mulberry32(seed);
+  // Rhythms in beats (quarter = 1); every pattern totals 2 beats.
+  const patterns: number[][] = [
+    [1, 1],
+    [0.5, 0.5, 1],
+    [1, 0.5, 0.5],
+    [0.5, 1, 0.5],
+    [1.5, 0.5],
+    [0.5, 0.5, 0.5, 0.5],
+  ];
+  const targetIdx = Math.floor(rand() * patterns.length);
+  let otherIdx = Math.floor(rand() * patterns.length);
+  if (otherIdx === targetIdx) otherIdx = (otherIdx + 1) % patterns.length;
+  const target = patterns[targetIdx]!;
+  const other = patterns[otherIdx]!;
+  const matchIsFirst = rand() < 0.5;
+  const answer = matchIsFirst ? "1" : "2";
+  const beat = 0.45; // seconds per beat
+  const render = (p: number[]) => ({
+    notes: p.map(() => 60),
+    durations: p.map((b) => b * beat),
+  });
+  const shapeWord = (b: number) => (b < 1 ? "short" : b > 1 ? "long" : "steady");
+  const shape = target.map(shapeWord).join(" – ");
+
+  return {
+    kind: "rhythm-echo",
+    taskId: taskIdFor("rhythm-echo", seed),
+    prompt: "Listen to the target rhythm, then to candidates 1 and 2. Which candidate matches the target?",
+    choices: ["1", "2"],
+    audio: {
+      ...render(target),
+      segments: [
+        { label: "Target rhythm", ...render(target) },
+        { label: "Candidate 1", ...render(matchIsFirst ? target : other) },
+        { label: "Candidate 2", ...render(matchIsFirst ? other : target) },
+      ],
+    },
+    hints: [
+      "Tap your foot steadily while each plays — feel where the sounds land against your taps.",
+      `The target goes: ${shape}. Which candidate moves the same way?`,
+      `Candidate ${answer} matches the target. Listen once more and feel it.`,
+    ],
+    judge: (attempt) => attempt === answer,
+    praise: "Exactly — you heard the shape of time. Rhythm is pattern, and you caught it.",
+    nudge: "Listen once more. Tap along — which candidate lands the same way as the target?",
+  };
+}
+
 /** Build a concrete task from an authored spec (deterministic per seed). */
 export function buildTask(lessonId: string, spec: { kind: TaskKind; seed: number }): PracticalTask {
   switch (spec.kind) {
@@ -133,10 +198,10 @@ export function buildTask(lessonId: string, spec: { kind: TaskKind; seed: number
       return buildComparePitchTask(spec.seed);
     case "note-id":
       return buildNoteIdTask(spec.seed);
+    case "rhythm-echo":
+      return buildRhythmEchoTask(spec.seed);
     case "self-attempt":
       return buildSelfAttemptTask(lessonId);
-    case "rhythm-echo":
-      throw new Error(`Task family "rhythm-echo" is authored in a later chapter wave`);
   }
 }
 

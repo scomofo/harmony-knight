@@ -352,3 +352,54 @@ describe("cancellation", () => {
     }
   });
 });
+
+// ---------------------------------------------------------- rhythm timing ---
+
+describe("rhythm timing", () => {
+  it("accumulates per-note durations into onsets", () => {
+    vi.useFakeTimers();
+    try {
+      const starts: number[] = [];
+      playSequence([60, 62, 64], {
+        lane: "rhythm",
+        durations: [0.5, 1.0, 0.25],
+        gap: 0,
+        onNoteStart: (i) => starts.push(i),
+      });
+      vi.advanceTimersByTime(0); // note 0 at t=0
+      expect(starts).toEqual([0]);
+      vi.advanceTimersByTime(500); // note 1 at t=500
+      expect(starts).toEqual([0, 1]);
+      vi.advanceTimersByTime(1000); // note 2 at t=1500
+      expect(starts).toEqual([0, 1, 2]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("rests schedule silence, keep time, and still complete", () => {
+    vi.useFakeTimers();
+    try {
+      const starts: number[] = [];
+      let done: boolean | null = null;
+      playSequence([60, -1, 62], {
+        lane: "rests",
+        durations: [0.2, 0.4, 0.2],
+        gap: 0,
+        onNoteStart: (i) => starts.push(i),
+        onDone: (c) => {
+          done = c;
+        },
+      });
+      expect(activeToneCount()).toBe(2); // the rest schedules no tone
+      vi.advanceTimersByTime(0);
+      expect(starts).toEqual([0]);
+      vi.advanceTimersByTime(600); // rest occupies 200-600ms; note 2 lands at 600
+      expect(starts).toEqual([0, 2]);
+      vi.runAllTimers();
+      expect(done).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

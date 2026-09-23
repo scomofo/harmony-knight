@@ -8,7 +8,7 @@
 
 export type LearnBlock =
   | { kind: "text"; body: string }
-  | { kind: "listen"; caption: string; midis: number[]; noteDuration?: number }
+  | { kind: "listen"; caption: string; midis: number[]; noteDuration?: number; durations?: number[] }
   | { kind: "visual"; caption: string; visual: LessonVisual };
 
 export type LessonVisual =
@@ -569,8 +569,205 @@ const CHAPTER_2: LessonBody[] = [
   },
 ];
 
+const CHAPTER_3: LessonBody[] = [
+  {
+    id: "ch3-l1-durations",
+    chapterId: "ch3-rhythm",
+    title: "Note Durations",
+    estimateMinutes: 4,
+    tryTask: { kind: "rhythm-echo", seed: 31 },
+    learn: [
+      {
+        kind: "text",
+        body: "Notes have lengths as well as pitches. A whole note lasts four beats, a half note two beats, a quarter note one beat, and an eighth note half a beat. Same pitch, different lengths — different music.",
+      },
+      {
+        kind: "listen",
+        caption: "Four quarters (1 1 1 1), then a half (2), then a whole (4) — count along.",
+        midis: [60, 60, 60, 60, 62, 64],
+        durations: [0.45, 0.45, 0.45, 0.45, 0.9, 1.8],
+      },
+      {
+        kind: "text",
+        body: "Two eighth notes fit inside one beat — that is why they are often beamed together in pairs. Count “1-and-2-and” and clap: every syllable is an eighth note.",
+      },
+      {
+        kind: "listen",
+        caption: "Eight eighth notes: 1-and-2-and-3-and-4-and.",
+        midis: [60, 60, 60, 60, 60, 60, 60, 60],
+        durations: [0.225, 0.225, 0.225, 0.225, 0.225, 0.225, 0.225, 0.225],
+      },
+    ],
+    checks: [
+      {
+        id: "ch3-l1-c1",
+        conceptId: "note-durations",
+        question: "A half note lasts…",
+        choices: ["Two beats", "One beat", "Four beats", "Half a beat"],
+        answerIndex: 0,
+        explanation: "Whole = 4, half = 2, quarter = 1, eighth = 1/2.",
+        hint: "Half of a whole note's four beats is…",
+      },
+      {
+        id: "ch3-l1-c2",
+        conceptId: "note-durations",
+        question: "How many eighth notes fit in one beat?",
+        choices: ["Two", "One", "Four", "Eight"],
+        answerIndex: 0,
+        explanation: "An eighth note is half a beat, so two of them fill one beat.",
+        hint: "“1-and” — how many sounds is that?",
+      },
+    ],
+  },
+  {
+    id: "ch3-l2-meter",
+    chapterId: "ch3-rhythm",
+    title: "Simple and Compound Meter",
+    estimateMinutes: 4,
+    tryTask: { kind: "rhythm-echo", seed: 32 },
+    learn: [
+      {
+        kind: "text",
+        body: "Meter is how beats group together. The top number of a time signature tells you how many beats per bar: 4/4 means four quarter-note beats in every bar; 3/4 means three.",
+      },
+      {
+        kind: "listen",
+        caption: "4/4: four beats per bar. Feel the first beat as home base.",
+        midis: [60, 60, 60, 60],
+        durations: [0.5, 0.5, 0.5, 0.5],
+      },
+      {
+        kind: "text",
+        body: "In 6/8, beats group in threes: two big beats, each splitting into three eighth notes. Count “1-2-3, 4-5-6” — that rolling, lilting feel is compound meter.",
+      },
+      {
+        kind: "listen",
+        caption: "6/8: two groups of three eighth notes — 1-2-3, 4-5-6.",
+        midis: [60, 60, 60, 60, 60, 60],
+        durations: [0.3, 0.3, 0.3, 0.3, 0.3, 0.3],
+      },
+    ],
+    checks: [
+      {
+        id: "ch3-l2-c1",
+        conceptId: "meter",
+        question: "In 4/4 time, each bar holds…",
+        choices: ["Four quarter-note beats", "Four eighth-note beats", "Three quarter-note beats", "Two half-note beats"],
+        answerIndex: 0,
+        explanation: "Top number = 4 beats; bottom number = the quarter note gets each beat.",
+        hint: "The top number counts the beats in every bar.",
+      },
+      {
+        id: "ch3-l2-c2",
+        conceptId: "meter",
+        question: "6/8 is called compound meter because its beats…",
+        choices: ["Split into three", "Split into two", "Are all accented", "Are silent"],
+        answerIndex: 0,
+        explanation: "In 6/8 each big beat divides into three eighth notes.",
+        hint: "Count it: 1-2-3, 4-5-6 — how many small parts per big beat?",
+      },
+    ],
+  },
+  {
+    id: "ch3-l3-dots",
+    chapterId: "ch3-rhythm",
+    title: "Dots",
+    estimateMinutes: 3,
+    tryTask: { kind: "rhythm-echo", seed: 33 },
+    learn: [
+      {
+        kind: "text",
+        body: "A dot after a note lengthens it by half its value. A dotted half note = half note + quarter = three beats. A dotted quarter = quarter + eighth = one and a half beats.",
+      },
+      {
+        kind: "listen",
+        caption: "Dotted quarter then eighth: long-short, long-short.",
+        midis: [60, 60, 60, 60],
+        durations: [0.675, 0.225, 0.675, 0.225],
+      },
+      {
+        kind: "text",
+        body: "That long-short snap drives marches, anthems, and pop hooks. Lean into the long note, then take the quick step after it.",
+      },
+      {
+        kind: "listen",
+        caption: "A dotted half note: three full beats on a single pitch.",
+        midis: [64],
+        durations: [1.35],
+      },
+    ],
+    checks: [
+      {
+        id: "ch3-l3-c1",
+        conceptId: "dotted-rhythm",
+        question: "A dot adds to a note's length…",
+        choices: ["Half its value again", "Double its value", "One extra beat", "Nothing — it is decoration"],
+        answerIndex: 0,
+        explanation: "Dot = +50%: a dotted half note is 2 + 1 = 3 beats.",
+        hint: "A dotted half note lasts three beats. A plain half note lasts two. What did the dot add?",
+      },
+      {
+        id: "ch3-l3-c2",
+        conceptId: "dotted-rhythm",
+        question: "A dotted quarter note lasts…",
+        choices: ["One and a half beats", "Two beats", "Three beats", "Half a beat"],
+        answerIndex: 0,
+        explanation: "Quarter (1) + eighth (0.5) = 1.5 beats.",
+        hint: "A quarter plus half a quarter is…",
+      },
+    ],
+  },
+  {
+    id: "ch3-l4-rests",
+    chapterId: "ch3-rhythm",
+    title: "Rests, Ties, Syncopation",
+    estimateMinutes: 4,
+    tryTask: { kind: "rhythm-echo", seed: 34 },
+    learn: [
+      {
+        kind: "text",
+        body: "Silence is written too. Every note value has a matching rest: whole rest, half rest, quarter rest, eighth rest. Music breathes in the gaps between sounds.",
+      },
+      {
+        kind: "listen",
+        caption: "Quarter, quarter rest, quarter, quarter — hear the silence land exactly on its beat.",
+        midis: [60, -1, 62, 64],
+        durations: [0.45, 0.45, 0.45, 0.45],
+      },
+      {
+        kind: "text",
+        body: "A tie joins two notes into one longer sound — the second note is not re-struck. Two tied quarters sound exactly like one half note.",
+      },
+      {
+        kind: "text",
+        body: "Syncopation stresses the off-beat — the “and” between counts. It surprises the foot and makes music dance. Clap on “and” instead of the numbers: that is syncopation.",
+      },
+    ],
+    checks: [
+      {
+        id: "ch3-l4-c1",
+        conceptId: "rhythm-symbols",
+        question: "A quarter rest means…",
+        choices: ["One beat of silence", "One beat of sound", "Four beats of silence", "Play quietly"],
+        answerIndex: 0,
+        explanation: "Rests mirror note values: a quarter rest silences exactly one beat.",
+        hint: "Match the rest to its note — a quarter note lasts one beat, so a quarter rest…",
+      },
+      {
+        id: "ch3-l4-c2",
+        conceptId: "rhythm-symbols",
+        question: "Two quarter notes joined by a tie sound like…",
+        choices: ["One half note", "Two separate quarters", "One whole note", "One eighth note"],
+        answerIndex: 0,
+        explanation: "A tie merges durations without re-striking: 1 + 1 = 2 beats.",
+        hint: "Add the two quarters together — but the second one is never played again.",
+      },
+    ],
+  },
+];
+
 const AUTHORED = new Map<string, LessonBody>(
-  [...CHAPTER_1, ...CHAPTER_2].map((l) => [l.id, l]),
+  [...CHAPTER_1, ...CHAPTER_2, ...CHAPTER_3].map((l) => [l.id, l]),
 );
 
 /** Authored body for a lesson, or undefined when not yet written. */

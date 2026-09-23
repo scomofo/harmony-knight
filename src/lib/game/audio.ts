@@ -179,12 +179,20 @@ export function playTone(
 /**
  * Play a sequence of MIDI notes back-to-back (or with gaps).
  * All tones share one lane so stop(lane) cancels the whole phrase.
+ *
+ * `durations` gives a per-note length in seconds (index-aligned with
+ * midis); onsets accumulate so rhythms keep their shape. When omitted,
+ * every note uses `noteDuration`.
+ *
+ * A midi value of -1 is a rest: no tone is scheduled, but its duration
+ * still advances the onset clock, so silence lands on the beat.
  */
 export function playSequence(
   midis: number[],
   opts: {
     lane?: string;
     noteDuration?: number;
+    durations?: number[];
     gap?: number;
     gain?: number;
     type?: OscillatorType;
@@ -196,24 +204,32 @@ export function playSequence(
   const noteDuration = opts.noteDuration ?? 0.5;
   const gap = opts.gap ?? 0.05;
   const cancels: Array<() => void> = [];
-  let doneCount = 0;
+  let pending = 0;
   let cancelled = false;
+  let onset = 0;
+  const noteDone = (c: boolean) => {
+    if (c) cancelled = true;
+    pending -= 1;
+    if (pending === 0) opts.onDone?.(cancelled);
+  };
   midis.forEach((midi, i) => {
-    const cancel = playTone(midi, {
-      lane: key,
-      at: i * (noteDuration + gap),
-      duration: noteDuration,
-      gain: opts.gain,
-      type: opts.type,
-      onStart: (t) => opts.onNoteStart?.(i, t),
-      onEnd: (c) => {
-        if (c) cancelled = true;
-        doneCount += 1;
-        if (doneCount === midis.length) opts.onDone?.(cancelled);
-      },
-    });
-    cancels.push(cancel);
+    const dur = opts.durations?.[i] ?? noteDuration;
+    if (midi >= 0) {
+      pending += 1;
+      const cancel = playTone(midi, {
+        lane: key,
+        at: onset,
+        duration: dur,
+        gain: opts.gain,
+        type: opts.type,
+        onStart: (t) => opts.onNoteStart?.(i, t),
+        onEnd: noteDone,
+      });
+      cancels.push(cancel);
+    }
+    onset += dur + gap;
   });
+  if (pending === 0) opts.onDone?.(false);
   return () => cancels.forEach((c) => c());
 }
 
