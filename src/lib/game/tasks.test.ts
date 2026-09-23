@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildChordIdTask, buildComparePitchTask, buildIntervalIdTask, buildNoteIdTask, buildRhythmEchoTask, buildScaleIdTask, buildSelfAttemptTask, buildTask, mulberry32 } from "./tasks.ts";
+import { buildCadenceIdTask, buildChordIdTask, buildComparePitchTask, buildIntervalIdTask, buildNoteIdTask, buildRhythmEchoTask, buildScaleIdTask, buildSelfAttemptTask, buildTask, mulberry32 } from "./tasks.ts";
 import { buildTriad, majorScale, midiToName, naturalMinorScale } from "./music.ts";
 
 describe("mulberry32", () => {
@@ -223,6 +223,70 @@ describe("buildChordIdTask", () => {
     expect(q.taskId).toBe("chord-id:quality:53");
     const p = buildTask("ch5-l4-inversions", { kind: "chord-id", seed: 54, variant: "position" });
     expect(p.taskId).toBe("chord-id:position:54");
+  });
+});
+
+describe("buildCadenceIdTask", () => {
+  it("is deterministic per seed with exactly one correct cadence", () => {
+    const a = buildCadenceIdTask(62, "final");
+    const b = buildCadenceIdTask(62, "final");
+    expect(a.taskId).toBe(b.taskId);
+    expect(a.audio!.notes).toEqual(b.audio!.notes);
+    const answers = a.choices!.filter((c) => a.judge(c));
+    expect(answers).toHaveLength(1);
+  });
+
+  it("final variant always closes on the tonic triad, from V or IV", () => {
+    for (const seed of [62, 63, 64, 65, 66]) {
+      const t = buildCadenceIdTask(seed, "final");
+      const notes = t.audio!.notes;
+      expect(notes).toHaveLength(6);
+      const answer = t.choices!.find((c) => t.judge(c))!;
+      const tonic = notes[3]!;
+      const I = [tonic, tonic + 4, tonic + 7];
+      expect(notes.slice(3)).toEqual(I);
+      const expectedFirst =
+        answer === "Authentic (V–I)"
+          ? [tonic + 7, tonic + 11, tonic + 14]
+          : [tonic + 5, tonic + 9, tonic + 12];
+      expect(notes.slice(0, 3)).toEqual(expectedFirst);
+    }
+  });
+
+  it("open variant ends on I exactly when the answer is closed", () => {
+    const eq = (a: number[], b: number[]) => a.length === b.length && a.every((n, i) => n === b[i]);
+    const triadOn = (tonic: number, degree: number) => [0, 4, 7].map((s) => tonic + degree + s);
+    const tonics = [60, 62, 65, 67];
+    for (const seed of [62, 63, 64, 65, 66, 67]) {
+      const t = buildCadenceIdTask(seed, "open");
+      const notes = t.audio!.notes;
+      const isClosed = t.choices!.find((c) => t.judge(c)) === "Closed (ends on I)";
+      // Exactly one key tonic is consistent with both chords and the answer…
+      const matches = tonics.filter((tonic) => {
+        const firstOk = [0, 5, 7].some((d) => eq(notes.slice(0, 3), triadOn(tonic, d)));
+        const secondOk = eq(notes.slice(3), triadOn(tonic, isClosed ? 0 : 7));
+        return firstOk && secondOk;
+      });
+      expect(matches).toHaveLength(1);
+      // …and no tonic is consistent with the opposite ending, so the answer is unambiguous.
+      const opposite = tonics.filter((tonic) => {
+        const firstOk = [0, 5, 7].some((d) => eq(notes.slice(0, 3), triadOn(tonic, d)));
+        const secondOk = eq(notes.slice(3), triadOn(tonic, isClosed ? 7 : 0));
+        return firstOk && secondOk;
+      });
+      expect(opposite).toHaveLength(0);
+    }
+  });
+
+  it("rejects unknown variants with a clear error", () => {
+    expect(() => buildCadenceIdTask(1, "spicy")).toThrow(/Unknown cadence-id variant/);
+  });
+
+  it("buildTask dispatches cadence-id with the spec variant", () => {
+    const f = buildTask("ch6-l2-cadences", { kind: "cadence-id", seed: 62, variant: "final" });
+    expect(f.taskId).toBe("cadence-id:final:62");
+    const o = buildTask("ch6-l3-open", { kind: "cadence-id", seed: 63, variant: "open" });
+    expect(o.taskId).toBe("cadence-id:open:63");
   });
 });
 

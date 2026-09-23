@@ -25,7 +25,7 @@ export type RecallCheck = {
   /** Progressive help: revealing it marks the attempt assisted. */
   hint: string;
   /** Optional audio the learner can replay while answering. */
-  audio?: { midis: number[]; labels?: string[] };
+  audio?: { midis: number[]; labels?: string[]; durations?: number[] };
 };
 
 import type { TaskKind } from "./tasks.ts";
@@ -1172,8 +1172,215 @@ const CHAPTER_5: LessonBody[] = [
   },
 ];
 
+const CHAPTER_6: LessonBody[] = [
+  {
+    id: "ch6-l1-numerals",
+    chapterId: "ch6-phrases",
+    title: "Roman Numerals",
+    estimateMinutes: 4,
+    tryTask: {
+      kind: "self-attempt",
+      seed: 0,
+      prompt:
+        "On paper, write the seven diatonic triads of G major with their roman numerals: I, ii, iii, IV, V, vi, vii°. Remember — uppercase for major, lowercase for minor. Check yourself against the lesson, then mark this done.",
+    },
+    learn: [
+      {
+        kind: "text",
+        body: "Roman numerals name chords by scale degree. In C major: C is I, Dm is ii, Em is iii, F is IV, G is V, Am is vi, Bdim is vii°. Uppercase = major, lowercase = minor.",
+      },
+      {
+        kind: "text",
+        body: "This system travels: I–IV–V means the same relationship in every key. Learn the pattern once, play it everywhere.",
+      },
+      {
+        kind: "listen",
+        caption: "I–IV–V in C: C, F, G triads, arpeggiated.",
+        midis: [60, 64, 67, 65, 69, 72, 67, 71, 74],
+        durations: [0.3, 0.3, 0.7, 0.3, 0.3, 0.7, 0.3, 0.3, 0.9],
+      },
+      {
+        kind: "text",
+        body: "The three majors — I, IV, V — carry most songs. The three minors — ii, iii, vi — add color. The vii° is the spice: tense, rare, and pointed.",
+      },
+    ],
+    checks: [
+      {
+        id: "ch6-l1-c1",
+        conceptId: "roman-numerals",
+        question: "In C major, the V chord is…",
+        choices: ["G major", "F major", "A minor", "C major"],
+        answerIndex: 0,
+        explanation: "Count up five: C(1) D(2) E(3) F(4) G(5) — and V is always major.",
+        hint: "Walk up five scale steps from C.",
+      },
+      {
+        id: "ch6-l1-c2",
+        conceptId: "roman-numerals",
+        question: "Lowercase roman numerals mean the chord is…",
+        choices: ["Minor", "Major", "Diminished", "Out of tune"],
+        answerIndex: 0,
+        explanation: "Uppercase = major (I, IV, V); lowercase = minor (ii, iii, vi); vii° takes the degree sign.",
+        hint: "Case carries quality — which case marks the minor chords?",
+      },
+    ],
+  },
+  {
+    id: "ch6-l2-cadences",
+    chapterId: "ch6-phrases",
+    title: "Authentic and Plagal Cadences",
+    estimateMinutes: 4,
+    tryTask: { kind: "cadence-id", seed: 62, variant: "final" },
+    learn: [
+      {
+        kind: "text",
+        body: "A cadence is chordal punctuation. V–I is the authentic cadence — the period at the end of the sentence: decisive, final, home.",
+      },
+      {
+        kind: "listen",
+        caption: "Authentic cadence: V–I in C (G → C).",
+        midis: [67, 71, 74, 60, 64, 67],
+        durations: [0.3, 0.3, 0.8, 0.4, 0.4, 1.1],
+      },
+      {
+        kind: "text",
+        body: "IV–I is the plagal cadence — the “Amen” ending. Gentler and warmer: a benediction rather than a decree.",
+      },
+      {
+        kind: "listen",
+        caption: "Plagal cadence: IV–I in C (F → C).",
+        midis: [65, 69, 72, 60, 64, 67],
+        durations: [0.3, 0.3, 0.8, 0.4, 0.4, 1.1],
+      },
+    ],
+    checks: [
+      {
+        id: "ch6-l2-c1",
+        conceptId: "cadences",
+        question: "An authentic cadence is…",
+        choices: ["V–I", "IV–I", "I–V", "ii–V"],
+        answerIndex: 0,
+        explanation: "The dominant driving to the tonic is the strongest close in tonal music.",
+        hint: "Which chord most wants to resolve home? That is the dominant.",
+        audio: { midis: [67, 71, 74, 60, 64, 67], durations: [0.3, 0.3, 0.8, 0.4, 0.4, 1.1] },
+      },
+      {
+        id: "ch6-l2-c2",
+        conceptId: "cadences",
+        question: "The plagal cadence (IV–I) is nicknamed…",
+        choices: ["The “Amen” cadence", "The “question” cadence", "The “wrong-note” cadence", "The “jazz” cadence"],
+        answerIndex: 0,
+        explanation: "Its gentle warmth closes hymns — “a-men” sung over IV–I.",
+        hint: "Think of the end of a hymn.",
+      },
+    ],
+  },
+  {
+    id: "ch6-l3-open",
+    chapterId: "ch6-phrases",
+    title: "Open Endings",
+    estimateMinutes: 4,
+    tryTask: { kind: "cadence-id", seed: 63, variant: "open" },
+    learn: [
+      {
+        kind: "text",
+        body: "Not every phrase ends at home. A half cadence lands on V — the dominant — leaving the sentence unfinished, leaning forward into whatever comes next.",
+      },
+      {
+        kind: "listen",
+        caption: "Half cadence: I–V in C — the phrase stays open.",
+        midis: [60, 64, 67, 67, 71, 74],
+        durations: [0.3, 0.3, 0.8, 0.4, 0.4, 1.1],
+      },
+      {
+        kind: "text",
+        body: "Landing on I feels like arriving; landing on V feels like pausing mid-thought. Composers spend open endings to pull you into the next phrase.",
+      },
+      {
+        kind: "listen",
+        caption: "Closed ending for contrast: I–V–I — open, then home.",
+        midis: [60, 64, 67, 67, 71, 74, 60, 64, 67],
+        durations: [0.3, 0.3, 0.6, 0.3, 0.3, 0.6, 0.4, 0.4, 1.1],
+      },
+    ],
+    checks: [
+      {
+        id: "ch6-l3-c1",
+        conceptId: "open-endings",
+        question: "A half cadence ends on…",
+        choices: ["V", "I", "IV", "vi"],
+        answerIndex: 0,
+        explanation: "Landing on the dominant leaves tension unresolved — the phrase stays open.",
+        hint: "Which chord leans forward instead of arriving?",
+        audio: { midis: [60, 64, 67, 67, 71, 74], durations: [0.3, 0.3, 0.8, 0.4, 0.4, 1.1] },
+      },
+      {
+        id: "ch6-l3-c2",
+        conceptId: "open-endings",
+        question: "An open ending makes the listener…",
+        choices: ["Want the next phrase", "Fall asleep", "Forget the key", "Stop listening"],
+        answerIndex: 0,
+        explanation: "Unresolved tension is a question; the next phrase is the answer.",
+        hint: "What does an unfinished sentence make you want?",
+      },
+    ],
+  },
+  {
+    id: "ch6-l4-melody",
+    chapterId: "ch6-phrases",
+    title: "Melody Over Chords",
+    estimateMinutes: 4,
+    tryTask: {
+      kind: "self-attempt",
+      seed: 0,
+      prompt:
+        "Hum or play a short four-note melody over a C major triad. First land on a chord tone (C, E, or G) and feel how settled it is — then try landing on a non-chord tone and feel the difference. Mark this done when you've tried both.",
+    },
+    learn: [
+      {
+        kind: "text",
+        body: "Melody floats on harmony: chord tones — the notes of the current chord — sound settled; other scale notes add passing color.",
+      },
+      {
+        kind: "text",
+        body: "Over a C chord, C, E, and G feel like home. D and F lean toward them — gentle tension you can spend by resolving.",
+      },
+      {
+        kind: "listen",
+        caption: "C major chord tones: C E G — the safe landing notes.",
+        midis: [60, 64, 67],
+        durations: [0.4, 0.4, 0.9],
+      },
+      {
+        kind: "text",
+        body: "Great melodies mix both: land on chord tones, travel on the rest. That balance is what makes a tune singable and alive.",
+      },
+    ],
+    checks: [
+      {
+        id: "ch6-l4-c1",
+        conceptId: "melody-over-chords",
+        question: "Over a C major chord, which notes sound most settled?",
+        choices: ["C, E, G", "D, F, A", "F#, C#, G#", "Any notes at random"],
+        answerIndex: 0,
+        explanation: "Chord tones always agree with the harmony underneath.",
+        hint: "Which notes spell the C major triad?",
+      },
+      {
+        id: "ch6-l4-c2",
+        conceptId: "melody-over-chords",
+        question: "Non-chord scale tones in a melody mostly…",
+        choices: ["Add passing color between chord tones", "Ruin the song", "Change the key", "Do nothing at all"],
+        answerIndex: 0,
+        explanation: "They create gentle tension that resolves when the melody lands on a chord tone.",
+        hint: "Travel notes versus landing notes — what is the traveling for?",
+      },
+    ],
+  },
+];
+
 const AUTHORED = new Map<string, LessonBody>(
-  [...CHAPTER_1, ...CHAPTER_2, ...CHAPTER_3, ...CHAPTER_4, ...CHAPTER_5].map((l) => [l.id, l]),
+  [...CHAPTER_1, ...CHAPTER_2, ...CHAPTER_3, ...CHAPTER_4, ...CHAPTER_5, ...CHAPTER_6].map((l) => [l.id, l]),
 );
 
 /** Authored body for a lesson, or undefined when not yet written. */

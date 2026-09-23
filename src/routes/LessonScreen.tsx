@@ -198,7 +198,7 @@ export function LessonScreen({ lessonId }: { lessonId: string }) {
                 <p className="font-semibold">{check.question}</p>
                 {check.audio && (
                   <div className="mt-3">
-                    <TeachingPlayer midis={check.audio.midis} caption="Listen again — take your time." lane={check.id} noteDuration={0.6} />
+                    <TeachingPlayer midis={check.audio.midis} caption="Listen again — take your time." lane={check.id} noteDuration={0.6} durations={check.audio.durations} />
                   </div>
                 )}
                 <div className="mt-3 space-y-2" role="radiogroup" aria-label={check.question}>

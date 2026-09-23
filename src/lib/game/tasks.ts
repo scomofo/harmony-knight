@@ -18,7 +18,8 @@ export type TaskKind =
   | "rhythm-echo"
   | "scale-id"
   | "interval-id"
-  | "chord-id";
+  | "chord-id"
+  | "cadence-id";
 
 export interface PracticalTask {
   kind: TaskKind;
@@ -330,6 +331,79 @@ export function buildChordIdTask(seed: number, variant: string | undefined): Pra
   };
 }
 
+/**
+ * "Which ending?": a two-chord progression in a seeded major key, each chord
+ * arpeggiated bottom-to-top with a held final note marking the boundary.
+ * Two variants:
+ * - "final": authentic (V–I) vs plagal (IV–I) — both close on the tonic.
+ * - "open": closed ending (…–I) vs half cadence (…–V).
+ */
+export function buildCadenceIdTask(seed: number, variant: string | undefined): PracticalTask {
+  if (variant !== undefined && variant !== "final" && variant !== "open") {
+    throw new Error(`Unknown cadence-id variant: "${variant}"`);
+  }
+  const mode = variant ?? "final";
+  const rand = mulberry32(seed);
+  const tonics = [60, 62, 65, 67]; // C D F G
+  const tonic = tonics[Math.floor(rand() * tonics.length)]!;
+  const triadOn = (degree: number) => [0, 4, 7].map((s) => tonic + degree + s);
+  const I = triadOn(0);
+  const IV = triadOn(5);
+  const V = triadOn(7);
+
+  let first: number[];
+  let second: number[];
+  let answer: string;
+  let prompt: string;
+  let choices: string[];
+  let hints: string[];
+  let praise: string;
+  const nudge = "Listen once more — focus on the very last chord. Home, or leaning forward?";
+
+  if (mode === "open") {
+    const firstPool = [I, IV, V];
+    first = firstPool[Math.floor(rand() * firstPool.length)]!;
+    const endsHome = rand() < 0.5;
+    second = endsHome ? I : V;
+    answer = endsHome ? "Closed (ends on I)" : "Open (ends on V)";
+    prompt = "Listen to the phrase ending. Does it sound finished — or unfinished?";
+    choices = ["Closed (ends on I)", "Open (ends on V)"];
+    hints = [
+      "Does the ending feel like arriving home — or like a sentence trailing off?",
+      "A half cadence lands on V, the dominant: it leans forward, asking for more.",
+      `It is ${answer.toLowerCase()}. Listen once more and feel the ${endsHome ? "arrival" : "lean"}.`,
+    ];
+    praise = `Exactly — ${answer.toLowerCase()}. You're hearing musical punctuation.`;
+  } else {
+    const authentic = rand() < 0.5;
+    first = authentic ? V : IV;
+    second = I;
+    answer = authentic ? "Authentic (V–I)" : "Plagal (IV–I)";
+    prompt = "Listen to the two chords. Which cadence closes the phrase?";
+    choices = ["Authentic (V–I)", "Plagal (IV–I)"];
+    hints = [
+      "The authentic cadence drives home from the dominant — decisive, like a period. The plagal is gentler, like an 'amen'.",
+      "Hum the bass notes: V–I leaps down a fifth to home; IV–I settles down more softly.",
+      `It is ${answer}. Listen once more and feel the ${authentic ? "drive" : "gentleness"}.`,
+    ];
+    praise = `Exactly — ${answer.toLowerCase()}. You're hearing how phrases end.`;
+  }
+
+  const notes = [...first, ...second];
+  const durations = [0.3, 0.3, 0.9, 0.35, 0.35, 1.1];
+  return {
+    kind: "cadence-id",
+    taskId: taskIdFor("cadence-id", `${mode}:${seed}`),
+    prompt,
+    audio: { notes, durations },
+    choices,
+    hints,
+    judge: (attempt) => attempt === answer,
+    praise,
+    nudge,
+  };
+}
+
 /** Build a concrete task from an authored spec (deterministic per seed). */
 export function buildTask(lessonId: string, spec: TaskSpec): PracticalTask {
   switch (spec.kind) {
@@ -345,6 +419,8 @@ export function buildTask(lessonId: string, spec: TaskSpec): PracticalTask {
       return buildIntervalIdTask(spec.seed);
     case "chord-id":
       return buildChordIdTask(spec.seed, spec.variant);
+    case "cadence-id":
+      return buildCadenceIdTask(spec.seed, spec.variant);
     case "self-attempt":
       return buildSelfAttemptTask(lessonId, spec.prompt);
   }
