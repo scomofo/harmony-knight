@@ -4,7 +4,7 @@
  * without touching the live store.
  */
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 export const SAVE_KEY = "harmony-knight-save-v1";
 
 export type LessonStep = "learn" | "try" | "recall" | "done";
@@ -109,6 +109,10 @@ export function defaultSettings(): Settings {
   };
 }
 
+export function defaultGameStats(): GameStats {
+  return { strikePlays: 0, strikeBest: 0, duelWins: 0, duelLosses: 0, duelDraws: 0 };
+}
+
 export function defaultSave(): SaveData {
   const now = Date.now();
   return {
@@ -125,7 +129,7 @@ export function defaultSave(): SaveData {
     gradeWindows: {},
     learningDays: [],
     creations: [],
-    gameStats: { strikePlays: 0, strikeBest: 0, duelWins: 0, duelLosses: 0, duelDraws: 0 },
+    gameStats: defaultGameStats(),
   };
 }
 
@@ -140,8 +144,34 @@ type Migration = {
 };
 
 const MIGRATIONS: Migration[] = [
-  // v1 is the first shipped schema; older unknown shapes are rejected, not guessed.
+  {
+    from: 1,
+    to: 2,
+    // v2 introduces gameStats. Saves written by the games build already
+    // carry it (schema v1); pre-games saves get defaults. Malformed values
+    // are sanitized per-field so one bad stat never wipes the rest.
+    migrate: (data) => ({
+      ...data,
+      gameStats: sanitizeGameStats(data.gameStats),
+      version: 2,
+    }),
+  },
 ];
+
+/** Coerce unknown input into a valid GameStats, preserving good fields. */
+export function sanitizeGameStats(v: unknown): GameStats {
+  const d = defaultGameStats();
+  if (!isRecord(v)) return d;
+  const num = (x: unknown, fallback: number): number =>
+    typeof x === "number" && Number.isFinite(x) && x >= 0 ? Math.floor(x) : fallback;
+  return {
+    strikePlays: num(v.strikePlays, d.strikePlays),
+    strikeBest: num(v.strikeBest, d.strikeBest),
+    duelWins: num(v.duelWins, d.duelWins),
+    duelLosses: num(v.duelLosses, d.duelLosses),
+    duelDraws: num(v.duelDraws, d.duelDraws),
+  };
+}
 
 /**
  * Migrate raw parsed data toward SAVE_VERSION. Returns null when the data
@@ -190,6 +220,49 @@ function validSettings(s: unknown): s is Settings {
   );
 }
 
+function validGameStats(v: unknown): v is GameStats {
+  if (!isRecord(v)) return false;
+  const keys = ["strikePlays", "strikeBest", "duelWins", "duelLosses", "duelDraws"] as const;
+  return keys.every((k) => {
+    const n = v[k];
+    return (
+      typeof n === "number" && Number.isFinite(n) && n >= 0 && Math.floor(n) === n
+    );
+  });
+}
+
+function validCreation(v: unknown): v is SavedCreation {
+  if (!isRecord(v)) return false;
+  return (
+    typeof v.id === "string" &&
+    v.id.length > 0 &&
+    typeof v.chapter === "number" &&
+    Number.isInteger(v.chapter) &&
+    v.chapter >= 1 &&
+    v.chapter <= 11 &&
+    typeof v.name === "string" &&
+    typeof v.updatedAt === "number" &&
+    Number.isFinite(v.updatedAt) &&
+    v.updatedAt >= 0
+    // `data` is intentionally opaque: parsed defensively at render time.
+  );
+}
+
+function validGradeWindows(v: unknown): boolean {
+  if (!isRecord(v)) return false;
+  return Object.values(v).every((w) => {
+    if (!isRecord(w)) return false;
+    const num = (x: unknown) =>
+      typeof x === "number" && Number.isFinite(x) && x >= 0;
+    return num(w.attempts) && num(w.correct);
+  });
+}
+
+/** Every value in the record must itself be a record (no primitives/arrays). */
+function recordOfRecords(v: unknown): v is Record<string, Record<string, unknown>> {
+  return isRecord(v) && Object.values(v).every(isRecord);
+}
+
 /**
  * Validate an imported save object: format, field ranges, and version.
  * Never throws; returns false for anything unsafe to adopt.
@@ -200,14 +273,17 @@ export function validateSave(data: unknown): data is SaveData {
   if (typeof data.createdAt !== "number" || typeof data.updatedAt !== "number") return false;
   if (typeof data.onboarded !== "boolean") return false;
   if (!validSettings(data.settings)) return false;
-  if (!isRecord(data.lessons) || !isRecord(data.concepts) || !isRecord(data.noteEvidence))
+  if (!recordOfRecords(data.lessons) || !recordOfRecords(data.concepts) || !recordOfRecords(data.noteEvidence))
     return false;
-  if (typeof data.harmonyPoints !== "number" || data.harmonyPoints < 0) return false;
-  if (typeof data.grade !== "number" || data.grade < 0 || data.grade > 10) return false;
-  if (!isRecord(data.gradeWindows)) return false;
-  if (!Array.isArray(data.learningDays)) return false;
-  if (!Array.isArray(data.creations)) return false;
-  if (!isRecord(data.gameStats)) return false;
+  if (typeof data.harmonyPoints !== "number" || !Number.isFinite(data.harmonyPoints) || data.harmonyPoints < 0)
+    return false;
+  if (typeof data.grade !== "number" || !Number.isInteger(data.grade) || data.grade < 0 || data.grade > 10)
+    return false;
+  if (!validGradeWindows(data.gradeWindows)) return false;
+  if (!Array.isArray(data.learningDays) || !data.learningDays.every((d) => typeof d === "string"))
+    return false;
+  if (!Array.isArray(data.creations) || !data.creations.every(validCreation)) return false;
+  if (!validGameStats(data.gameStats)) return false;
   // ~5MB cap keeps quota failures predictable.
   try {
     if (JSON.stringify(data).length > 5 * 1024 * 1024) return false;

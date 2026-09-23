@@ -28,3 +28,35 @@ body {
   animation-iteration-count: 1 !important;
   transition-duration: 0.01ms !important;
 }
+
+/* Visible keyboard focus everywhere. */
+:focus-visible {
+  outline: 3px solid #fbbf24;
+  outline-offset: 2px;
+}
+
+/* High contrast mode: solid black base, full-strength text, visible borders. */
+.hk-high-contrast body {
+  background: #000;
+  color: #fff;
+}
+.hk-high-contrast .text-white\/40,
+.hk-high-contrast .text-white\/50,
+.hk-high-contrast .text-white\/60,
+.hk-high-contrast .text-white\/70 {
+  color: #f5f5f5 !important;
+}
+.hk-high-contrast .text-amber-200,
+.hk-high-contrast .text-amber-300 {
+  color: #ffd75e !important;
+}
+.hk-high-contrast .border-white\/5,
+.hk-high-contrast .border-white\/10,
+.hk-high-contrast .border-white\/15,
+.hk-high-contrast .border-white\/20 {
+  border-color: rgba(255, 255, 255, 0.65) !important;
+}
+.hk-high-contrast .bg-white\/5,
+.hk-high-contrast .bg-white\/10 {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+}

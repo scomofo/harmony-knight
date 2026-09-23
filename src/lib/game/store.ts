@@ -98,6 +98,24 @@ function persist(save: SaveData, setStatus: (s: SaveStatus) => void): void {
   }, 150);
 }
 
+/**
+ * Flush any pending debounced write synchronously when the page is being
+ * torn down. Without this, the last ~150ms of progress could be lost when
+ * the tab closes before the debounce fires.
+ */
+function flushSync(): void {
+  window.clearTimeout(writeTimer);
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify(useStore.getState().save));
+  } catch {
+    /* last resort; nothing more we can do at teardown */
+  }
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("pagehide", flushSync);
+}
+
 export const useStore = create<Store>()((set, get) => ({
   save: load(),
   saveStatus: "ok",

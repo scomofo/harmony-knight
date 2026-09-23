@@ -7,11 +7,13 @@ import {
   Outlet,
   RouterProvider,
   useNavigate,
+  useRouterState,
 } from "@tanstack/react-router";
 import { stopAll } from "./lib/game/audio.ts";
 import { cancelEffects, setMotionPolicy } from "./lib/game/effects.ts";
 import { useStore } from "./lib/game/store.ts";
 import { EffectLayer } from "./components/game/EffectLayer.tsx";
+import { BreakReminder } from "./components/game/BreakReminder.tsx";
 import { HomeScreen, LearningPathScreen, OnboardingScreen } from "./routes/Screens.tsx";
 import { PracticeScreen } from "./routes/PracticeScreen.tsx";
 import { LessonScreen } from "./routes/LessonScreen.tsx";
@@ -23,10 +25,31 @@ import { StrikeScreen } from "./routes/StrikeScreen.tsx";
 import { DuelScreen } from "./routes/DuelScreen.tsx";
 import { GradesScreen } from "./routes/GradesScreen.tsx";
 
+const ROUTE_TITLES: Array<[RegExp, string]> = [
+  [/^\/onboarding/, "Begin your quest"],
+  [/^\/path/, "Learning path"],
+  [/^\/lesson/, "Lesson"],
+  [/^\/practice/, "Practice"],
+  [/^\/games/, "Play"],
+  [/^\/studies/, "Studies"],
+  [/^\/create/, "Create"],
+  [/^\/strike/, "Strike"],
+  [/^\/duel/, "Duel"],
+  [/^\/grades/, "Grades"],
+  [/^\/settings/, "Settings"],
+];
+
+/** Page title for a pathname. Exported for tests. */
+export function titleFor(pathname: string): string {
+  const hit = ROUTE_TITLES.find(([re]) => re.test(pathname));
+  return hit ? `Harmony Knight — ${hit[1]}` : "Harmony Knight — music theory, one idea at a time";
+}
+
 function Shell() {
   const settings = useStore((s) => s.save.settings);
   const onboarded = useStore((s) => s.save.onboarded);
   const navigate = useNavigate();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   // Apply motion/audio policy from saved settings on boot.
   useEffect(() => {
@@ -55,6 +78,16 @@ function Shell() {
     if (!onboarded) navigate({ to: "/onboarding" });
   }, [onboarded, navigate]);
 
+  // Navigating away is a documented interruption: stop in-flight sound and
+  // effects, name the new page, and move focus to its main region so
+  // keyboard and screen-reader users land in the right place.
+  useEffect(() => {
+    stopAll();
+    cancelEffects();
+    document.title = titleFor(pathname);
+    document.getElementById("main-content")?.focus({ preventScroll: true });
+  }, [pathname]);
+
   return (
     <div className="min-h-screen">
       <EffectLayer />
@@ -77,9 +110,10 @@ function Shell() {
           </Link>
         </nav>
       </header>
-      <main>
+      <main id="main-content" tabIndex={-1} className="outline-none">
         <Outlet />
       </main>
+      <BreakReminder />
     </div>
   );
 }
