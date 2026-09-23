@@ -20,7 +20,8 @@ export type TaskKind =
   | "interval-id"
   | "chord-id"
   | "cadence-id"
-  | "motion-id";
+  | "motion-id"
+  | "modulation-id";
 
 export interface PracticalTask {
   kind: TaskKind;
@@ -502,6 +503,80 @@ export function buildMotionIdTask(seed: number): PracticalTask {
   };
 }
 
+/**
+ * "Did the key change?": two short I–V–I phrases, each arpeggiated with a
+ * held final tonic (the gap between phrases is the longer rest). Two variants:
+ * - "detect": the second phrase stays in the same key or moves a fifth away.
+ * - "where": the second phrase always moves — up a fifth (brighter) or down
+ *   a fifth (warmer).
+ */
+export function buildModulationIdTask(seed: number, variant: string | undefined): PracticalTask {
+  if (variant !== undefined && variant !== "detect" && variant !== "where") {
+    throw new Error(`Unknown modulation-id variant: "${variant}"`);
+  }
+  const mode = variant ?? "detect";
+  const rand = mulberry32(seed);
+  const tonics = [60, 62, 65, 67]; // C D F G
+  const tonic = tonics[Math.floor(rand() * tonics.length)]!;
+
+  /** I–V–I arpeggio in the given key; final tonic held longer. */
+  const phrase = (t: number, finalHold: number) => {
+    const I = [t, t + 4, t + 7];
+    const V = [t + 7, t + 11, t + 14];
+    return {
+      notes: [...I, ...V, ...I],
+      durations: [0.3, 0.3, 0.7, 0.3, 0.3, 0.7, 0.4, 0.4, finalHold],
+    };
+  };
+
+  let secondTonic: number;
+  let answer: string;
+  let prompt: string;
+  let choices: string[];
+  let hints: string[];
+  let praise: string;
+
+  if (mode === "where") {
+    const up = rand() < 0.5;
+    secondTonic = up ? tonic + 7 : tonic - 7;
+    answer = up ? "Up a fifth — brighter" : "Down a fifth — warmer";
+    prompt = "The second phrase moves to a new key a fifth away. Which direction — brighter or warmer?";
+    choices = ["Up a fifth — brighter", "Down a fifth — warmer"];
+    hints = [
+      "Up a fifth feels brighter, like sunrise; down a fifth feels warmer, like sunset.",
+      "Compare the final resting notes: does the second home sit higher or lower than the first?",
+      `It moves ${up ? "up" : "down"} a fifth. Listen once more and feel the ${up ? "lift" : "settle"}.`,
+    ];
+    praise = `Exactly — ${up ? "up" : "down"} a fifth. You're hearing the geography of keys.`;
+  } else {
+    const same = rand() < 0.5;
+    secondTonic = same ? tonic : tonic + (rand() < 0.5 ? 7 : -7);
+    answer = same ? "Same key" : "New key";
+    prompt = "Listen to both phrases. Does the second phrase stay in the same key — or move to a new one?";
+    choices = ["Same key", "New key"];
+    hints = [
+      "Listen to where each phrase comes to rest. Does the second phrase land on the same home note as the first?",
+      "Hum the final note of each phrase. Same pitch — or different?",
+      `The second phrase is in ${same ? "the same key" : "a new key"}. Listen once more and track the home note.`,
+    ];
+    praise = `Exactly — ${same ? "same key" : "a new key"}. Your ear is tracking tonal home.`;
+  }
+
+  const p1 = phrase(tonic, 1.6); // longer hold = the gap between phrases
+  const p2 = phrase(secondTonic, 1.2);
+  return {
+    kind: "modulation-id",
+    taskId: taskIdFor("modulation-id", `${mode}:${seed}`),
+    prompt,
+    audio: { notes: [...p1.notes, ...p2.notes], durations: [...p1.durations, ...p2.durations] },
+    choices,
+    hints,
+    judge: (attempt) => attempt === answer,
+    praise,
+    nudge: "Listen once more — follow each phrase to its resting note.",
+  };
+}
+
 /** Build a concrete task from an authored spec (deterministic per seed). */
 export function buildTask(lessonId: string, spec: TaskSpec): PracticalTask {
   switch (spec.kind) {
@@ -521,6 +596,8 @@ export function buildTask(lessonId: string, spec: TaskSpec): PracticalTask {
       return buildCadenceIdTask(spec.seed, spec.variant);
     case "motion-id":
       return buildMotionIdTask(spec.seed);
+    case "modulation-id":
+      return buildModulationIdTask(spec.seed, spec.variant);
     case "self-attempt":
       return buildSelfAttemptTask(lessonId, spec.prompt);
   }

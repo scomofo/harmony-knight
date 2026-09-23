@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCadenceIdTask, buildChordIdTask, buildComparePitchTask, buildIntervalIdTask, buildMotionIdTask, buildNoteIdTask, buildRhythmEchoTask, buildScaleIdTask, buildSelfAttemptTask, buildTask, mulberry32 } from "./tasks.ts";
+import { buildCadenceIdTask, buildChordIdTask, buildComparePitchTask, buildIntervalIdTask, buildModulationIdTask, buildMotionIdTask, buildNoteIdTask, buildRhythmEchoTask, buildScaleIdTask, buildSelfAttemptTask, buildTask, mulberry32 } from "./tasks.ts";
 import { buildTriad, majorScale, midiToName, naturalMinorScale } from "./music.ts";
 
 describe("mulberry32", () => {
@@ -335,6 +335,68 @@ describe("buildMotionIdTask", () => {
 
   it("buildTask dispatches motion-id", () => {
     expect(buildTask("ch7-l1-species", { kind: "motion-id", seed: 71 }).taskId).toBe("motion-id:71");
+  });
+});
+
+describe("buildModulationIdTask", () => {
+  it("is deterministic per seed with exactly one correct answer", () => {
+    const a = buildModulationIdTask(83, "detect");
+    const b = buildModulationIdTask(83, "detect");
+    expect(a.taskId).toBe(b.taskId);
+    expect(a.audio!.notes).toEqual(b.audio!.notes);
+    const answers = a.choices!.filter((c) => a.judge(c));
+    expect(answers).toHaveLength(1);
+  });
+
+  it("voices two true I–V–I phrases", () => {
+    for (const seed of [83, 84, 85, 86]) {
+      for (const variant of ["detect", "where"] as const) {
+        const t = buildModulationIdTask(seed, variant);
+        const notes = t.audio!.notes;
+        expect(notes).toHaveLength(18);
+        for (const offset of [0, 9]) {
+          const p = notes.slice(offset, offset + 9);
+          const tonic = p[0]!;
+          // I arpeggio, V arpeggio, I arpeggio.
+          expect(p.slice(0, 3)).toEqual([tonic, tonic + 4, tonic + 7]);
+          expect(p.slice(3, 6)).toEqual([tonic + 7, tonic + 11, tonic + 14]);
+          expect(p.slice(6, 9)).toEqual([tonic, tonic + 4, tonic + 7]);
+        }
+      }
+    }
+  });
+
+  it("detect variant moves a fifth exactly when the answer is 'New key'", () => {
+    for (const seed of [83, 84, 85, 86, 87, 88]) {
+      const t = buildModulationIdTask(seed, "detect");
+      const notes = t.audio!.notes;
+      const answer = t.choices!.find((c) => t.judge(c))!;
+      const shift = notes[9]! - notes[0]!;
+      if (answer === "Same key") expect(shift).toBe(0);
+      else expect(Math.abs(shift)).toBe(7);
+    }
+  });
+
+  it("where variant moves up exactly when the answer says brighter", () => {
+    for (const seed of [83, 84, 85, 86, 87, 88]) {
+      const t = buildModulationIdTask(seed, "where");
+      const notes = t.audio!.notes;
+      const answer = t.choices!.find((c) => t.judge(c))!;
+      const shift = notes[9]! - notes[0]!;
+      expect(Math.abs(shift)).toBe(7);
+      expect(answer === "Up a fifth — brighter").toBe(shift === 7);
+    }
+  });
+
+  it("rejects unknown variants with a clear error", () => {
+    expect(() => buildModulationIdTask(1, "spicy")).toThrow(/Unknown modulation-id variant/);
+  });
+
+  it("buildTask dispatches modulation-id with the spec variant", () => {
+    const d = buildTask("ch8-l3-tonicization", { kind: "modulation-id", seed: 83, variant: "detect" });
+    expect(d.taskId).toBe("modulation-id:detect:83");
+    const w = buildTask("ch8-l4-secondary", { kind: "modulation-id", seed: 84, variant: "where" });
+    expect(w.taskId).toBe("modulation-id:where:84");
   });
 });
 

@@ -1589,8 +1589,211 @@ const CHAPTER_7: LessonBody[] = [
   },
 ];
 
+const CHAPTER_8: LessonBody[] = [
+  {
+    id: "ch8-l1-related",
+    chapterId: "ch8-keychange",
+    title: "Closely Related Keys",
+    estimateMinutes: 4,
+    tryTask: {
+      kind: "self-attempt",
+      seed: 0,
+      prompt:
+        "On paper, list the five closely related keys of G major: its dominant, its subdominant, its relative minor, and the relatives of the dominant and subdominant. (One of them is E minor — find the other four.) Check against the lesson, then mark this done.",
+    },
+    learn: [
+      {
+        kind: "text",
+        body: "Keys that share most of their notes are closely related. From C major: G major (one sharp), F major (one flat), A minor (the same notes), plus E minor and D minor.",
+      },
+      {
+        kind: "text",
+        body: "The rule: the dominant key, the subdominant key, the relative minor — and the relatives of those two. Five close neighbors; everyone else is distant.",
+      },
+      {
+        kind: "listen",
+        caption: "C major, then its close neighbors G and F — hear how little changes.",
+        midis: [60, 64, 67, 67, 71, 74, 65, 69, 72],
+        durations: [0.3, 0.3, 0.7, 0.3, 0.3, 0.7, 0.3, 0.3, 0.9],
+      },
+      {
+        kind: "text",
+        body: "Distant keys share few notes, so moving there feels like a real journey — composers save those moves for the big moments.",
+      },
+    ],
+    checks: [
+      {
+        id: "ch8-l1-c1",
+        conceptId: "related-keys",
+        question: "Which key is most closely related to C major?",
+        choices: ["G major", "F# major", "Db major", "B major"],
+        answerIndex: 0,
+        explanation: "The dominant key differs by a single accidental — the closest possible move.",
+        hint: "Which neighbor sits one step clockwise on the circle of fifths?",
+      },
+      {
+        id: "ch8-l1-c2",
+        conceptId: "related-keys",
+        question: "A minor is closely related to C major because…",
+        choices: ["They share the same key signature", "They share a name", "They are both loud", "They have no rhythm"],
+        answerIndex: 0,
+        explanation: "Relative keys share all seven notes — maximum closeness.",
+        hint: "What do relative keys share?",
+      },
+    ],
+  },
+  {
+    id: "ch8-l2-pivot",
+    chapterId: "ch8-keychange",
+    title: "Pivot Chords",
+    estimateMinutes: 4,
+    tryTask: {
+      kind: "self-attempt",
+      seed: 0,
+      prompt:
+        "Find a pivot chord between C major and G major: one chord with a sensible roman numeral in both keys. (Hint: Am is vi in C and ii in G.) Write the two numerals, then play or hum C – Am – D – G and feel the doorway swing. Mark this done when you've found your pivot.",
+    },
+    learn: [
+      {
+        kind: "text",
+        body: "A pivot chord belongs to two keys at once — it means one thing in the old key and another in the new. It is the doorway between tonal worlds.",
+      },
+      {
+        kind: "text",
+        body: "Example: Am is vi in C major and ii in G major. Play C – Am – D – G and the Am quietly ushers you from C into G.",
+      },
+      {
+        kind: "listen",
+        caption: "C → Am → D → G: the Am pivots us into G major.",
+        midis: [60, 64, 67, 57, 60, 64, 62, 66, 69, 67, 71, 74],
+        durations: [0.3, 0.3, 0.7, 0.3, 0.3, 0.7, 0.3, 0.3, 0.7, 0.3, 0.3, 0.9],
+      },
+      {
+        kind: "text",
+        body: "Good pivots are smooth: the ear follows the familiar chord, and only afterward realizes the key has changed.",
+      },
+    ],
+    checks: [
+      {
+        id: "ch8-l2-c1",
+        conceptId: "pivot-chords",
+        question: "A pivot chord is…",
+        choices: ["A chord shared by two keys", "A very loud chord", "The first chord of a piece", "A chord with no root"],
+        answerIndex: 0,
+        explanation: "One chord, two harmonic jobs — the bridge between keys.",
+        hint: "Pivot: what does the word itself suggest?",
+      },
+      {
+        id: "ch8-l2-c2",
+        conceptId: "pivot-chords",
+        question: "Am can pivot from C major to G major because it is…",
+        choices: ["vi in C and ii in G", "I in both keys", "V in both keys", "In neither key"],
+        answerIndex: 0,
+        explanation: "A–C–E: the sixth degree of C major, the second degree of G major.",
+        hint: "Spell Am. Where does A sit in the C scale? In the G scale?",
+        audio: { midis: [57, 60, 64], durations: [0.4, 0.4, 0.9] },
+      },
+    ],
+  },
+  {
+    id: "ch8-l3-tonicization",
+    chapterId: "ch8-keychange",
+    title: "Tonicization and Modulation",
+    estimateMinutes: 4,
+    tryTask: { kind: "modulation-id", seed: 83, variant: "detect" },
+    learn: [
+      {
+        kind: "text",
+        body: "Tonicization treats a non-tonic chord like a temporary home — a brief visit. Modulation moves house: the new key takes over.",
+      },
+      {
+        kind: "listen",
+        caption: "Tonicization: a brief visit to V inside C major (I – V/V – V – I).",
+        midis: [60, 64, 67, 62, 66, 69, 67, 71, 74, 60, 64, 67],
+        durations: [0.3, 0.3, 0.7, 0.3, 0.3, 0.7, 0.3, 0.3, 0.7, 0.4, 0.4, 1.0],
+      },
+      {
+        kind: "text",
+        body: "The difference is commitment: a tonicization tips its hat and leaves; a modulation cadences in the new key and stays.",
+      },
+      {
+        kind: "text",
+        body: "Your ear knows the difference: if the music keeps cadencing somewhere new, you've modulated. One borrowed chord is just a visit.",
+      },
+    ],
+    checks: [
+      {
+        id: "ch8-l3-c1",
+        conceptId: "tonicization",
+        question: "Tonicization differs from modulation in…",
+        choices: ["How long the new key lasts", "Loudness", "Tempo", "Instrumentation"],
+        answerIndex: 0,
+        explanation: "A visit versus a move: tonicization is brief, modulation commits.",
+        hint: "Visit versus move — what distinguishes them?",
+      },
+      {
+        id: "ch8-l3-c2",
+        conceptId: "tonicization",
+        question: "You know a modulation has really happened when…",
+        choices: ["The music cadences in the new key", "One note is sharp", "The piece gets louder", "The tempo changes"],
+        answerIndex: 0,
+        explanation: "A cadence confirms the new tonic — without it, it's only a visit.",
+        hint: "What confirms a new home?",
+      },
+    ],
+  },
+  {
+    id: "ch8-l4-secondary",
+    chapterId: "ch8-keychange",
+    title: "Secondary Dominants",
+    estimateMinutes: 4,
+    tryTask: { kind: "modulation-id", seed: 84, variant: "where" },
+    learn: [
+      {
+        kind: "text",
+        body: "A secondary dominant is the V of something else — a dominant borrowed to tonicize another chord. In C major, D major (V/V) leans hard into G.",
+      },
+      {
+        kind: "listen",
+        caption: "V/V – V – I in C: D major leans into G, which leans home.",
+        midis: [62, 66, 69, 67, 71, 74, 60, 64, 67],
+        durations: [0.3, 0.3, 0.7, 0.3, 0.3, 0.7, 0.4, 0.4, 1.0],
+      },
+      {
+        kind: "text",
+        body: "Notated V/V, V/vi, and so on — read it as “the dominant of…”. Each one is a spotlight swung onto its target chord.",
+      },
+      {
+        kind: "text",
+        body: "Secondary dominants add delicious tension: the ear hears the pull, anticipates the arrival, and the resolution satisfies.",
+      },
+    ],
+    checks: [
+      {
+        id: "ch8-l4-c1",
+        conceptId: "secondary-dominants",
+        question: "In C major, V/V is…",
+        choices: ["D major", "G major", "A major", "E major"],
+        answerIndex: 0,
+        explanation: "The dominant of G (the V) is D — major, with its F# leading into G.",
+        hint: "V is G. What is the dominant of G?",
+        audio: { midis: [62, 66, 69], durations: [0.4, 0.4, 0.9] },
+      },
+      {
+        id: "ch8-l4-c2",
+        conceptId: "secondary-dominants",
+        question: "Secondary dominants create…",
+        choices: ["Extra pull toward their target chord", "Confusion about the key", "Silence", "A key change every time"],
+        answerIndex: 0,
+        explanation: "They tonicize briefly — a spotlight, not a relocation.",
+        hint: "What does a dominant do? Now aim it at V instead of I.",
+      },
+    ],
+  },
+];
+
 const AUTHORED = new Map<string, LessonBody>(
-  [...CHAPTER_1, ...CHAPTER_2, ...CHAPTER_3, ...CHAPTER_4, ...CHAPTER_5, ...CHAPTER_6, ...CHAPTER_7].map((l) => [l.id, l]),
+  [...CHAPTER_1, ...CHAPTER_2, ...CHAPTER_3, ...CHAPTER_4, ...CHAPTER_5, ...CHAPTER_6, ...CHAPTER_7, ...CHAPTER_8].map((l) => [l.id, l]),
 );
 
 /** Authored body for a lesson, or undefined when not yet written. */
