@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildComparePitchTask, buildNoteIdTask, buildRhythmEchoTask, buildScaleIdTask, buildSelfAttemptTask, buildTask, mulberry32 } from "./tasks.ts";
-import { majorScale, midiToName, naturalMinorScale } from "./music.ts";
+import { buildChordIdTask, buildComparePitchTask, buildIntervalIdTask, buildNoteIdTask, buildRhythmEchoTask, buildScaleIdTask, buildSelfAttemptTask, buildTask, mulberry32 } from "./tasks.ts";
+import { buildTriad, majorScale, midiToName, naturalMinorScale } from "./music.ts";
 
 describe("mulberry32", () => {
   it("is deterministic for the same seed", () => {
@@ -157,6 +157,72 @@ describe("buildScaleIdTask", () => {
 
   it("buildTask dispatches scale-id", () => {
     expect(buildTask("ch4-l1-major", { kind: "scale-id", seed: 41 }).taskId).toBe("scale-id:41");
+  });
+});
+
+describe("buildIntervalIdTask", () => {
+  it("is deterministic per seed with exactly one correct interval", () => {
+    const a = buildIntervalIdTask(51);
+    const b = buildIntervalIdTask(51);
+    expect(a.taskId).toBe(b.taskId);
+    expect(a.audio!.notes).toEqual(b.audio!.notes);
+    const answers = a.choices!.filter((c) => a.judge(c));
+    expect(answers).toHaveLength(1);
+    expect(["3rd", "5th", "Octave"]).toContain(answers[0]);
+  });
+
+  it("plays the true interval between the two notes", () => {
+    for (const seed of [51, 52, 53, 54, 55]) {
+      const t = buildIntervalIdTask(seed);
+      const [lo, hi] = t.audio!.notes as [number, number];
+      const answer = t.choices!.find((c) => t.judge(c))!;
+      const expectedSemis = answer === "3rd" ? 4 : answer === "5th" ? 7 : 12;
+      expect(hi - lo).toBe(expectedSemis);
+    }
+  });
+
+  it("buildTask dispatches interval-id", () => {
+    expect(buildTask("ch5-l1-intervals", { kind: "interval-id", seed: 51 }).taskId).toBe("interval-id:51");
+  });
+});
+
+describe("buildChordIdTask", () => {
+  it("quality variant plays a true major or minor triad", () => {
+    for (const seed of [53, 54, 55, 56]) {
+      const t = buildChordIdTask(seed, "quality");
+      const notes = t.audio!.notes;
+      expect(notes).toHaveLength(3);
+      const answer = t.choices!.find((c) => t.judge(c))!;
+      const expected = buildTriad(notes[0]!, answer === "Major" ? "major" : "minor");
+      expect(notes).toEqual(expected);
+    }
+  });
+
+  it("position variant puts the third in the bass exactly when inverted", () => {
+    for (const seed of [53, 54, 55, 56, 57, 58]) {
+      const t = buildChordIdTask(seed, "position");
+      const notes = t.audio!.notes;
+      const answer = t.choices!.find((c) => t.judge(c))!;
+      if (answer === "Root position") {
+        expect(notes).toEqual(buildTriad(notes[0]!, "major"));
+      } else {
+        // First inversion: third, fifth, root+octave.
+        const root = notes[2]! - 12;
+        const triad = buildTriad(root, "major");
+        expect(notes).toEqual([triad[1], triad[2], triad[0]! + 12]);
+      }
+    }
+  });
+
+  it("rejects unknown variants with a clear error", () => {
+    expect(() => buildChordIdTask(1, "spicy")).toThrow(/Unknown chord-id variant/);
+  });
+
+  it("buildTask dispatches chord-id with the spec variant", () => {
+    const q = buildTask("ch5-l3-triads", { kind: "chord-id", seed: 53, variant: "quality" });
+    expect(q.taskId).toBe("chord-id:quality:53");
+    const p = buildTask("ch5-l4-inversions", { kind: "chord-id", seed: 54, variant: "position" });
+    expect(p.taskId).toBe("chord-id:position:54");
   });
 });
 

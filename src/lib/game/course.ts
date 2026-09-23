@@ -31,7 +31,7 @@ export type RecallCheck = {
 import type { TaskKind } from "./tasks.ts";
 
 /** Authored task reference: deterministic per kind+seed. */
-export type TaskSpec = { kind: TaskKind; seed: number; prompt?: string };
+export type TaskSpec = { kind: TaskKind; seed: number; prompt?: string; variant?: string };
 
 export type LessonBody = {
   id: string;
@@ -969,8 +969,211 @@ const CHAPTER_4: LessonBody[] = [
   },
 ];
 
+const CHAPTER_5: LessonBody[] = [
+  {
+    id: "ch5-l1-intervals",
+    chapterId: "ch5-chords",
+    title: "Intervals",
+    estimateMinutes: 4,
+    tryTask: { kind: "interval-id", seed: 51 },
+    learn: [
+      {
+        kind: "text",
+        body: "An interval is the distance between two pitches. We count letter names: C to E is a third (C-D-E), C to G is a fifth (C-D-E-F-G).",
+      },
+      {
+        kind: "listen",
+        caption: "A third (C–E), then a fifth (C–G), then an octave (C–C).",
+        midis: [60, 64, 60, 67, 60, 72],
+        noteDuration: 0.5,
+      },
+      {
+        kind: "text",
+        body: "Intervals have qualities too: thirds and sixths come in major (bright) and minor (tender) flavors, while unisons, fourths, fifths, and octaves are called perfect.",
+      },
+      {
+        kind: "visual",
+        caption: "C, E, G, C: the third, fifth, and octave above C.",
+        visual: { kind: "keyboard", from: 60, to: 72, highlight: [60, 64, 67, 72] },
+      },
+    ],
+    checks: [
+      {
+        id: "ch5-l1-c1",
+        conceptId: "intervals",
+        question: "C up to G is a…",
+        choices: ["Fifth", "Third", "Sixth", "Octave"],
+        answerIndex: 0,
+        explanation: "Count the letters: C(1) D(2) E(3) F(4) G(5).",
+        hint: "Count the letter names from C to G, including both ends.",
+      },
+      {
+        id: "ch5-l1-c2",
+        conceptId: "intervals",
+        question: "Which interval is called “perfect”?",
+        choices: ["The fifth", "The third", "The sixth", "The second"],
+        answerIndex: 0,
+        explanation: "Unisons, fourths, fifths, and octaves are perfect; 2nds, 3rds, 6ths, and 7ths come in major/minor.",
+        hint: "It is the one that sounds most hollow and settled — neither major nor minor.",
+      },
+    ],
+  },
+  {
+    id: "ch5-l2-consonance",
+    chapterId: "ch5-chords",
+    title: "Consonance and Tension",
+    estimateMinutes: 4,
+    tryTask: {
+      kind: "self-attempt",
+      seed: 0,
+      prompt:
+        "At your instrument (or in your head), play a major third, then a minor second. Sit with each: one feels like home, the other like it wants to move. Then resolve the tense one into the stable one. When you've felt the difference, mark this done.",
+    },
+    learn: [
+      {
+        kind: "text",
+        body: "Some intervals sound stable and restful — consonant. Others sound tense, as if they want to move — dissonant. Thirds and sixths are sweet; seconds and sevenths bite.",
+      },
+      {
+        kind: "listen",
+        caption: "A major third (stable), then a minor second (tense).",
+        midis: [60, 64, 60, 61],
+        noteDuration: 0.6,
+      },
+      {
+        kind: "text",
+        body: "Dissonance is not bad — it is narrative. Tension asks a question; consonance answers it. Every great melody spends tension and earns rest.",
+      },
+      {
+        kind: "listen",
+        caption: "Tension resolving to rest: a minor second melting into a major third.",
+        midis: [60, 61, 60, 64],
+        durations: [0.5, 0.5, 0.5, 0.9],
+      },
+    ],
+    checks: [
+      {
+        id: "ch5-l2-c1",
+        conceptId: "consonance",
+        question: "A minor second sounds…",
+        choices: ["Tense and unstable", "Sweet and restful", "Exactly like a third", "Silent"],
+        answerIndex: 0,
+        explanation: "Seconds (and sevenths) are the most dissonant intervals — they itch to resolve.",
+        hint: "Imagine C and C# together — restful or itchy?",
+        audio: { midis: [60, 61] },
+      },
+      {
+        id: "ch5-l2-c2",
+        conceptId: "consonance",
+        question: "In music, dissonance is…",
+        choices: ["Tension that wants to resolve", "A mistake", "The same as silence", "Only for experts"],
+        answerIndex: 0,
+        explanation: "Dissonance creates the narrative pull that makes consonance satisfying.",
+        hint: "Stories need conflict — what does tension do in music?",
+      },
+    ],
+  },
+  {
+    id: "ch5-l3-triads",
+    chapterId: "ch5-chords",
+    title: "Triad Qualities",
+    estimateMinutes: 4,
+    tryTask: { kind: "chord-id", seed: 53, variant: "quality" },
+    learn: [
+      {
+        kind: "text",
+        body: "Stack two thirds and you get a triad — the basic chord. C-E-G: a major third plus a minor third makes a major triad, bright and sturdy.",
+      },
+      {
+        kind: "listen",
+        caption: "C major triad, arpeggiated: C E G.",
+        midis: [60, 64, 67],
+        durations: [0.4, 0.4, 0.9],
+      },
+      {
+        kind: "text",
+        body: "Flip the thirds — minor third plus major third — and the triad turns minor: C-Eb-G. Same outer frame (the fifth), darker color (the third).",
+      },
+      {
+        kind: "listen",
+        caption: "C minor triad: C Eb G — hear the third darken.",
+        midis: [60, 63, 67],
+        durations: [0.4, 0.4, 0.9],
+      },
+    ],
+    checks: [
+      {
+        id: "ch5-l3-c1",
+        conceptId: "triad-qualities",
+        question: "A major triad is built from…",
+        choices: ["A major third + a minor third", "A minor third + a major third", "Two major thirds", "Two minor thirds"],
+        answerIndex: 0,
+        explanation: "C–E (major 3rd) + E–G (minor 3rd) = C major triad.",
+        hint: "The bottom third decides: a bright bottom third makes a major triad.",
+      },
+      {
+        id: "ch5-l3-c2",
+        conceptId: "triad-qualities",
+        question: "C minor differs from C major by…",
+        choices: ["One note: Eb instead of E", "One note: Gb instead of G", "Two notes", "Nothing — they are the same"],
+        answerIndex: 0,
+        explanation: "Only the third changes: E becomes Eb. Root and fifth stay put.",
+        hint: "Which member of the triad carries its major/minor color?",
+        audio: { midis: [60, 63, 67] },
+      },
+    ],
+  },
+  {
+    id: "ch5-l4-inversions",
+    chapterId: "ch5-chords",
+    title: "Inversions",
+    estimateMinutes: 4,
+    tryTask: { kind: "chord-id", seed: 54, variant: "position" },
+    learn: [
+      {
+        kind: "text",
+        body: "A triad's notes can be reordered — that is an inversion. C-E-G with E in the bass is first inversion; with G in the bass, second inversion. Same chord, new color.",
+      },
+      {
+        kind: "listen",
+        caption: "C major: root position, first inversion, second inversion — same notes, different bass.",
+        midis: [60, 64, 67, 64, 67, 72, 67, 72, 76],
+        durations: [0.35, 0.35, 0.7, 0.35, 0.35, 0.7, 0.35, 0.35, 0.9],
+      },
+      {
+        kind: "text",
+        body: "The bass note colors the inversion: the root in the bass sounds sturdy, the third lyrical, the fifth open and floating.",
+      },
+      {
+        kind: "text",
+        body: "Composers invert chords to smooth the bass line — stepwise motion instead of leaps. When you listen for the bass, you hear which inversion you're in.",
+      },
+    ],
+    checks: [
+      {
+        id: "ch5-l4-c1",
+        conceptId: "triad-inversions",
+        question: "A C major triad with E as the lowest note is in…",
+        choices: ["First inversion", "Root position", "Second inversion", "There is no such thing"],
+        answerIndex: 0,
+        explanation: "Third in the bass = first inversion; fifth in the bass = second inversion.",
+        hint: "The third of the chord is at the bottom — which inversion puts the third there?",
+      },
+      {
+        id: "ch5-l4-c2",
+        conceptId: "triad-inversions",
+        question: "Why do composers invert triads?",
+        choices: ["To smooth the bass line", "To make chords louder", "To change the key", "To add more notes"],
+        answerIndex: 0,
+        explanation: "Inversions let the bass walk stepwise instead of leaping from root to root.",
+        hint: "Think about the bass singer's part — steps or leaps?",
+      },
+    ],
+  },
+];
+
 const AUTHORED = new Map<string, LessonBody>(
-  [...CHAPTER_1, ...CHAPTER_2, ...CHAPTER_3, ...CHAPTER_4].map((l) => [l.id, l]),
+  [...CHAPTER_1, ...CHAPTER_2, ...CHAPTER_3, ...CHAPTER_4, ...CHAPTER_5].map((l) => [l.id, l]),
 );
 
 /** Authored body for a lesson, or undefined when not yet written. */

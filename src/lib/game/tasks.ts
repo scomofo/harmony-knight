@@ -7,11 +7,18 @@
  * deterministic judgment. The UI layer renders it and the store persists it.
  */
 
-import { majorScale, midiToName, naturalMinorScale } from "./music.ts";
+import { buildTriad, majorScale, midiToName, naturalMinorScale } from "./music.ts";
 import type { TaskSpec } from "./course.ts";
 
 /** Stable identifiers for every task family, keyed in course.ts lesson bodies. */
-export type TaskKind = "self-attempt" | "compare-pitch" | "note-id" | "rhythm-echo" | "scale-id";
+export type TaskKind =
+  | "self-attempt"
+  | "compare-pitch"
+  | "note-id"
+  | "rhythm-echo"
+  | "scale-id"
+  | "interval-id"
+  | "chord-id";
 
 export interface PracticalTask {
   kind: TaskKind;
@@ -224,6 +231,105 @@ export function buildScaleIdTask(seed: number): PracticalTask {
   };
 }
 
+/**
+ * "How far apart?": two notes played melodically (ascending), chosen from a
+ * beginner-distinguishable set — major 3rd, perfect 5th, octave. The learner
+ * names the interval. Deterministic per seed.
+ */
+export function buildIntervalIdTask(seed: number): PracticalTask {
+  const rand = mulberry32(seed);
+  const lowers = [60, 62, 64, 65, 67]; // C D E F G
+  const lower = lowers[Math.floor(rand() * lowers.length)]!;
+  const options = [
+    { semis: 4, name: "3rd" },
+    { semis: 7, name: "5th" },
+    { semis: 12, name: "Octave" },
+  ];
+  const pick = options[Math.floor(rand() * options.length)]!;
+  const upper = lower + pick.semis;
+  const choices = [...options.map((o) => o.name)];
+  for (let i = choices.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [choices[i], choices[j]] = [choices[j]!, choices[i]!];
+  }
+
+  return {
+    kind: "interval-id",
+    taskId: taskIdFor("interval-id", seed),
+    prompt: "Listen to the two notes, low then high. Which interval is it?",
+    audio: { notes: [lower, upper], durations: [0.5, 0.8] },
+    choices,
+    hints: [
+      "Sing both notes. Does the second feel like a small step up, a medium leap, or a big arrival back home?",
+      "Count the letter names from the first note to the second, including both ends — that count is the interval's number.",
+      `It is a ${pick.name === "Octave" ? "n octave" : pick.name}. Listen once more and feel the distance.`,
+    ],
+    judge: (attempt) => attempt === pick.name,
+    praise: `Exactly — a ${pick.name}. You're measuring musical distance by ear.`,
+    nudge: "Listen once more. Small hop, medium leap, or all the way home?",
+  };
+}
+
+/**
+ * Triad ear training, arpeggiated bottom-to-top. Two variants:
+ * - "quality": major vs minor triad (the third is the tell).
+ * - "position": root position vs first inversion (the bass note is the tell).
+ */
+export function buildChordIdTask(seed: number, variant: string | undefined): PracticalTask {
+  if (variant !== undefined && variant !== "quality" && variant !== "position") {
+    throw new Error(`Unknown chord-id variant: "${variant}"`);
+  }
+  const mode = variant ?? "quality";
+  const rand = mulberry32(seed);
+  const roots = [60, 62, 65, 67]; // C D F G
+  const root = roots[Math.floor(rand() * roots.length)]!;
+  const rootName = midiToName(root).replace(/\d/, "");
+
+  if (mode === "position") {
+    const inverted = rand() < 0.5;
+    const triad = buildTriad(root, "major");
+    const notes = inverted ? [triad[1]!, triad[2]!, triad[0]! + 12] : triad;
+    const answer = inverted ? "First inversion" : "Root position";
+    return {
+      kind: "chord-id",
+      taskId: taskIdFor("chord-id", `${mode}:${seed}`),
+      prompt: "Listen to the triad, arpeggiated bottom to top. Is the bass note the root of the chord?",
+      audio: { notes, durations: [0.4, 0.4, 0.8] },
+      choices: ["Root position", "First inversion"],
+      hints: [
+        "Focus on the very first, lowest note — then compare it with the top note.",
+        inverted
+          ? "The bottom note is the third of the chord (mi) — not the root (do)."
+          : "The bottom note is do itself — the chord stands on its home note.",
+        `It is ${answer.toLowerCase()}. Listen once more and feel where the chord stands.`,
+      ],
+      judge: (attempt) => attempt === answer,
+      praise: `Exactly — ${answer.toLowerCase()}. You're hearing how a chord stands.`,
+      nudge: "Listen once more, and lean into the bass note — home, or not?",
+    };
+  }
+
+  const isMajor = rand() < 0.5;
+  const quality = isMajor ? "major" : "minor";
+  const notes = buildTriad(root, quality);
+  const answer = isMajor ? "Major" : "Minor";
+  return {
+    kind: "chord-id",
+    taskId: taskIdFor("chord-id", `${mode}:${seed}`),
+    prompt: "Listen to the triad, arpeggiated bottom to top. Is it major or minor?",
+    audio: { notes, durations: [0.4, 0.4, 0.8] },
+    choices: ["Major", "Minor"],
+    hints: [
+      "Listen to the middle note — the third. Bright and open, or darker and tender?",
+      "Sing the first two notes: do-mi (bright) or do-me (soft)? The bottom third decides the triad.",
+      `It is ${answer} — ${rootName} ${quality}. Listen once more and lock in the color.`,
+    ],
+    judge: (attempt) => attempt === answer,
+    praise: `Exactly — ${rootName} ${quality}. You're hearing harmony, not just notes.`,
+    nudge: "Listen once more, and lean into the middle note — bright or tender?",
+  };
+}
+
 /** Build a concrete task from an authored spec (deterministic per seed). */
 export function buildTask(lessonId: string, spec: TaskSpec): PracticalTask {
   switch (spec.kind) {
@@ -235,6 +341,10 @@ export function buildTask(lessonId: string, spec: TaskSpec): PracticalTask {
       return buildRhythmEchoTask(spec.seed);
     case "scale-id":
       return buildScaleIdTask(spec.seed);
+    case "interval-id":
+      return buildIntervalIdTask(spec.seed);
+    case "chord-id":
+      return buildChordIdTask(spec.seed, spec.variant);
     case "self-attempt":
       return buildSelfAttemptTask(lessonId, spec.prompt);
   }
