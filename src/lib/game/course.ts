@@ -1379,8 +1379,218 @@ const CHAPTER_6: LessonBody[] = [
   },
 ];
 
+const CHAPTER_7: LessonBody[] = [
+  {
+    id: "ch7-l1-species",
+    chapterId: "ch7-voiceleading",
+    title: "First-Species Voices",
+    estimateMinutes: 4,
+    tryTask: { kind: "motion-id", seed: 71 },
+    learn: [
+      {
+        kind: "text",
+        body: "Voice leading is the art of moving individual melodic lines inside harmony. First species is the simplest texture: note against note, one chord tone at a time — a calm dialogue between voices.",
+      },
+      {
+        kind: "listen",
+        caption: "Lower voice, note against note: C D E D.",
+        midis: [48, 50, 52, 50],
+        noteDuration: 0.5,
+      },
+      {
+        kind: "listen",
+        caption: "Upper voice answering: C D E D, an octave higher.",
+        midis: [60, 62, 64, 62],
+        noteDuration: 0.5,
+      },
+      {
+        kind: "text",
+        body: "The golden rule of the council: every voice is a melody. If a single line sounds awkward on its own, no chord will save it — so each voice moves mostly by step.",
+      },
+    ],
+    checks: [
+      {
+        id: "ch7-l1-c1",
+        conceptId: "first-species",
+        question: "First-species counterpoint means…",
+        choices: ["Note against note", "Four notes against one", "Improvised decoration", "A single voice alone"],
+        answerIndex: 0,
+        explanation: "One note per voice at a time — the simplest, strictest dialogue.",
+        hint: "Species counts how many notes each voice sings per chord. First = ?",
+      },
+      {
+        id: "ch7-l1-c2",
+        conceptId: "first-species",
+        question: "Good voice leading starts with…",
+        choices: ["Singable individual lines", "The loudest chords", "The fastest notes", "Ignoring the bass"],
+        answerIndex: 0,
+        explanation: "Every voice is a melody first; harmony is what happens when melodies agree.",
+        hint: "If one line sounds awkward alone…",
+      },
+    ],
+  },
+  {
+    id: "ch7-l2-parallels",
+    chapterId: "ch7-voiceleading",
+    title: "Parallels",
+    estimateMinutes: 4,
+    tryTask: {
+      kind: "self-attempt",
+      seed: 0,
+      prompt:
+        "On paper, write two chords in C major as outer voices (bass + soprano), e.g. C–G moving to D–A. Check the interval between the voices in each chord: if both are fifths (or both octaves) moving the same way, you've written parallels — now fix them with contrary motion. Mark this done when you've spotted and fixed one.",
+    },
+    learn: [
+      {
+        kind: "text",
+        body: "Two voices moving in the same direction between the same perfect intervals — parallel fifths or octaves — fuse into one. The council loses a voice.",
+      },
+      {
+        kind: "listen",
+        caption: "Outer voices of parallel fifths, alternating low–high: C–G moving to D–A.",
+        midis: [48, 55, 50, 57],
+        noteDuration: 0.4,
+      },
+      {
+        kind: "text",
+        body: "The usual fix is contrary motion: let one voice rise while the other falls, and each voice's independence returns.",
+      },
+      {
+        kind: "listen",
+        caption: "Contrary motion instead, low–high: C–G moving to D–F.",
+        midis: [48, 55, 50, 53],
+        noteDuration: 0.4,
+      },
+    ],
+    checks: [
+      {
+        id: "ch7-l2-c1",
+        conceptId: "parallels",
+        question: "Parallel fifths are avoided because…",
+        choices: ["The voices fuse into one", "They are too quiet", "They change the key", "They are hard to play"],
+        answerIndex: 0,
+        explanation: "Two voices locked in perfect intervals stop sounding independent.",
+        hint: "What happens to the “council” when two members always say the same thing?",
+      },
+      {
+        id: "ch7-l2-c2",
+        conceptId: "parallels",
+        question: "The usual fix for parallels is…",
+        choices: ["Contrary motion", "Louder dynamics", "A faster tempo", "More sharps"],
+        answerIndex: 0,
+        explanation: "Opposite directions restore each voice's independence.",
+        hint: "If same-direction motion caused it, what is the opposite?",
+      },
+    ],
+  },
+  {
+    id: "ch7-l3-motion",
+    chapterId: "ch7-voiceleading",
+    title: "Motion and SATB",
+    estimateMinutes: 4,
+    tryTask: { kind: "motion-id", seed: 73 },
+    learn: [
+      {
+        kind: "text",
+        body: "Voices relate in four motions: similar (same direction), contrary (opposite), oblique (one holds while the other moves) — and parallel, the troublemaker, where the interval itself stays identical.",
+      },
+      {
+        kind: "text",
+        body: "SATB — soprano, alto, tenor, bass — is the classic four-voice choir. Soprano carries the tune, bass anchors the harmony, alto and tenor fill the middle.",
+      },
+      {
+        kind: "listen",
+        caption: "Similar motion, low–high: C–C rising to D–D.",
+        midis: [48, 60, 50, 62],
+        noteDuration: 0.35,
+      },
+      {
+        kind: "listen",
+        caption: "Contrary motion, low–high: E–C moving to D–D.",
+        midis: [52, 60, 50, 62],
+        noteDuration: 0.35,
+      },
+    ],
+    checks: [
+      {
+        id: "ch7-l3-c1",
+        conceptId: "voice-motion",
+        question: "Oblique motion means…",
+        choices: ["One voice holds while the other moves", "Both voices leap", "All voices rest", "The key changes"],
+        answerIndex: 0,
+        explanation: "Oblique = one stationary voice, one moving — the steadiest texture of all.",
+        hint: "Oblique: picture one voice standing still.",
+      },
+      {
+        id: "ch7-l3-c2",
+        conceptId: "voice-motion",
+        question: "In SATB, the bass usually…",
+        choices: ["Anchors the harmony", "Sings the melody", "Stays silent", "Sings the fastest notes"],
+        answerIndex: 0,
+        explanation: "The bass defines the chord's foundation — and its inversion.",
+        hint: "Which voice tells you the chord's root?",
+      },
+    ],
+  },
+  {
+    id: "ch7-l4-decoration",
+    chapterId: "ch7-voiceleading",
+    title: "Melodic Decoration",
+    estimateMinutes: 4,
+    tryTask: {
+      kind: "self-attempt",
+      seed: 0,
+      prompt:
+        "Take a simple stepwise line — C D E — and decorate it: turn the D into a neighbor figure (C D C) or add a passing tone (C D E becomes C D E with a neighbor on the way back). Hum or play your decorated line, keeping the chord tones on the strong beats. Mark this done when you've tried one decoration.",
+    },
+    learn: [
+      {
+        kind: "text",
+        body: "Once voices move well note-against-note, they can decorate: neighbor tones step away and back; passing tones fill the gaps between chord tones.",
+      },
+      {
+        kind: "listen",
+        caption: "A neighbor tone: C–D–C decorating a held chord tone.",
+        midis: [60, 62, 60],
+        durations: [0.4, 0.4, 0.8],
+      },
+      {
+        kind: "text",
+        body: "Ornament is spice, not the meal: decorate the weak beats, and land on chord tones for the strong ones.",
+      },
+      {
+        kind: "listen",
+        caption: "Passing tones: C–D–E bridging two chord tones.",
+        midis: [60, 62, 64],
+        durations: [0.4, 0.4, 0.8],
+      },
+    ],
+    checks: [
+      {
+        id: "ch7-l4-c1",
+        conceptId: "melodic-decoration",
+        question: "A neighbor tone…",
+        choices: ["Steps away and back to the same note", "Leaps an octave", "Changes the chord", "Ends the piece"],
+        answerIndex: 0,
+        explanation: "Upper or lower neighbor: leave by step, return by step.",
+        hint: "Neighbor: visits next door, then comes home.",
+        audio: { midis: [60, 62, 60], durations: [0.4, 0.4, 0.8] },
+      },
+      {
+        id: "ch7-l4-c2",
+        conceptId: "melodic-decoration",
+        question: "Decorations sound best when they…",
+        choices: ["Resolve to chord tones on strong beats", "Avoid chord tones entirely", "Are as loud as possible", "Never repeat"],
+        answerIndex: 0,
+        explanation: "Tension on the way, arrival on the beat — that is the recipe.",
+        hint: "Where should the strong beats land?",
+      },
+    ],
+  },
+];
+
 const AUTHORED = new Map<string, LessonBody>(
-  [...CHAPTER_1, ...CHAPTER_2, ...CHAPTER_3, ...CHAPTER_4, ...CHAPTER_5, ...CHAPTER_6].map((l) => [l.id, l]),
+  [...CHAPTER_1, ...CHAPTER_2, ...CHAPTER_3, ...CHAPTER_4, ...CHAPTER_5, ...CHAPTER_6, ...CHAPTER_7].map((l) => [l.id, l]),
 );
 
 /** Authored body for a lesson, or undefined when not yet written. */

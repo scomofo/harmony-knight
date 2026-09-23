@@ -19,7 +19,8 @@ export type TaskKind =
   | "scale-id"
   | "interval-id"
   | "chord-id"
-  | "cadence-id";
+  | "cadence-id"
+  | "motion-id";
 
 export interface PracticalTask {
   kind: TaskKind;
@@ -404,6 +405,103 @@ export function buildCadenceIdTask(seed: number, variant: string | undefined): P
   };
 }
 
+/**
+ * "How do the voices move?": two voices (lower C3–E3, upper C4–E4) each sing
+ * two notes. The learner identifies the motion: similar (same direction),
+ * contrary (opposite), or oblique (one holds). Rendered as two segment
+ * players — one per voice — which is how the ear learns to separate them.
+ * Deterministic per seed; some start/motion combos are unbuildable (a voice
+ * at its range edge can't move outward), so construction uses rejection
+ * sampling over the seeded rng.
+ */
+export function buildMotionIdTask(seed: number): PracticalTask {
+  const rand = mulberry32(seed);
+  const pick = <T>(arr: readonly T[]): T => arr[Math.floor(rand() * arr.length)]!;
+
+  const LOWER = { lo: 48, hi: 52, starts: [48, 50, 52] as const };
+  const UPPER = { lo: 60, hi: 64, starts: [60, 62, 64] as const };
+  const validDirs = (n: number, lo: number, hi: number): Array<1 | -1> => {
+    const dirs: Array<1 | -1> = [];
+    if (n + 2 <= hi) dirs.push(1);
+    if (n - 2 >= lo) dirs.push(-1);
+    return dirs;
+  };
+
+  type Motion = "similar" | "contrary" | "oblique";
+  const answerName: Record<Motion, string> = {
+    similar: "Similar motion",
+    contrary: "Contrary motion",
+    oblique: "Oblique motion",
+  };
+
+  /** Returns [lower1, lower2, upper1, upper2] or null when unbuildable. */
+  const tryBuild = (l1: number, u1: number, motion: Motion): number[] | null => {
+    const lDirs = validDirs(l1, LOWER.lo, LOWER.hi);
+    const uDirs = validDirs(u1, UPPER.lo, UPPER.hi);
+    if (motion === "similar") {
+      const common = lDirs.filter((d) => uDirs.includes(d));
+      if (common.length === 0) return null;
+      const d = pick(common);
+      return [l1, l1 + 2 * d, u1, u1 + 2 * d];
+    }
+    if (motion === "contrary") {
+      const pairs: Array<[1 | -1, 1 | -1]> = [];
+      for (const dl of lDirs) for (const du of uDirs) if (du === -dl) pairs.push([dl, du]);
+      if (pairs.length === 0) return null;
+      const [dl, du] = pick(pairs);
+      return [l1, l1 + 2 * dl, u1, u1 + 2 * du];
+    }
+    // oblique: one voice holds, the other moves (oblique is always buildable)
+    const moveLower = rand() < 0.5;
+    if (moveLower) {
+      const dl = pick(lDirs);
+      return [l1, l1 + 2 * dl, u1, u1];
+    }
+    const du = pick(uDirs);
+    return [l1, l1, u1, u1 + 2 * du];
+  };
+
+  let built: number[] | null = null;
+  let motion: Motion = "oblique";
+  // Oblique is always buildable, so this always terminates.
+  while (built === null) {
+    const l1 = pick(LOWER.starts);
+    const u1 = pick(UPPER.starts);
+    motion = pick(["similar", "contrary", "oblique"] as const);
+    built = tryBuild(l1, u1, motion);
+  }
+  const [l1, l2, u1, u2] = built as [number, number, number, number];
+  const answer = answerName[motion];
+
+  const choices = ["Similar motion", "Contrary motion", "Oblique motion"];
+  for (let i = choices.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [choices[i], choices[j]] = [choices[j]!, choices[i]!];
+  }
+
+  return {
+    kind: "motion-id",
+    taskId: taskIdFor("motion-id", seed),
+    prompt: "Play each voice on its own, then decide: how do the two voices move together?",
+    audio: {
+      notes: [l1, l2, u1, u2],
+      segments: [
+        { label: "Lower voice", notes: [l1, l2], durations: [0.5, 0.8] },
+        { label: "Upper voice", notes: [u1, u2], durations: [0.5, 0.8] },
+      ],
+    },
+    choices,
+    hints: [
+      "Play each voice alone. Does it go up, down, or stay on the same note?",
+      "Same direction = similar. Opposite directions = contrary. One voice holding still = oblique.",
+      `It is ${answer.toLowerCase()}. Play both voices once more and feel the dialogue.`,
+    ],
+    judge: (attempt) => attempt === answer,
+    praise: `Exactly — ${answer.toLowerCase()}. You're hearing voices in dialogue.`,
+    nudge: "Play each voice once more. Up, down, or staying put?",
+  };
+}
+
 /** Build a concrete task from an authored spec (deterministic per seed). */
 export function buildTask(lessonId: string, spec: TaskSpec): PracticalTask {
   switch (spec.kind) {
@@ -421,6 +519,8 @@ export function buildTask(lessonId: string, spec: TaskSpec): PracticalTask {
       return buildChordIdTask(spec.seed, spec.variant);
     case "cadence-id":
       return buildCadenceIdTask(spec.seed, spec.variant);
+    case "motion-id":
+      return buildMotionIdTask(spec.seed);
     case "self-attempt":
       return buildSelfAttemptTask(lessonId, spec.prompt);
   }

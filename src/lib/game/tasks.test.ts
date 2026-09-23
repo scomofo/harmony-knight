@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCadenceIdTask, buildChordIdTask, buildComparePitchTask, buildIntervalIdTask, buildNoteIdTask, buildRhythmEchoTask, buildScaleIdTask, buildSelfAttemptTask, buildTask, mulberry32 } from "./tasks.ts";
+import { buildCadenceIdTask, buildChordIdTask, buildComparePitchTask, buildIntervalIdTask, buildMotionIdTask, buildNoteIdTask, buildRhythmEchoTask, buildScaleIdTask, buildSelfAttemptTask, buildTask, mulberry32 } from "./tasks.ts";
 import { buildTriad, majorScale, midiToName, naturalMinorScale } from "./music.ts";
 
 describe("mulberry32", () => {
@@ -287,6 +287,54 @@ describe("buildCadenceIdTask", () => {
     expect(f.taskId).toBe("cadence-id:final:62");
     const o = buildTask("ch6-l3-open", { kind: "cadence-id", seed: 63, variant: "open" });
     expect(o.taskId).toBe("cadence-id:open:63");
+  });
+});
+
+describe("buildMotionIdTask", () => {
+  it("is deterministic per seed with exactly one correct motion", () => {
+    const a = buildMotionIdTask(71);
+    const b = buildMotionIdTask(71);
+    expect(a.taskId).toBe(b.taskId);
+    expect(a.audio!.segments).toEqual(b.audio!.segments);
+    const answers = a.choices!.filter((c) => a.judge(c));
+    expect(answers).toHaveLength(1);
+    expect(["Similar motion", "Contrary motion", "Oblique motion"]).toContain(answers[0]);
+  });
+
+  it("renders one segment per voice with two notes each", () => {
+    const t = buildMotionIdTask(71);
+    expect(t.audio!.segments).toHaveLength(2);
+    expect(t.audio!.segments!.map((s) => s.label)).toEqual(["Lower voice", "Upper voice"]);
+    for (const seg of t.audio!.segments!) expect(seg.notes).toHaveLength(2);
+  });
+
+  it("builds true similar/contrary/oblique motion without voice crossing", () => {
+    for (const seed of [71, 72, 73, 74, 75, 76, 77, 78, 79, 80]) {
+      const t = buildMotionIdTask(seed);
+      const [lower, upper] = t.audio!.segments!;
+      const [l1, l2] = lower.notes as [number, number];
+      const [u1, u2] = upper.notes as [number, number];
+      const answer = t.choices!.find((c) => t.judge(c))!;
+      const dl = Math.sign(l2 - l1);
+      const du = Math.sign(u2 - u1);
+      if (answer === "Similar motion") {
+        expect(dl).not.toBe(0);
+        expect(du).toBe(dl);
+      } else if (answer === "Contrary motion") {
+        expect(dl).not.toBe(0);
+        expect(du).toBe(-dl);
+      } else {
+        expect([dl, du].filter((d) => d === 0)).toHaveLength(1);
+      }
+      // Stepwise motion, voices never cross.
+      expect(Math.abs(l2 - l1)).toBeLessThanOrEqual(2);
+      expect(Math.abs(u2 - u1)).toBeLessThanOrEqual(2);
+      expect(Math.min(u1, u2)).toBeGreaterThan(Math.max(l1, l2));
+    }
+  });
+
+  it("buildTask dispatches motion-id", () => {
+    expect(buildTask("ch7-l1-species", { kind: "motion-id", seed: 71 }).taskId).toBe("motion-id:71");
   });
 });
 
