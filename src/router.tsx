@@ -16,6 +16,12 @@ import { HomeScreen, LearningPathScreen, OnboardingScreen } from "./routes/Scree
 import { PracticeScreen } from "./routes/PracticeScreen.tsx";
 import { LessonScreen } from "./routes/LessonScreen.tsx";
 import { SettingsScreen } from "./routes/SettingsScreen.tsx";
+import { GamesScreen } from "./routes/GamesScreen.tsx";
+import { StudiesHubScreen, StudyDrillScreen } from "./routes/StudiesScreen.tsx";
+import { CreationsScreen } from "./routes/CreationsScreen.tsx";
+import { StrikeScreen } from "./routes/StrikeScreen.tsx";
+import { DuelScreen } from "./routes/DuelScreen.tsx";
+import { GradesScreen } from "./routes/GradesScreen.tsx";
 
 function Shell() {
   const settings = useStore((s) => s.save.settings);
@@ -63,6 +69,9 @@ function Shell() {
           <Link to="/practice" className="text-white/70 hover:text-white">
             Practice
           </Link>
+          <Link to="/games" className="text-white/70 hover:text-white">
+            Play
+          </Link>
           <Link to="/settings" className="ml-auto text-white/70 hover:text-white">
             Settings
           </Link>
@@ -90,8 +99,15 @@ const lessonRoute = createRoute({
 });
 
 const practiceRoute = createRoute({ getParentRoute: () => rootRoute, path: "/practice", component: PracticeScreen });
+const gamesRoute = createRoute({ getParentRoute: () => rootRoute, path: "/games", component: GamesScreen });
+const studiesRoute = createRoute({ getParentRoute: () => rootRoute, path: "/studies", component: StudiesHubScreen });
+const studyDrillRoute = createRoute({ getParentRoute: () => rootRoute, path: "/studies/$studyId", component: StudyDrillScreen });
+const creationsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/create", component: CreationsScreen });
+const strikeRoute = createRoute({ getParentRoute: () => rootRoute, path: "/strike", component: StrikeScreen });
+const duelRoute = createRoute({ getParentRoute: () => rootRoute, path: "/duel", component: DuelScreen });
+const gradesRoute = createRoute({ getParentRoute: () => rootRoute, path: "/grades", component: GradesScreen });
 
-const routeTree = rootRoute.addChildren([indexRoute, onboardingRoute, pathRoute, practiceRoute, settingsRoute, lessonRoute]);
+const routeTree = rootRoute.addChildren([indexRoute, onboardingRoute, pathRoute, practiceRoute, settingsRoute, lessonRoute, gamesRoute, studiesRoute, studyDrillRoute, creationsRoute, strikeRoute, duelRoute, gradesRoute]);
 const router = createRouter({ routeTree });
 
 declare module "@tanstack/react-router" {

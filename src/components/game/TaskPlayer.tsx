@@ -16,7 +16,29 @@ import type { PracticalTask } from "../../lib/game/tasks.ts";
  * - Practice is never a gate: solving is celebrated, struggling is coached,
  *   and the learner can always move on.
  */
-export function TaskPlayer({ lessonId, task }: { lessonId: string; task: PracticalTask }) {
+/**
+ * Renders an authored practical task.
+ *
+ * Lesson mode (lessonId given): interactive audio demo + attempt controls,
+ * progressive hints, pure judgment, outcome recorded in the store as a
+ * TaskDraft (firstCheckCorrect + assisted).
+ *
+ * Headless mode (no lessonId): the same task UI without lesson recording;
+ * the parent receives every attempt through onResult — used by Studies,
+ * Duel, and grade trials.
+ *
+ * Practice is never a gate: solving is celebrated, struggling is coached,
+ * and the learner can always move on.
+ */
+export function TaskPlayer({
+  lessonId,
+  task,
+  onResult,
+}: {
+  lessonId?: string;
+  task: PracticalTask;
+  onResult?: (r: { correct: boolean; firstTry: boolean; assisted: boolean }) => void;
+}) {
   const recordTaskAttempt = useStore((s) => s.recordTaskAttempt);
   const [hintCount, setHintCount] = useState(0);
   const [verdict, setVerdict] = useState<{ ok: boolean; firstTry: boolean } | null>(null);
@@ -27,12 +49,15 @@ export function TaskPlayer({ lessonId, task }: { lessonId: string; task: Practic
     if (solved) return;
     const ok = task.judge(value);
     const assisted = hintCount > 0;
-    const firstTry = recordTaskAttempt(lessonId, task.taskId, {
-      draft: value,
-      feedback: ok ? task.praise : task.nudge,
-      correct: ok,
-      assisted,
-    });
+    const firstTry = lessonId
+      ? recordTaskAttempt(lessonId, task.taskId, {
+          draft: value,
+          feedback: ok ? task.praise : task.nudge,
+          correct: ok,
+          assisted,
+        })
+      : attempts === 0 && ok && !assisted;
+    onResult?.({ correct: ok, firstTry, assisted });
     setAttempts((n) => n + 1);
     setVerdict({ ok, firstTry });
     if (ok) setSolved(true);

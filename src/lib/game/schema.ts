@@ -78,6 +78,7 @@ export type SaveData = {
   gradeWindows: Record<string, { attempts: number; correct: number }>;
   learningDays: string[]; // YYYY-MM-DD, device-local calendar
   creations: SavedCreation[];
+  gameStats: GameStats;
 };
 
 export type SavedCreation = {
@@ -86,6 +87,14 @@ export type SavedCreation = {
   name: string;
   data: unknown;
   updatedAt: number;
+};
+
+export type GameStats = {
+  strikePlays: number;
+  strikeBest: number;
+  duelWins: number;
+  duelLosses: number;
+  duelDraws: number;
 };
 
 export function defaultSettings(): Settings {
@@ -116,6 +125,7 @@ export function defaultSave(): SaveData {
     gradeWindows: {},
     learningDays: [],
     creations: [],
+    gameStats: { strikePlays: 0, strikeBest: 0, duelWins: 0, duelLosses: 0, duelDraws: 0 },
   };
 }
 
@@ -197,6 +207,7 @@ export function validateSave(data: unknown): data is SaveData {
   if (!isRecord(data.gradeWindows)) return false;
   if (!Array.isArray(data.learningDays)) return false;
   if (!Array.isArray(data.creations)) return false;
+  if (!isRecord(data.gameStats)) return false;
   // ~5MB cap keeps quota failures predictable.
   try {
     if (JSON.stringify(data).length > 5 * 1024 * 1024) return false;

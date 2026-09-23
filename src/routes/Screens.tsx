@@ -103,6 +103,42 @@ export function HomeScreen() {
           Learning path
         </Link>
       </div>
+
+      {!save.settings.focusMode && (
+        <section aria-label="Play">
+          <h2 className="mt-8 text-lg font-semibold">Play</h2>
+          <p className="mt-1 text-sm text-white/60">
+            Optional games and creations — skill-building that never gates lessons.
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <Link to="/strike" className="rounded-xl border border-white/15 bg-white/5 p-4">
+              <p className="font-semibold">⚡ Strike</p>
+              <p className="mt-1 text-xs text-white/50">Rhythm striking, fever combos</p>
+            </Link>
+            <Link to="/duel" className="rounded-xl border border-white/15 bg-white/5 p-4">
+              <p className="font-semibold">⚔️ Duel</p>
+              <p className="mt-1 text-xs text-white/50">Spar the Discord Sentinel</p>
+            </Link>
+            <Link to="/studies" className="rounded-xl border border-white/15 bg-white/5 p-4">
+              <p className="font-semibold">📚 Studies</p>
+              <p className="mt-1 text-xs text-white/50">Focused topic drills</p>
+            </Link>
+            <Link to="/create" className="rounded-xl border border-white/15 bg-white/5 p-4">
+              <p className="font-semibold">🎨 Create</p>
+              <p className="mt-1 text-xs text-white/50">Compose and keep drafts</p>
+            </Link>
+          </div>
+          <Link
+            to="/grades"
+            className="mt-3 block rounded-xl border border-amber-300/30 bg-amber-400/5 p-4"
+          >
+            <p className="font-semibold text-amber-200">🏅 Grades — trial for grade {save.grade}</p>
+            <p className="mt-1 text-xs text-white/50">
+              Optional progression trials, grades 0–10
+            </p>
+          </Link>
+        </section>
+      )}
     </div>
   );
 }
