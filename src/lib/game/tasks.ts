@@ -21,7 +21,9 @@ export type TaskKind =
   | "chord-id"
   | "cadence-id"
   | "motion-id"
-  | "modulation-id";
+  | "modulation-id"
+  | "seventh-id"
+  | "meter-id";
 
 export interface PracticalTask {
   kind: TaskKind;
@@ -577,6 +579,74 @@ export function buildModulationIdTask(seed: number, variant: string | undefined)
   };
 }
 
+/**
+ * "Which seventh?": a seventh chord arpeggiated bottom-to-top on a seeded
+ * root. Major seventh (glowing) vs dominant seventh (bluesy, leaning) — the
+ * top note is the tell. Deterministic per seed.
+ */
+export function buildSeventhIdTask(seed: number): PracticalTask {
+  const rand = mulberry32(seed);
+  const roots = [60, 62, 64, 65, 67]; // C D E F G
+  const root = roots[Math.floor(rand() * roots.length)]!;
+  const isMaj7 = rand() < 0.5;
+  const seventh = root + (isMaj7 ? 11 : 10);
+  const notes = [root, root + 4, root + 7, seventh];
+  const answer = isMaj7 ? "Major seventh" : "Dominant seventh";
+  const rootName = midiToName(root).replace(/\d/, "");
+
+  return {
+    kind: "seventh-id",
+    taskId: taskIdFor("seventh-id", seed),
+    prompt: "Listen to the seventh chord, arpeggiated bottom to top. Major seventh or dominant seventh?",
+    audio: { notes, durations: [0.35, 0.35, 0.35, 1.0] },
+    choices: ["Major seventh", "Dominant seventh"],
+    hints: [
+      "Listen to the top note — the seventh. Sweet and glowing, or bluesy and leaning?",
+      "Sing the bottom and top notes together: a major seventh sits one half-step below the octave; a minor seventh a whole step below.",
+      `It is ${answer} — ${rootName}${isMaj7 ? "maj7" : "7"}. Listen once more and feel the top note.`,
+    ],
+    judge: (attempt) => attempt === answer,
+    praise: `Exactly — ${rootName}${isMaj7 ? "maj7" : "7"}. You're hearing chord color.`,
+    nudge: "Listen once more, and lean into the very top note — glowing or leaning?",
+  };
+}
+
+/**
+ * "How many beats?": two bars of pulses with the downbeat accented low and
+ * the other beats high. The learner counts the meter: 3, 4, or 5 beats per
+ * bar. Deterministic per seed.
+ */
+export function buildMeterIdTask(seed: number): PracticalTask {
+  const rand = mulberry32(seed);
+  const meters = [3, 4, 5] as const;
+  const meter = meters[Math.floor(rand() * meters.length)]!;
+  const beat = 0.42;
+  const bar = [60, ...Array<number>(meter - 1).fill(67)];
+  const notes = [...bar, ...bar];
+  const answer = `${meter} beats`;
+  const choices = ["3 beats", "4 beats", "5 beats"];
+  for (let i = choices.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [choices[i], choices[j]] = [choices[j]!, choices[i]!];
+  }
+
+  return {
+    kind: "meter-id",
+    taskId: taskIdFor("meter-id", seed),
+    prompt: "Listen to the pulses — the low note marks each downbeat. How many beats are in each bar?",
+    audio: { notes, durations: notes.map(() => beat) },
+    choices,
+    hints: [
+      "Count along: 1-2-3, 1-2-3… where does the strong low pulse land?",
+      "Tap the strong beats — how many lighter beats sit between them?",
+      `It is ${answer} per bar. Count along once more and feel the cycle.`,
+    ],
+    judge: (attempt) => attempt === answer,
+    praise: `Exactly — ${answer}. You're feeling the bar lines.`,
+    nudge: "Count along once more. Where does the low pulse come back?",
+  };
+}
+
 /** Build a concrete task from an authored spec (deterministic per seed). */
 export function buildTask(lessonId: string, spec: TaskSpec): PracticalTask {
   switch (spec.kind) {
@@ -598,6 +668,10 @@ export function buildTask(lessonId: string, spec: TaskSpec): PracticalTask {
       return buildMotionIdTask(spec.seed);
     case "modulation-id":
       return buildModulationIdTask(spec.seed, spec.variant);
+    case "seventh-id":
+      return buildSeventhIdTask(spec.seed);
+    case "meter-id":
+      return buildMeterIdTask(spec.seed);
     case "self-attempt":
       return buildSelfAttemptTask(lessonId, spec.prompt);
   }

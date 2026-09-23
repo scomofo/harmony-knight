@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCadenceIdTask, buildChordIdTask, buildComparePitchTask, buildIntervalIdTask, buildModulationIdTask, buildMotionIdTask, buildNoteIdTask, buildRhythmEchoTask, buildScaleIdTask, buildSelfAttemptTask, buildTask, mulberry32 } from "./tasks.ts";
+import { buildCadenceIdTask, buildChordIdTask, buildComparePitchTask, buildIntervalIdTask, buildMeterIdTask, buildModulationIdTask, buildMotionIdTask, buildNoteIdTask, buildRhythmEchoTask, buildScaleIdTask, buildSeventhIdTask, buildSelfAttemptTask, buildTask, mulberry32 } from "./tasks.ts";
 import { buildTriad, majorScale, midiToName, naturalMinorScale } from "./music.ts";
 
 describe("mulberry32", () => {
@@ -397,6 +397,64 @@ describe("buildModulationIdTask", () => {
     expect(d.taskId).toBe("modulation-id:detect:83");
     const w = buildTask("ch8-l4-secondary", { kind: "modulation-id", seed: 84, variant: "where" });
     expect(w.taskId).toBe("modulation-id:where:84");
+  });
+});
+
+describe("buildSeventhIdTask", () => {
+  it("is deterministic per seed with exactly one correct seventh", () => {
+    const a = buildSeventhIdTask(91);
+    const b = buildSeventhIdTask(91);
+    expect(a.taskId).toBe(b.taskId);
+    expect(a.audio!.notes).toEqual(b.audio!.notes);
+    const answers = a.choices!.filter((c) => a.judge(c));
+    expect(answers).toHaveLength(1);
+    expect(["Major seventh", "Dominant seventh"]).toContain(answers[0]);
+  });
+
+  it("voices a true major triad plus the matching seventh", () => {
+    for (const seed of [91, 92, 93, 94, 95]) {
+      const t = buildSeventhIdTask(seed);
+      const notes = t.audio!.notes;
+      expect(notes).toHaveLength(4);
+      const answer = t.choices!.find((c) => t.judge(c))!;
+      const root = notes[0]!;
+      expect(notes.slice(0, 3)).toEqual([root, root + 4, root + 7]);
+      const expectedSeventh = root + (answer === "Major seventh" ? 11 : 10);
+      expect(notes[3]).toBe(expectedSeventh);
+    }
+  });
+
+  it("buildTask dispatches seventh-id", () => {
+    expect(buildTask("ch9-l1-sevenths", { kind: "seventh-id", seed: 91 }).taskId).toBe("seventh-id:91");
+  });
+});
+
+describe("buildMeterIdTask", () => {
+  it("is deterministic per seed with exactly one correct meter", () => {
+    const a = buildMeterIdTask(94);
+    const b = buildMeterIdTask(94);
+    expect(a.taskId).toBe(b.taskId);
+    expect(a.audio!.notes).toEqual(b.audio!.notes);
+    const answers = a.choices!.filter((c) => a.judge(c));
+    expect(answers).toHaveLength(1);
+    expect(["3 beats", "4 beats", "5 beats"]).toContain(answers[0]);
+  });
+
+  it("accents the downbeat exactly every N pulses, two bars", () => {
+    for (const seed of [94, 95, 96, 97, 98, 99]) {
+      const t = buildMeterIdTask(seed);
+      const notes = t.audio!.notes;
+      const answer = t.choices!.find((c) => t.judge(c))!;
+      const meter = parseInt(answer, 10);
+      expect(notes).toHaveLength(meter * 2);
+      notes.forEach((n, i) => {
+        expect(n).toBe(i % meter === 0 ? 60 : 67);
+      });
+    }
+  });
+
+  it("buildTask dispatches meter-id", () => {
+    expect(buildTask("ch9-l4-polyrhythm", { kind: "meter-id", seed: 94 }).taskId).toBe("meter-id:94");
   });
 });
 

@@ -99,6 +99,8 @@ describe("buildTask dispatcher", () => {
     expect(buildTask("l", { kind: "cadence-id", seed: 1, variant: "final" }).kind).toBe("cadence-id");
     expect(buildTask("l", { kind: "motion-id", seed: 1 }).kind).toBe("motion-id");
     expect(buildTask("l", { kind: "modulation-id", seed: 1, variant: "detect" }).kind).toBe("modulation-id");
+    expect(buildTask("l", { kind: "seventh-id", seed: 1 }).kind).toBe("seventh-id");
+    expect(buildTask("l", { kind: "meter-id", seed: 1 }).kind).toBe("meter-id");
     expect(buildTask("l", { kind: "self-attempt", seed: 1 }).kind).toBe("self-attempt");
   });
 });

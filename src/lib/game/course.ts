@@ -1792,8 +1792,219 @@ const CHAPTER_8: LessonBody[] = [
   },
 ];
 
+const CHAPTER_9: LessonBody[] = [
+  {
+    id: "ch9-l1-sevenths",
+    chapterId: "ch9-color",
+    title: "Seventh Chords",
+    estimateMinutes: 4,
+    tryTask: { kind: "seventh-id", seed: 91 },
+    learn: [
+      {
+        kind: "text",
+        body: "Stack one more third on a triad and you get a seventh chord — richer, jazzier, more grown-up. C–E–G–B is Cmaj7; C–E–G–Bb is C7, the dominant seventh.",
+      },
+      {
+        kind: "listen",
+        caption: "Cmaj7 arpeggiated: C E G B — glowing.",
+        midis: [60, 64, 67, 71],
+        durations: [0.35, 0.35, 0.35, 1.0],
+      },
+      {
+        kind: "text",
+        body: "The seventh decides the flavor: a major seventh (one half-step below the octave) glows; a minor seventh (a whole step below) leans forward, wanting to resolve.",
+      },
+      {
+        kind: "listen",
+        caption: "C7: C E G Bb — hear the top note darken and lean.",
+        midis: [60, 64, 67, 70],
+        durations: [0.35, 0.35, 0.35, 1.0],
+      },
+    ],
+    checks: [
+      {
+        id: "ch9-l1-c1",
+        conceptId: "seventh-chords",
+        question: "A seventh chord is…",
+        choices: ["A triad plus one more third", "Two triads at once", "A scale", "A single note"],
+        answerIndex: 0,
+        explanation: "Four notes stacked in thirds: root, third, fifth, seventh.",
+        hint: "How are triads built? Add one more…",
+      },
+      {
+        id: "ch9-l1-c2",
+        conceptId: "seventh-chords",
+        question: "Cmaj7 differs from C7 by…",
+        choices: ["One note: B vs Bb", "One note: G vs Gb", "Two notes", "Nothing at all"],
+        answerIndex: 0,
+        explanation: "Only the seventh changes: major seventh versus minor seventh.",
+        hint: "Which chord member carries the name “seventh”?",
+        audio: {
+          midis: [60, 64, 67, 71, 60, 64, 67, 70],
+          durations: [0.3, 0.3, 0.3, 0.7, 0.3, 0.3, 0.3, 0.9],
+        },
+      },
+    ],
+  },
+  {
+    id: "ch9-l2-extensions",
+    chapterId: "ch9-color",
+    title: "Extensions",
+    estimateMinutes: 4,
+    tryTask: {
+      kind: "self-attempt",
+      seed: 0,
+      prompt:
+        "Build a Cmaj9 from scratch: C E G B D. Play or arpeggiate it slowly — then remove the D and play Cmaj7. Hear what the extension added? That color is the whole lesson. Mark this done when you've heard the difference.",
+    },
+    learn: [
+      {
+        kind: "text",
+        body: "Keep stacking thirds past the seventh and you reach extensions: the 9th, 11th, 13th. Cmaj9 — C E G B D — is the triad wearing perfume.",
+      },
+      {
+        kind: "listen",
+        caption: "Cmaj9 arpeggiated: C E G B D.",
+        midis: [60, 64, 67, 71, 74],
+        durations: [0.3, 0.3, 0.3, 0.3, 0.9],
+      },
+      {
+        kind: "text",
+        body: "Extensions color without changing function: a G13 still pulls to C like any dominant — it just arrives in fancier clothes.",
+      },
+      {
+        kind: "text",
+        body: "Rule of thumb: 9ths and 13ths love major and dominant chords; the plain 11th often clashes with the third, so jazz players raise it to #11.",
+      },
+    ],
+    checks: [
+      {
+        id: "ch9-l2-c1",
+        conceptId: "extensions",
+        question: "The 9th of a C major chord is…",
+        choices: ["D", "B", "F", "A"],
+        answerIndex: 0,
+        explanation: "Count up nine: C(1)… D(9). The 9th is the 2nd scale degree, an octave up.",
+        hint: "What is the second note of the C scale, up an octave?",
+      },
+      {
+        id: "ch9-l2-c2",
+        conceptId: "extensions",
+        question: "Extensions change a chord's…",
+        choices: ["Color, not its function", "Function entirely", "Root note", "Key signature"],
+        answerIndex: 0,
+        explanation: "A G13 still resolves like G7 — the extensions are perfume, not structure.",
+        hint: "Does fancy clothing change who you are?",
+      },
+    ],
+  },
+  {
+    id: "ch9-l3-borrowed",
+    chapterId: "ch9-color",
+    title: "Borrowed Chords",
+    estimateMinutes: 4,
+    tryTask: {
+      kind: "self-attempt",
+      seed: 0,
+      prompt:
+        "Play or hum the roots C – F – F – C, but make the second F minor (F Ab C) — the borrowed iv. Feel how it darkens the phrase before C brings back the light. Mark this done when you've felt the shadow pass.",
+    },
+    learn: [
+      {
+        kind: "text",
+        body: "Borrowed chords steal from the parallel minor (or major). In C major, the iv chord — Fm — is borrowed from C minor, and it darkens a phrase beautifully.",
+      },
+      {
+        kind: "listen",
+        caption: "C – F – Fm – C: the borrowed iv darkens the middle.",
+        midis: [60, 64, 67, 65, 69, 72, 65, 68, 72, 60, 64, 67],
+        durations: [0.3, 0.3, 0.7, 0.3, 0.3, 0.7, 0.3, 0.3, 0.7, 0.4, 0.4, 1.0],
+      },
+      {
+        kind: "text",
+        body: "The bittersweet trick: the borrowed chord shares its root with the diatonic twin (F vs Fm) — only the third moves, but the whole mood transforms.",
+      },
+      {
+        kind: "text",
+        body: "Listen for the chromatic slip: Ab in Fm against the A natural in F. That half-step rub is the fingerprint of borrowing.",
+      },
+    ],
+    checks: [
+      {
+        id: "ch9-l3-c1",
+        conceptId: "borrowed-chords",
+        question: "A borrowed chord comes from…",
+        choices: ["The parallel minor or major", "A distant galaxy", "The next song", "Nowhere — it is invented"],
+        answerIndex: 0,
+        explanation: "Same tonic, opposite mode: C major borrows from C minor.",
+        hint: "Parallel: same home note, different mode.",
+      },
+      {
+        id: "ch9-l3-c2",
+        conceptId: "borrowed-chords",
+        question: "Fm in the key of C major is borrowed because…",
+        choices: ["F is normally major in C", "F doesn't exist in C", "It is too loud", "It is in the wrong octave"],
+        answerIndex: 0,
+        explanation: "The diatonic IV is F major; the minor iv must be borrowed from C minor.",
+        hint: "What is the normal IV chord in C major?",
+        audio: { midis: [65, 69, 72, 65, 68, 72], durations: [0.35, 0.35, 0.8, 0.35, 0.35, 0.9] },
+      },
+    ],
+  },
+  {
+    id: "ch9-l4-polyrhythm",
+    chapterId: "ch9-color",
+    title: "Odd Meters and 3:2 Polyrhythm",
+    estimateMinutes: 4,
+    tryTask: { kind: "meter-id", seed: 94 },
+    learn: [
+      {
+        kind: "text",
+        body: "Most music marches in 4 — but 3 (the waltz), 5, and 7 open stranger, thrilling doors. Count the strong pulse: 1-2-3, 1-2-3-4-5.",
+      },
+      {
+        kind: "listen",
+        caption: "Five beats per bar: hear the low accent land every fifth pulse.",
+        midis: [60, 67, 67, 67, 67, 60, 67, 67, 67, 67],
+        noteDuration: 0.4,
+      },
+      {
+        kind: "text",
+        body: "Polyrhythm layers two meters at once: 3:2 means three pulses against two in the same span — the heartbeat of Afro-Cuban music and much of jazz.",
+      },
+      {
+        kind: "listen",
+        caption: "3:2 — low pulses mark 2, high pulses mark 3, interlocked.",
+        midis: [48, 72, 48, 72],
+        durations: [0.4, 0.2, 0.2, 0.4],
+      },
+    ],
+    checks: [
+      {
+        id: "ch9-l4-c1",
+        conceptId: "odd-meters",
+        question: "3:2 polyrhythm means…",
+        choices: ["Three pulses against two in the same span", "Three instruments", "Two songs at once", "A very fast tempo"],
+        answerIndex: 0,
+        explanation: "Two meters interlocked — the classic “three over two” feel.",
+        hint: "The numbers count pulses, not instruments.",
+        audio: { midis: [48, 72, 48, 72], durations: [0.4, 0.2, 0.2, 0.4] },
+      },
+      {
+        id: "ch9-l4-c2",
+        conceptId: "odd-meters",
+        question: "An odd meter like 5/4 feels…",
+        choices: ["Thrilling and off-balance", "Exactly like 4/4", "Silent", "Broken"],
+        answerIndex: 0,
+        explanation: "The uneven bar keeps the ear alert — that is its charm.",
+        hint: "Does 1-2-3-4-5 feel like marching?",
+      },
+    ],
+  },
+];
+
 const AUTHORED = new Map<string, LessonBody>(
-  [...CHAPTER_1, ...CHAPTER_2, ...CHAPTER_3, ...CHAPTER_4, ...CHAPTER_5, ...CHAPTER_6, ...CHAPTER_7, ...CHAPTER_8].map((l) => [l.id, l]),
+  [...CHAPTER_1, ...CHAPTER_2, ...CHAPTER_3, ...CHAPTER_4, ...CHAPTER_5, ...CHAPTER_6, ...CHAPTER_7, ...CHAPTER_8, ...CHAPTER_9].map((l) => [l.id, l]),
 );
 
 /** Authored body for a lesson, or undefined when not yet written. */
