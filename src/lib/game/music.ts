@@ -17,6 +17,11 @@ export function freqToMidi(freq: number): number {
   return Math.round(12 * Math.log2(freq / A4_FREQ) + A4_MIDI);
 }
 
+/** Fractional MIDI number (no rounding) — for cents/deviation work. */
+export function freqToMidiFloat(freq: number): number {
+  return 12 * Math.log2(freq / A4_FREQ) + A4_MIDI;
+}
+
 export type AccidentalSpell = "sharp" | "flat";
 
 const SHARP_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"] as const;
