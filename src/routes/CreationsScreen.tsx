@@ -10,6 +10,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { PracticeKeyboard } from "../components/game/PracticeKeyboard.tsx";
 import { playSequence, stopLane } from "../lib/game/audio.ts";
+import { downloadBlob, renderCreationWav, shareUrl } from "../lib/game/share.ts";
 import { midiToLetter } from "../lib/game/music.ts";
 import {
   MAX_CREATION_STEPS,
@@ -241,6 +242,7 @@ export function CreationsScreen() {
               >
                 Open
               </button>
+              <ShareButtons name={c.name} notes={data.notes} />
               <button
                 type="button"
                 onClick={() => {
@@ -262,5 +264,53 @@ export function CreationsScreen() {
         ← Back to games
       </Link>
     </div>
+  );
+}
+
+/** Per-draft share actions: copy a listen-anywhere link, or export a WAV. */
+function ShareButtons({ name, notes }: { name: string; notes: number[] }) {
+  const [copied, setCopied] = useState(false);
+  const [rendering, setRendering] = useState(false);
+
+  const share = async () => {
+    const url = shareUrl(name, notes);
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2500);
+    } catch {
+      window.prompt("Copy this link to share the melody:", url);
+    }
+  };
+
+  const exportWav = async () => {
+    setRendering(true);
+    try {
+      const blob = await renderCreationWav(notes);
+      const safe = name.replace(/[^\w\- ]+/g, "").trim() || "melody";
+      downloadBlob(blob, `${safe}.wav`);
+    } finally {
+      setRendering(false);
+    }
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => void share()}
+        className="rounded-lg border border-white/20 px-3 py-1 text-sm"
+      >
+        {copied ? "Copied!" : "Share"}
+      </button>
+      <button
+        type="button"
+        onClick={() => void exportWav()}
+        disabled={rendering || notes.length === 0}
+        className="rounded-lg border border-white/20 px-3 py-1 text-sm disabled:opacity-50"
+      >
+        {rendering ? "…" : "WAV"}
+      </button>
+    </>
   );
 }
