@@ -4,7 +4,9 @@
  * without touching the live store.
  */
 
-export const SAVE_VERSION = 2;
+import type { QuestState } from "./quests.ts";
+
+export const SAVE_VERSION = 3;
 export const SAVE_KEY = "harmony-knight-save-v1";
 
 export type LessonStep = "learn" | "try" | "recall" | "done";
@@ -62,6 +64,8 @@ export type Settings = {
   focusMode: boolean;
   sessionMinutes: number;
   playbackSpeed: 1 | 0.75 | 0.5;
+  /** Kid-gate for the grown-ups dashboard. Null until a grown-up sets one. */
+  grownUpsPin: string | null;
 };
 
 export type SaveData = {
@@ -79,6 +83,8 @@ export type SaveData = {
   learningDays: string[]; // YYYY-MM-DD, device-local calendar
   creations: SavedCreation[];
   gameStats: GameStats;
+  /** Daily quests: date -> quest id -> "done" | "claimed". */
+  questLog: Record<string, Record<string, QuestState>>;
 };
 
 export type SavedCreation = {
@@ -106,6 +112,7 @@ export function defaultSettings(): Settings {
     focusMode: true,
     sessionMinutes: 3,
     playbackSpeed: 1,
+    grownUpsPin: null,
   };
 }
 
@@ -130,6 +137,7 @@ export function defaultSave(): SaveData {
     learningDays: [],
     creations: [],
     gameStats: defaultGameStats(),
+    questLog: {},
   };
 }
 
@@ -155,6 +163,24 @@ const MIGRATIONS: Migration[] = [
       gameStats: sanitizeGameStats(data.gameStats),
       version: 2,
     }),
+  },
+  {
+    from: 2,
+    to: 3,
+    // v3 introduces the daily quest log and the grown-ups PIN. Both are
+    // additive; a v2 save keeps everything it had.
+    migrate: (data) => {
+      const rawSettings = isRecord(data.settings) ? data.settings : {};
+      const pin = typeof rawSettings.grownUpsPin === "string" ? rawSettings.grownUpsPin : null;
+      return {
+        ...data,
+        questLog: isRecord(data.questLog) ? data.questLog : {},
+        // Merge over full defaults: a sparse settings object must never
+        // clobber the fields the defaults provide.
+        settings: { ...defaultSettings(), ...rawSettings, grownUpsPin: pin },
+        version: 3,
+      };
+    },
   },
 ];
 
@@ -216,7 +242,17 @@ function validSettings(s: unknown): s is Settings {
     typeof s.sessionMinutes === "number" &&
     s.sessionMinutes >= 1 &&
     s.sessionMinutes <= 60 &&
-    (s.playbackSpeed === 1 || s.playbackSpeed === 0.75 || s.playbackSpeed === 0.5)
+    (s.playbackSpeed === 1 || s.playbackSpeed === 0.75 || s.playbackSpeed === 0.5) &&
+    (s.grownUpsPin === null || typeof s.grownUpsPin === "string")
+  );
+}
+
+function validQuestLog(v: unknown): boolean {
+  if (!isRecord(v)) return false;
+  return Object.values(v).every(
+    (day) =>
+      isRecord(day) &&
+      Object.values(day).every((s) => s === "done" || s === "claimed"),
   );
 }
 
@@ -284,6 +320,7 @@ export function validateSave(data: unknown): data is SaveData {
     return false;
   if (!Array.isArray(data.creations) || !data.creations.every(validCreation)) return false;
   if (!validGameStats(data.gameStats)) return false;
+  if (!validQuestLog(data.questLog)) return false;
   // ~5MB cap keeps quota failures predictable.
   try {
     if (JSON.stringify(data).length > 5 * 1024 * 1024) return false;
