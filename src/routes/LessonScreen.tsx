@@ -78,6 +78,12 @@ export function LessonScreen({ lessonId }: { lessonId: string }) {
     return i >= 0 ? all[i + 1] : undefined;
   }, [lessonId]);
 
+  // Above the early return: hooks must run unconditionally.
+  const task = useMemo(
+    () => (body && body.tryTask ? buildTask(body.id, body.tryTask) : null),
+    [body],
+  );
+
   if (!body) {
     const meta = lessonMeta(lessonId);
     return (
@@ -136,10 +142,6 @@ export function LessonScreen({ lessonId }: { lessonId: string }) {
   };
 
   const chapter = chapterById(body.chapterId);
-  const task = useMemo(
-    () => (body.tryTask ? buildTask(body.id, body.tryTask) : null),
-    [body],
-  );
 
   return (
     <div className="mx-auto max-w-2xl p-4 pb-16 sm:p-6">

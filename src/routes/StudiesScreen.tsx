@@ -195,6 +195,14 @@ export function StudyDrillScreen() {
     });
   }, [study, drillNo]);
 
+  // Above the early return: hooks must run unconditionally. When study is
+  // null the memo yields null, but we've already returned by the usage site.
+  const task = useMemo(() => {
+    if (!study) return null;
+    return buildTask(`study:${study.id}`, specs[round]!);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [study?.id, drillNo, round]);
+
   if (!study) {
     return (
       <div className="mx-auto max-w-2xl p-4">
@@ -205,13 +213,6 @@ export function StudyDrillScreen() {
       </div>
     );
   }
-
-  const spec = specs[round]!;
-  const task = useMemo(
-    () => buildTask(`study:${study.id}`, spec),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [study.id, drillNo, round],
-  );
 
   const onResult = (r: { correct: boolean; firstTry: boolean }) => {
     if (!answered && r.correct) {
@@ -276,7 +277,7 @@ export function StudyDrillScreen() {
         </p>
       </div>
       <div className="mt-3" key={`${drillNo}-${round}`}>
-        <TaskPlayer task={task} onResult={onResult} />
+        <TaskPlayer task={task!} onResult={onResult} />
       </div>
       <div className="mt-3 flex gap-2">
         <button
