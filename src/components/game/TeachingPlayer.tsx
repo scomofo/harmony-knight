@@ -14,12 +14,16 @@ export function TeachingPlayer({
   lane,
   noteDuration = 0.5,
   durations,
+  gains,
+  types,
 }: {
   midis: number[];
   caption: string;
   lane: string;
   noteDuration?: number;
   durations?: number[];
+  gains?: number[];
+  types?: OscillatorType[];
 }) {
   const speed = useStore((s) => s.save.settings.playbackSpeed);
   const muted = useStore((s) => s.save.settings.muted);
@@ -47,6 +51,8 @@ export function TeachingPlayer({
       noteDuration: scaled,
       durations: durations?.map((d) => d / speed),
       gain: 0.5,
+      gains,
+      types,
       onNoteStart: (i) => setActiveIndex(i),
       onDone: (cancelled) => {
         setPlaying(false);

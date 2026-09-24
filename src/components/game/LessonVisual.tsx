@@ -39,24 +39,46 @@ function KeyboardVisual({ visual }: { visual: Extract<LessonVisual, { kind: "key
   );
 }
 
+/** Diatonic steps above C0: C=0, D=1, E=2, F=3, G=4, A=5, B=6 per octave. */
+function diatonicSteps(midi: number): number {
+  const pc = ((midi % 12) + 12) % 12;
+  const step = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6][pc]!;
+  return Math.floor(midi / 12) * 7 + step;
+}
+
 function StaffVisual({ visual }: { visual: Extract<LessonVisual, { kind: "staff" }> }) {
-  // Simple treble-staff plot: each semitone = 4px, E4 (64) sits on the bottom line.
+  const bass = visual.clef === "bass";
+  // Bottom-line pitch: E4 (treble) or G2 (bass). The staff spans 8 diatonic steps.
+  const anchor = bass ? 43 : 64;
+  const anchorSteps = diatonicSteps(anchor);
   const lineGap = 16;
   const bottomLineY = 96;
-  const yFor = (midi: number) => bottomLineY - (midi - 64) * (lineGap / 2);
+  const stepY = (steps: number) => bottomLineY - (steps - anchorSteps) * (lineGap / 2);
+  const yFor = (midi: number) => stepY(diatonicSteps(midi));
   const width = Math.max(220, visual.notes.length * 64 + 60);
   const top = Math.min(...visual.notes.map(yFor), 16) - 24;
   const height = 140 - top;
+  const xFor = (i: number) => 70 + i * 64;
+  // Ledger lines: every line position outside the staff, up to the note itself.
+  const ledgers: { x: number; y: number }[] = [];
+  visual.notes.forEach((midi, i) => {
+    const s = diatonicSteps(midi);
+    for (let l = anchorSteps - 2; l >= s; l -= 2) ledgers.push({ x: xFor(i), y: stepY(l) - top });
+    for (let l = anchorSteps + 10; l <= s; l += 2) ledgers.push({ x: xFor(i), y: stepY(l) - top });
+  });
   return (
     <svg viewBox={`0 0 ${width} ${height}`} className="w-full max-w-md" role="img" aria-label="Staff notation">
       {[0, 1, 2, 3, 4].map((i) => (
         <line key={i} x1={8} x2={width - 8} y1={bottomLineY - i * lineGap - top} y2={bottomLineY - i * lineGap - top} stroke="#ccc" strokeWidth={1.5} />
       ))}
-      <text x={14} y={bottomLineY - 4 * lineGap + 12 - top} fontSize={30} fill="#ccc">
-        𝄞
+      <text x={14} y={bottomLineY - (bass ? 3 : 4) * lineGap + 12 - top} fontSize={30} fill="#ccc">
+        {bass ? "𝄢" : "𝄞"}
       </text>
+      {ledgers.map((l, i) => (
+        <line key={`ledger-${i}`} x1={l.x - 18} x2={l.x + 18} y1={l.y} y2={l.y} stroke="#ccc" strokeWidth={1.5} />
+      ))}
       {visual.notes.map((midi, i) => {
-        const x = 70 + i * 64;
+        const x = xFor(i);
         const y = yFor(midi) - top;
         return (
           <g key={i}>

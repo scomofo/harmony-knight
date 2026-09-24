@@ -8,7 +8,7 @@
 
 export type LearnBlock =
   | { kind: "text"; body: string }
-  | { kind: "listen"; caption: string; midis: number[]; noteDuration?: number; durations?: number[] }
+  | { kind: "listen"; caption: string; midis: number[]; noteDuration?: number; durations?: number[]; gains?: number[]; types?: OscillatorType[] }
   | {
       kind: "duet";
       caption: string;
@@ -274,6 +274,7 @@ const CHAPTER_1: LessonBody[] = [
         kind: "listen",
         caption: "Same pitch, two volumes. First soft, then loud.",
         midis: [62, 62],
+        gains: [0.18, 0.7],
       },
       {
         kind: "text",
@@ -325,6 +326,7 @@ const CHAPTER_1: LessonBody[] = [
         kind: "listen",
         caption: "Same pitch played twice with different tone shapes (sine, then triangle).",
         midis: [65, 65],
+        types: ["sine", "triangle"],
       },
     ],
     checks: [
@@ -403,7 +405,7 @@ const CHAPTER_2: LessonBody[] = [
     learn: [
       {
         kind: "text",
-        body: "Music names its pitches with only seven letters: A, B, C, D, E, F, G. After G the alphabet starts over at A — each full cycle is called an octave.",
+        body: "Music names its pitches with only seven letters: A, B, C, D, E, F, G. After G the alphabet starts over at A — each full cycle spans eight letter-names, which is why it's called an octave (oct = eight).",
       },
       {
         kind: "listen",
@@ -452,11 +454,11 @@ const CHAPTER_2: LessonBody[] = [
     learn: [
       {
         kind: "text",
-        body: "Written music lives on the staff: five lines and four spaces. Higher on the staff means higher in pitch — the page is a map of high and low.",
+        body: "Written music lives on the staff: five lines and four spaces. Higher on the staff means higher in pitch — the page is a map of high and low. The clef is the anchor that makes it all true: the treble clef's curl circles one line and declares it G, and every other line and space follows from there.",
       },
       {
         kind: "visual",
-        caption: "The treble clef curls around the G line. The lines, bottom to top, are E G B D F.",
+        caption: "The treble clef curls around the G line. The lines, bottom to top, are E G B D F — “Every Good Boy Deserves Fudge”.",
         visual: { kind: "staff", clef: "treble", notes: [64, 67, 71, 72, 76], labels: ["E", "G", "B", "D", "F"] },
       },
       {
@@ -503,8 +505,13 @@ const CHAPTER_2: LessonBody[] = [
       },
       {
         kind: "visual",
-        caption: "Middle C hangs below the staff on its own little ledger line; G4 sits on the second line, inside the treble clef's curl.",
+        caption: "Middle C hangs below the staff on its own short extra line — a ledger line, drawn just for that note. G4 sits on the second line, inside the treble clef's curl.",
         visual: { kind: "staff", clef: "treble", notes: [60, 67], labels: ["C4", "G4"] },
+      },
+      {
+        kind: "visual",
+        caption: "Bass F (F3) sits on the fourth line of the bass staff — the bass clef's two dots bracket that line.",
+        visual: { kind: "staff", clef: "bass", notes: [53], labels: ["F3"] },
       },
       {
         kind: "text",
@@ -512,7 +519,7 @@ const CHAPTER_2: LessonBody[] = [
       },
       {
         kind: "listen",
-        caption: "Middle C, then treble G: two landmarks, a fifth apart.",
+        caption: "Middle C, then treble G: two landmarks, five notes apart.",
         midis: [60, 67],
       },
     ],
@@ -556,7 +563,16 @@ const CHAPTER_2: LessonBody[] = [
       },
       {
         kind: "text",
-        body: "A sharp (♯) raises a note one semitone; a flat (♭) lowers it one semitone. A natural (♮) cancels them, back to the white key.",
+        body: "Why are E–F and B–C already semitones? Look at the keyboard: between most white keys sits a black key, splitting the whole step into two semitones. But E–F and B–C have no black key between them — those white keys are already a semitone apart.",
+      },
+      {
+        kind: "visual",
+        caption: "E and F: no black key between them — already a semitone apart.",
+        visual: { kind: "keyboard", from: 62, to: 67, highlight: [64, 65] },
+      },
+      {
+        kind: "text",
+        body: "A sharp (♯) raises a note one semitone; a flat (♭) lowers it one semitone. A natural (♮) cancels them, back to the white key. Two semitones make a whole tone — C to D is a whole tone.",
       },
       {
         kind: "visual",
@@ -579,7 +595,7 @@ const CHAPTER_2: LessonBody[] = [
         id: "ch2-l4-c2",
         conceptId: "accidentals",
         question: "E to F is…",
-        choices: ["A semitone", "A whole tone", "An octave", "A third"],
+        choices: ["A semitone", "A whole tone", "Two whole tones", "An octave"],
         answerIndex: 0,
         explanation: "E and F are neighbors with no black key between — one semitone.",
         hint: "Is there a black key between E and F on the piano?",
@@ -647,7 +663,7 @@ const CHAPTER_3: LessonBody[] = [
     learn: [
       {
         kind: "text",
-        body: "Meter is how beats group together. The top number of a time signature tells you how many beats per bar: 4/4 means four quarter-note beats in every bar; 3/4 means three.",
+        body: "Meter is how beats group together. In simple meter, the top number of a time signature counts the beats in each bar: 4/4 means four quarter-note beats per bar; 3/4 means three.",
       },
       {
         kind: "listen",
@@ -657,12 +673,12 @@ const CHAPTER_3: LessonBody[] = [
       },
       {
         kind: "text",
-        body: "In 6/8, beats group in threes: two big beats, each splitting into three eighth notes. Count “1-2-3, 4-5-6” — that rolling, lilting feel is compound meter.",
+        body: "Compound meter is the twist: the top number counts the small pulses, not the big beats. In 6/8 there are six eighth-note pulses, but they group into two big beats — each a dotted quarter note splitting into three eighths. Rule of thumb: in simple meter the top number is the beats; in compound meter, beats = top number ÷ 3.",
       },
       {
         kind: "listen",
-        caption: "6/8: two groups of three eighth notes — 1-2-3, 4-5-6.",
-        midis: [60, 60, 60, 60, 60, 60],
+        caption: "6/8: hear TWO big beats (the higher notes), each rolling into three — 1-2-3, 4-5-6.",
+        midis: [72, 60, 60, 72, 60, 60],
         durations: [0.3, 0.3, 0.3, 0.3, 0.3, 0.3],
       },
     ],
@@ -679,11 +695,11 @@ const CHAPTER_3: LessonBody[] = [
       {
         id: "ch3-l2-c2",
         conceptId: "meter",
-        question: "6/8 is called compound meter because its beats…",
-        choices: ["Split into three", "Split into two", "Are all accented", "Are silent"],
+        question: "In 6/8, the top number (6) counts…",
+        choices: ["Six eighth-note pulses grouped into two beats", "Six beats per bar", "Six quarter-note beats", "Two beats — the 6 is decorative"],
         answerIndex: 0,
-        explanation: "In 6/8 each big beat divides into three eighth notes.",
-        hint: "Count it: 1-2-3, 4-5-6 — how many small parts per big beat?",
+        explanation: "Compound meter: the top number counts divisions; 6 ÷ 3 = 2 big beats.",
+        hint: "If 6/8 really had six beats, the 'two big beats' from the lesson would make no sense — what else could the 6 count?",
       },
     ],
   },
@@ -755,11 +771,23 @@ const CHAPTER_3: LessonBody[] = [
       },
       {
         kind: "text",
-        body: "A tie joins two notes into one longer sound — the second note is not re-struck. Two tied quarters sound exactly like one half note.",
+        body: "A tie joins two notes into one longer sound — the second note is not re-struck. Two tied quarters sound exactly like one half note: a single unbroken sound.",
+      },
+      {
+        kind: "listen",
+        caption: "Two quarters joined by a tie: one unbroken sound lasting two full beats.",
+        midis: [62],
+        durations: [0.9],
       },
       {
         kind: "text",
-        body: "Syncopation stresses the off-beat — the “and” between counts. It surprises the foot and makes music dance. Clap on “and” instead of the numbers: that is syncopation.",
+        body: "Syncopation stresses the off-beat — the “and” between counts. It surprises the foot and makes music dance.",
+      },
+      {
+        kind: "listen",
+        caption: "Accents land ONLY on the “ands” — between the beats. That off-beat stress is syncopation.",
+        midis: [-1, 60, -1, 60, -1, 60, -1, 60],
+        durations: [0.225, 0.225, 0.225, 0.225, 0.225, 0.225, 0.225, 0.225],
       },
     ],
     checks: [
@@ -805,7 +833,7 @@ const CHAPTER_4: LessonBody[] = [
       },
       {
         kind: "text",
-        body: "Start on any note and follow the same whole/half pattern to build that key's major scale. G major: G A B C D E F# G — the pattern forces one sharp.",
+        body: "Start on any note and follow the same whole/half pattern to build that key's major scale. Walk it slowly from G: G→A is a whole step, A→B whole, B→C half, C→D whole, D→E whole. Now E→F is only a half step — but the pattern demands a whole step here. So we sharpen F to F#, and F#→G gives the final half step. The pattern forces exactly one sharp: G major is G A B C D E F# G.",
       },
       {
         kind: "listen",
@@ -854,7 +882,7 @@ const CHAPTER_4: LessonBody[] = [
       },
       {
         kind: "text",
-        body: "Sharps always arrive in the same order: F# C# G# D# A# E# B#. Flats mirror it: Bb Eb Ab Db Gb Cb Fb. Memorize the two orders and every signature follows.",
+        body: "Sharps always arrive in the same order — memorize it with “Father Charles Goes Down And Ends Battle”: F# C# G# D# A# E# B#. Flats run the reverse, “Battle Ends And Down Goes Charles' Father”: Bb Eb Ab Db Gb Cb Fb. Every key signature is just the start of one of these two lists.",
       },
       {
         kind: "listen",
@@ -864,7 +892,7 @@ const CHAPTER_4: LessonBody[] = [
       },
       {
         kind: "text",
-        body: "One sharp = G major, two = D major, three = A major… One flat = F major, two = Bb major. And a shortcut: the last sharp in a signature is ti — one half-step below do.",
+        body: "Two shortcuts. For sharps: the LAST sharp in the signature is always ti — one half-step below do. One sharp is F#; a half-step up from F# is G, so one sharp means G major. For flats: the SECOND-TO-LAST flat names the key — two flats are Bb and Eb, so the key is Bb major. (The lone exception: a single flat is F major.)",
       },
     ],
     checks: [
@@ -897,17 +925,21 @@ const CHAPTER_4: LessonBody[] = [
     learn: [
       {
         kind: "text",
-        body: "The circle of fifths arranges all twelve keys in a ring: each step clockwise climbs a perfect fifth and adds one sharp; each step counterclockwise adds one flat.",
+        body: "A fifth is five letter-names apart: C-D-E-F-G. The leap from C up to G is a fifth — hear it below. The circle of fifths is built by stacking that one leap over and over.",
+      },
+      {
+        kind: "listen",
+        caption: "The fifth, up close: C → G, then G → D. Same leap, twice.",
+        midis: [60, 67, 67, 74],
+        noteDuration: 0.5,
+      },
+      {
+        kind: "text",
+        body: "The circle of fifths arranges all twelve keys in a ring: each step clockwise climbs a fifth and adds one sharp; each step counterclockwise adds one flat.",
       },
       {
         kind: "text",
         body: "C sits at the top with no sharps or flats. Clockwise: G (1#), D (2#), A (3#)… Counterclockwise: F (1b), Bb (2b), Eb (3b)…",
-      },
-      {
-        kind: "listen",
-        caption: "The sharp side, climbing by fifths: C → G → D → A.",
-        midis: [60, 67, 62, 69],
-        noteDuration: 0.5,
       },
       {
         kind: "text",
@@ -927,11 +959,11 @@ const CHAPTER_4: LessonBody[] = [
       {
         id: "ch4-l3-c2",
         conceptId: "circle-of-fifths",
-        question: "The key a perfect fifth above D major is…",
+        question: "The key a fifth above D major is…",
         choices: ["A major", "G major", "E major", "C major"],
         answerIndex: 0,
         explanation: "D → A is a fifth up; A major carries three sharps.",
-        hint: "Count five scale steps up from D: D E F# G A.",
+        hint: "Count five letter-names up from D: D E F# G A.",
       },
     ],
   },
@@ -944,7 +976,7 @@ const CHAPTER_4: LessonBody[] = [
     learn: [
       {
         kind: "text",
-        body: "Every major key has a relative minor sharing its key signature — find la, the sixth degree. A minor shares C major's empty signature.",
+        body: "Every major key has a relative minor sharing its key signature: count up six notes from do — in C major that's A. Singers call it “la”, the sixth note of do-re-mi.",
       },
       {
         kind: "listen",
@@ -954,12 +986,22 @@ const CHAPTER_4: LessonBody[] = [
       },
       {
         kind: "text",
-        body: "Harmonic minor raises the seventh for a stronger pull home — G# in A minor, with an exotic leap as its fingerprint. Melodic minor raises the sixth and seventh ascending, then falls back to natural minor descending.",
+        body: "Natural minor's seventh (G) sits a whole step below home, so it doesn't pull strongly back to A. Harmonic minor raises the seventh to G# — now just a half-step below home, it leans hard into A like a leading tone. That raised seventh also opens a wide, exotic-sounding gap between F and G#.",
       },
       {
         kind: "listen",
         caption: "A harmonic minor: hear the raised seventh (G#) lean into A.",
         midis: [69, 71, 72, 74, 76, 77, 80, 81],
+        noteDuration: 0.4,
+      },
+      {
+        kind: "text",
+        body: "Melodies climbing to the top disliked that wide F–G# gap, so melodic minor raises the sixth as well (F#) to smooth the ascent — then lets both fall back to natural minor coming down.",
+      },
+      {
+        kind: "listen",
+        caption: "A melodic minor: rising with raised 6th and 7th (F#, G#), falling as natural minor.",
+        midis: [69, 71, 72, 74, 76, 78, 80, 81, 79, 77, 76, 74, 72, 71, 69],
         noteDuration: 0.4,
       },
     ],
@@ -1053,20 +1095,24 @@ const CHAPTER_5: LessonBody[] = [
         body: "Some intervals sound stable and restful — consonant. Others sound tense, as if they want to move — dissonant. Thirds and sixths are sweet; seconds and sevenths bite.",
       },
       {
-        kind: "listen",
-        caption: "A major third (stable), then a minor second (tense).",
-        midis: [60, 64, 60, 61],
-        noteDuration: 0.6,
+        kind: "duet",
+        caption: "Both notes together: a major third (stable), then a minor second (tense).",
+        voices: [
+          { label: "Lower", midis: [60, 60], durations: [0.9, 0.9] },
+          { label: "Upper", midis: [64, 61], durations: [0.9, 0.9] },
+        ],
       },
       {
         kind: "text",
         body: "Dissonance is not bad — it is narrative. Tension asks a question; consonance answers it. Every great melody spends tension and earns rest.",
       },
       {
-        kind: "listen",
-        caption: "Tension resolving to rest: a minor second melting into a major third.",
-        midis: [60, 61, 60, 64],
-        durations: [0.5, 0.5, 0.5, 0.9],
+        kind: "duet",
+        caption: "Tension resolving to rest: the minor second melts into a major third.",
+        voices: [
+          { label: "Lower", midis: [60, 60], durations: [0.8, 1.2] },
+          { label: "Upper", midis: [61, 64], durations: [0.8, 1.2] },
+        ],
       },
     ],
     checks: [
@@ -1410,16 +1456,12 @@ const CHAPTER_7: LessonBody[] = [
         body: "Voice leading is the art of moving individual melodic lines inside harmony. First species is the simplest texture: note against note, one chord tone at a time — a calm dialogue between voices.",
       },
       {
-        kind: "listen",
-        caption: "Lower voice, note against note: C D E D.",
-        midis: [48, 50, 52, 50],
-        noteDuration: 0.5,
-      },
-      {
-        kind: "listen",
-        caption: "Upper voice answering: C D E D, an octave higher.",
-        midis: [60, 62, 64, 62],
-        noteDuration: 0.5,
+        kind: "duet",
+        caption: "Note against note: the two voices in dialogue, together.",
+        voices: [
+          { label: "Lower voice", midis: [48, 50, 52, 50], durations: [0.5, 0.5, 0.5, 0.5] },
+          { label: "Upper voice", midis: [60, 62, 64, 62], durations: [0.5, 0.5, 0.5, 0.5] },
+        ],
       },
       {
         kind: "text",
@@ -1464,20 +1506,24 @@ const CHAPTER_7: LessonBody[] = [
         body: "Two voices moving in the same direction between the same perfect intervals — parallel fifths or octaves — fuse into one. The council loses a voice.",
       },
       {
-        kind: "listen",
-        caption: "Outer voices of parallel fifths, alternating low–high: C–G moving to D–A.",
-        midis: [48, 55, 50, 57],
-        noteDuration: 0.4,
+        kind: "duet",
+        caption: "Parallel fifths, both voices together: C–G moving to D–A — hear the two voices fuse into one.",
+        voices: [
+          { label: "Bass", midis: [48, 50], durations: [0.7, 1.0] },
+          { label: "Soprano", midis: [55, 57], durations: [0.7, 1.0] },
+        ],
       },
       {
         kind: "text",
         body: "The usual fix is contrary motion: let one voice rise while the other falls, and each voice's independence returns.",
       },
       {
-        kind: "listen",
-        caption: "Contrary motion instead, low–high: C–G moving to D–F.",
-        midis: [48, 55, 50, 53],
-        noteDuration: 0.4,
+        kind: "duet",
+        caption: "Contrary motion: the bass rises while the soprano falls — each voice stays independent.",
+        voices: [
+          { label: "Bass", midis: [48, 50], durations: [0.7, 1.0] },
+          { label: "Soprano", midis: [55, 53], durations: [0.7, 1.0] },
+        ],
       },
     ],
     checks: [
@@ -1517,16 +1563,20 @@ const CHAPTER_7: LessonBody[] = [
         body: "SATB — soprano, alto, tenor, bass — is the classic four-voice choir. Soprano carries the tune, bass anchors the harmony, alto and tenor fill the middle.",
       },
       {
-        kind: "listen",
-        caption: "Similar motion, low–high: C–C rising to D–D.",
-        midis: [48, 60, 50, 62],
-        noteDuration: 0.35,
+        kind: "duet",
+        caption: "Similar motion: both voices rise together.",
+        voices: [
+          { label: "Bass", midis: [48, 50], durations: [0.6, 0.9] },
+          { label: "Soprano", midis: [60, 62], durations: [0.6, 0.9] },
+        ],
       },
       {
-        kind: "listen",
-        caption: "Contrary motion, low–high: E–C moving to D–D.",
-        midis: [52, 60, 50, 62],
-        noteDuration: 0.35,
+        kind: "duet",
+        caption: "Contrary motion: the bass falls while the soprano rises.",
+        voices: [
+          { label: "Bass", midis: [52, 50], durations: [0.6, 0.9] },
+          { label: "Soprano", midis: [60, 62], durations: [0.6, 0.9] },
+        ],
       },
     ],
     checks: [
@@ -1729,6 +1779,10 @@ const CHAPTER_8: LessonBody[] = [
         caption: "Tonicization: a brief visit to V inside C major (I – V/V – V – I).",
         midis: [60, 64, 67, 62, 66, 69, 67, 71, 74, 60, 64, 67],
         durations: [0.3, 0.3, 0.7, 0.3, 0.3, 0.7, 0.3, 0.3, 0.7, 0.4, 0.4, 1.0],
+      },
+      {
+        kind: "text",
+        body: "Listen for the F# inside the D major chord — a note that doesn't belong in C major. That out-of-key sharp is the fingerprint of the visit: the moment the music borrows a key it doesn't live in.",
       },
       {
         kind: "text",
@@ -1991,10 +2045,12 @@ const CHAPTER_9: LessonBody[] = [
         body: "Polyrhythm layers two meters at once: 3:2 means three pulses against two in the same span — the heartbeat of Afro-Cuban music and much of jazz.",
       },
       {
-        kind: "listen",
-        caption: "3:2 — low pulses mark 2, high pulses mark 3, interlocked.",
-        midis: [48, 72, 48, 72],
-        durations: [0.4, 0.2, 0.2, 0.4],
+        kind: "duet",
+        caption: "3:2 — the low voice pulses twice while the high voice pulses three times, in the same span.",
+        voices: [
+          { label: "Two", midis: [48, 48], durations: [0.65, 0.65] },
+          { label: "Three", midis: [72, 72, 72], durations: [0.433, 0.433, 0.434] },
+        ],
       },
     ],
     checks: [
@@ -2006,7 +2062,6 @@ const CHAPTER_9: LessonBody[] = [
         answerIndex: 0,
         explanation: "Two meters interlocked — the classic “three over two” feel.",
         hint: "The numbers count pulses, not instruments.",
-        audio: { midis: [48, 72, 48, 72], durations: [0.4, 0.2, 0.2, 0.4] },
       },
       {
         id: "ch9-l4-c2",
