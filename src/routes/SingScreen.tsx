@@ -4,7 +4,7 @@ import { useStore } from "../lib/game/store.ts";
 import { midiToName } from "../lib/game/music.ts";
 import { playSequence, playTone, stopLane } from "../lib/game/audio.ts";
 import { emitEffect } from "../lib/game/effects.ts";
-import { MicPitch, singPhrase, type MicState, type PitchResult } from "../lib/game/pitch.ts";
+import { MicPitch, singPhrase, holdTick, HOLD_TICK_MS, type MicState, type TimedPitch } from "../lib/game/pitch.ts";
 
 /**
  * Singing studio: call-and-response pitch matching with the microphone.
@@ -19,7 +19,12 @@ import { MicPitch, singPhrase, type MicState, type PitchResult } from "../lib/ga
 
 const HOLD_MS = 350;
 const CENT_TOLERANCE = 45;
-const TICK_MS = 100;
+/**
+ * Onset grace: after each note starts, off-target frames inside this window
+ * don't drain the hold meter — the first frames of a sung note often read
+ * flat before the voice stabilizes.
+ */
+const ONSET_GRACE_MS = 50;
 
 type PitchDisplay = { name: string; cents: number; holdPct: number } | null;
 
@@ -36,8 +41,9 @@ export function SingScreen() {
   const [display, setDisplay] = useState<PitchDisplay>(null);
 
   const micRef = useRef<MicPitch | null>(null);
-  const pitchRef = useRef<PitchResult | null>(null);
+  const pitchRef = useRef<TimedPitch | null>(null);
   const holdRef = useRef(0);
+  const graceUntilRef = useRef(0);
   // Ref mirrors so the frame loop and timers never read stale state.
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
@@ -51,6 +57,11 @@ export function SingScreen() {
   const stopSound = useCallback(() => {
     stopLane("sing");
     stopLane("sing-confirm");
+  }, []);
+
+  /** Start the onset grace window: the next ONSET_GRACE_MS of off-target frames won't drain the hold. */
+  const beginOnsetGrace = useCallback(() => {
+    graceUntilRef.current = performance.now() + ONSET_GRACE_MS;
   }, []);
 
   const startRound = useCallback(
@@ -73,11 +84,12 @@ export function SingScreen() {
           if (!cancelled) {
             setListenIdx(-1);
             setPhase("sing");
+            beginOnsetGrace();
           }
         },
       });
     },
-    [stopSound],
+    [stopSound, beginOnsetGrace],
   );
 
   const finishRound = useCallback(() => {
@@ -98,33 +110,34 @@ export function SingScreen() {
         emitEffect({ event: "correct" });
       }
       holdRef.current = 0;
+      beginOnsetGrace();
       if (idx + 1 >= p.length) finishRound();
       else setSingIdx(idx + 1);
     },
-    [finishRound],
+    [finishRound, beginOnsetGrace],
   );
 
   // Pitch matching loop: 10 Hz is plenty for a 350 ms hold, and it keeps
   // React renders cheap while the mic streams at 60 fps into a ref.
+  // Off-target frames inside the onset grace window don't drain the hold.
   useEffect(() => {
     if (micState !== "live" || phase !== "sing") return;
     const id = window.setInterval(() => {
       const pitch = pitchRef.current;
       const target = phraseRef.current[singIdxRef.current];
       if (target === undefined) return;
+      const onTarget =
+        !!pitch && pitch.midi === target && Math.abs(pitch.cents) <= CENT_TOLERANCE;
+      const inGrace = performance.now() < graceUntilRef.current;
+      holdRef.current = holdTick(holdRef.current, onTarget, inGrace);
       const holdPct = Math.min(1, holdRef.current / HOLD_MS);
       setDisplay(
         pitch
           ? { name: midiToName(pitch.midi), cents: pitch.cents, holdPct }
           : { name: "—", cents: 0, holdPct },
       );
-      if (pitch && pitch.midi === target && Math.abs(pitch.cents) <= CENT_TOLERANCE) {
-        holdRef.current += TICK_MS;
-        if (holdRef.current >= HOLD_MS) advanceNote(true);
-      } else {
-        holdRef.current = Math.max(0, holdRef.current - TICK_MS * 1.5);
-      }
-    }, TICK_MS);
+      if (holdRef.current >= HOLD_MS) advanceNote(true);
+    }, HOLD_TICK_MS);
     return () => window.clearInterval(id);
   }, [micState, phase, advanceNote]);
 

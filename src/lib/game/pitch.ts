@@ -18,6 +18,16 @@ export type PitchResult = {
   clarity: number;
 };
 
+/**
+ * A pitch result with its time attached: milliseconds since the mic started
+ * streaming (performance.now() minus the mic-start anchor, the beat-zero
+ * anchor idea). Without an anchor, per-frame timing is arbitrary.
+ */
+export type TimedPitch = PitchResult & {
+  /** ms since the mic started streaming; always >= 0. */
+  tMs: number;
+};
+
 /** Singing range we listen for: A1 (55 Hz) up to A5 (880 Hz). */
 export const MIN_FREQ = 55;
 export const MAX_FREQ = 880;
@@ -82,20 +92,85 @@ export function detectPitch(samples: Float32Array, sampleRate: number): PitchRes
   return { freq, midi, cents: Math.round((midiFloat - midi) * 100), clarity: bestNorm };
 }
 
+/** Frequency smoothing window: median filter over this many frames. */
+export const SMOOTH_FREQ_WINDOW = 5;
+/** Cents smoothing window: moving average over this many frames. */
+export const SMOOTH_CENTS_WINDOW = 3;
+
+function median(values: number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+/**
+ * Production-style smoothing for the pitch stream: a median filter on
+ * frequency (kills single-frame octave jumps and spikes) and a moving
+ * average on cents (steadies the feedback meter). Silence resets the
+ * windows so a new note always starts clean. Pure math — unit-testable.
+ */
+export class PitchSmoother {
+  private freqs: number[] = [];
+  private centVals: number[] = [];
+
+  push(p: PitchResult | null): PitchResult | null {
+    if (!p) {
+      this.freqs = [];
+      this.centVals = [];
+      return null;
+    }
+    this.freqs.push(p.freq);
+    if (this.freqs.length > SMOOTH_FREQ_WINDOW) this.freqs.shift();
+    this.centVals.push(p.cents);
+    if (this.centVals.length > SMOOTH_CENTS_WINDOW) this.centVals.shift();
+
+    const freq = median(this.freqs);
+    const midiFloat = freqToMidiFloat(freq);
+    const midi = Math.round(midiFloat);
+    const cents = Math.round(
+      this.centVals.reduce((a, b) => a + b, 0) / this.centVals.length,
+    );
+    return { freq, midi, cents, clarity: p.clarity };
+  }
+}
+
+/** One hold-meter tick, in ms. */
+export const HOLD_TICK_MS = 100;
+/** Hold drain per tick when the singer is off-target (multiple of a tick). */
+export const HOLD_DRAIN = 1.5;
+
+/**
+ * One step of the singing studio's hold-to-match meter. On-target frames
+ * charge the hold; off-target frames drain it (never below zero); frames
+ * inside the onset grace window leave it untouched so a slow vocal attack
+ * isn't punished before the voice stabilizes.
+ */
+export function holdTick(holdMs: number, onTarget: boolean, inGrace: boolean): number {
+  if (onTarget) return holdMs + HOLD_TICK_MS;
+  if (inGrace) return holdMs;
+  return Math.max(0, holdMs - HOLD_TICK_MS * HOLD_DRAIN);
+}
+
 export type MicState = "idle" | "requesting" | "live" | "denied" | "unsupported" | "error";
 
 /**
  * Streams microphone audio into detectPitch and reports results through
- * onPitch. Call dispose() when done (unmount, route change) — it stops
- * the tracks, closes the context, and cancels the frame loop.
+ * onPitch. Each result is smoothed (median on frequency, moving average on
+ * cents) and timestamped in milliseconds since the mic started streaming —
+ * the timing anchor, so any future per-note timing feedback isn't arbitrary.
+ * Call dispose() when done (unmount, route change) — it stops the tracks,
+ * closes the context, and cancels the frame loop.
  */
 export class MicPitch {
-  onPitch: ((pitch: PitchResult | null) => void) | null = null;
+  onPitch: ((pitch: TimedPitch | null) => void) | null = null;
   private ctx: AudioContext | null = null;
   private stream: MediaStream | null = null;
   private analyser: AnalyserNode | null = null;
   private raf = 0;
   private buf: Float32Array<ArrayBuffer> = new Float32Array(0);
+  private smoother = new PitchSmoother();
+  /** performance.now() captured when streaming starts; tMs is relative to this. */
+  private t0 = 0;
 
   async start(): Promise<MicState> {
     if (
@@ -126,10 +201,14 @@ export class MicPitch {
       this.stream = stream;
       this.analyser = analyser;
       this.buf = new Float32Array(analyser.fftSize);
+      this.t0 = performance.now();
+      this.smoother = new PitchSmoother();
       const loop = () => {
         if (!this.analyser || !this.ctx) return;
         this.analyser.getFloatTimeDomainData(this.buf);
-        this.onPitch?.(detectPitch(this.buf, this.ctx.sampleRate));
+        const raw = detectPitch(this.buf, this.ctx.sampleRate);
+        const smooth = this.smoother.push(raw);
+        this.onPitch?.(smooth ? { ...smooth, tMs: performance.now() - this.t0 } : null);
         this.raf = requestAnimationFrame(loop);
       };
       loop();
