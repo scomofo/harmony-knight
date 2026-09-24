@@ -4,6 +4,7 @@ import { useStore } from "../lib/game/store.ts";
 import { exportSave } from "../lib/game/schema.ts";
 import { setMotionPolicy } from "../lib/game/effects.ts";
 import { setMuted, setVolume } from "../lib/game/audio.ts";
+import { InstallApp } from "../components/game/InstallApp.tsx";
 
 export function SettingsScreen() {
   const save = useStore((s) => s.save);
@@ -56,6 +57,16 @@ export function SettingsScreen() {
         <Link to="/" className="underline">Home</Link>
       </nav>
       <h1 className="mt-2 text-2xl font-bold">Settings</h1>
+
+      <Link
+        to="/grown-ups"
+        className="mt-6 block rounded-2xl border border-white/10 bg-white/5 p-4"
+      >
+        <p className="font-semibold">Grown-ups</p>
+        <p className="mt-1 text-sm text-white/60">
+          Progress, streaks, and what might need practice — behind a kid-gate PIN.
+        </p>
+      </Link>
 
       <section className="mt-6 space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4">
         <h2 className="font-semibold">Comfort & access</h2>
@@ -114,6 +125,11 @@ export function SettingsScreen() {
             <option value={0.5}>Half</option>
           </select>
         </label>
+      </section>
+
+      <section className="mt-4 space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+        <h2 className="font-semibold">App</h2>
+        <InstallApp />
       </section>
 
       <section className="mt-4 space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4">

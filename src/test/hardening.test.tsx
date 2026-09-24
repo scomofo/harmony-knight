@@ -32,6 +32,7 @@ describe("titleFor", () => {
     expect(titleFor("/grades")).toBe("Harmony Knight — Grades");
     expect(titleFor("/create")).toBe("Harmony Knight — Create");
     expect(titleFor("/settings")).toBe("Harmony Knight — Settings");
+    expect(titleFor("/grown-ups")).toBe("Harmony Knight — Grown-ups");
     expect(titleFor("/")).toBe("Harmony Knight — music theory, one idea at a time");
   });
 });

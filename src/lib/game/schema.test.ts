@@ -1,6 +1,7 @@
 /**
- * Schema hardening tests: the v1 -> v2 migration (gameStats), per-field
- * sanitization, and strict import validation for every persisted object.
+ * Schema hardening tests: the v1 -> v3 migration chain (gameStats, quest
+ * log, grown-ups PIN), per-field sanitization, and strict import validation
+ * for every persisted object.
  */
 import { describe, expect, it } from "vitest";
 import {
@@ -20,10 +21,10 @@ function v1Save(overrides: Record<string, unknown> = {}): Record<string, unknown
   return { ...base, version: 1, ...overrides };
 }
 
-describe("v1 -> v2 migration", () => {
+describe("v1 -> v3 migration chain", () => {
   it("adds default gameStats to a pre-games v1 save", () => {
     const migrated = migrateSave(v1Save());
-    expect(migrated?.version).toBe(2);
+    expect(migrated?.version).toBe(SAVE_VERSION); // chains v1 -> v2 -> v3
     expect(migrated?.gameStats).toEqual({
       strikePlays: 0,
       strikeBest: 0,
@@ -31,6 +32,8 @@ describe("v1 -> v2 migration", () => {
       duelLosses: 0,
       duelDraws: 0,
     });
+    expect(migrated?.questLog).toEqual({});
+    expect(migrated?.settings.grownUpsPin).toBeNull();
     expect(migrated && validateSave(migrated)).toBe(true);
   });
 
@@ -129,6 +132,24 @@ describe("validateSave (strict)", () => {
     expect(bad([{ ...good, id: "" }])).toBe(false);
     expect(bad([{ ...good, updatedAt: -2 }])).toBe(false);
     expect(bad(["not-a-creation"])).toBe(false);
+  });
+
+  it("rejects malformed quest logs", () => {
+    const good = { "2026-09-23": { learn: "done", play: "claimed" } };
+    expect(validateSave({ ...defaultSave(), questLog: good })).toBe(true);
+    const bad = (questLog: unknown) => validateSave({ ...defaultSave(), questLog });
+    expect(bad({ "2026-09-23": { learn: "finished" } })).toBe(false);
+    expect(bad({ "2026-09-23": { learn: 1 } })).toBe(false);
+    expect(bad({ "2026-09-23": "done" })).toBe(false);
+    expect(bad(null)).toBe(false);
+  });
+
+  it("rejects non-string grown-ups PINs", () => {
+    const bad = (grownUpsPin: unknown) =>
+      validateSave({ ...defaultSave(), settings: { ...defaultSave().settings, grownUpsPin } });
+    expect(bad(null)).toBe(true);
+    expect(bad("1234")).toBe(true);
+    expect(bad(1234)).toBe(false);
   });
 
   it("rejects malformed grade windows", () => {

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useStore } from "../lib/game/store.ts";
 import { TeachingPlayer } from "../components/game/TeachingPlayer.tsx";
+import { QuestStrip } from "../components/game/QuestStrip.tsx";
 import { CHAPTERS, authoredLessons } from "../lib/game/course.ts";
 
 export function OnboardingScreen() {
@@ -61,6 +62,8 @@ export function HomeScreen() {
       <p className="mt-1 text-white/60">
         {save.harmonyPoints} harmony points · Grade {save.grade} · {save.learningDays.length} learning days
       </p>
+
+      <QuestStrip />
 
       {recommended ? (
         <Link

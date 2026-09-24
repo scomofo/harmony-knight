@@ -26,6 +26,13 @@ export function GamesScreen() {
       meta: `${stats.duelWins}W · ${stats.duelDraws}D · ${stats.duelLosses}L`,
     },
     {
+      to: "/sing",
+      icon: "🎤",
+      title: "Singing Studio",
+      blurb: "Call and response — echo each melody with your voice. Mic stays on this device.",
+      meta: "Needs microphone",
+    },
+    {
       to: "/studies",
       icon: "📚",
       title: "Studies",

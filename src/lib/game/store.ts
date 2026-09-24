@@ -23,6 +23,22 @@ import {
 import { completeLesson, recordCheck, recordLearningDay, startLesson } from "./learning.ts";
 import { recordNoteAnswer } from "./sr.ts";
 import { advanceGrade, trialPassed } from "./grades.ts";
+import {
+  QUESTS,
+  claimQuest as claimQuestInLog,
+  completeQuest as completeQuestInLog,
+  todayKey,
+  type QuestId,
+} from "./quests.ts";
+
+/** Stamp a quest completion + learning day onto a save draft. Idempotent per day. */
+function stampQuest(save: SaveData, id: QuestId): SaveData {
+  return {
+    ...save,
+    questLog: completeQuestInLog(save.questLog, id, todayKey()),
+    learningDays: recordLearningDay(save.learningDays),
+  };
+}
 
 export type SaveStatus = "ok" | "quota-exceeded" | "unavailable";
 
@@ -71,6 +87,14 @@ type Store = {
     result: { score: number },
   ) => void;
   recordDuelResult: (outcome: "win" | "loss" | "draw") => void;
+  /** Record a daily quest completion (idempotent per day). */
+  completeQuest: (id: QuestId) => void;
+  /**
+   * Claim a completed quest's point reward. Returns true when points were
+   * paid; claiming is explicit so quest payouts never disturb the lesson
+   * and game point accounting.
+   */
+  claimQuest: (id: QuestId) => boolean;
   replaceSave: (json: string) => { ok: true } | { ok: false; reason: string };
   resetSave: () => void;
 };
@@ -145,10 +169,15 @@ export const useStore = create<Store>()((set, get) => ({
     const prev = get().save.lessons[lessonId] ?? startLesson(lessonId);
     const { checks, isFirst } = recordCheck(prev.checks, checkId, correct, assisted);
     const correctFirstTry = correct && !assisted && isFirst;
-    get().update((s) => ({
-      ...s,
-      lessons: { ...s.lessons, [lessonId]: { ...prev, checks } },
-    }));
+    get().update((s) =>
+      stampQuest(
+        {
+          ...s,
+          lessons: { ...s.lessons, [lessonId]: { ...prev, checks } },
+        },
+        "learn",
+      ),
+    );
     return { correctFirstTry, isFirst };
   },
 
@@ -227,12 +256,15 @@ export const useStore = create<Store>()((set, get) => ({
     get().update((s) => {
       const record: SavedCreation = { ...creation, updatedAt: Date.now() };
       const existing = s.creations.some((c) => c.id === record.id);
-      return {
-        ...s,
-        creations: existing
-          ? s.creations.map((c) => (c.id === record.id ? record : c))
-          : [...s.creations, record],
-      };
+      return stampQuest(
+        {
+          ...s,
+          creations: existing
+            ? s.creations.map((c) => (c.id === record.id ? record : c))
+            : [...s.creations, record],
+        },
+        "create",
+      );
     }),
 
   deleteCreation: (id) =>
@@ -246,19 +278,40 @@ export const useStore = create<Store>()((set, get) => ({
         strikePlays: s.gameStats.strikePlays + 1,
         strikeBest: Math.max(s.gameStats.strikeBest, result.score),
       };
-      return { ...s, gameStats: stats };
+      return stampQuest({ ...s, gameStats: stats }, "play");
     }),
 
   recordDuelResult: (outcome) =>
+    get().update((s) =>
+      stampQuest(
+        {
+          ...s,
+          gameStats: {
+            ...s.gameStats,
+            duelWins: s.gameStats.duelWins + (outcome === "win" ? 1 : 0),
+            duelLosses: s.gameStats.duelLosses + (outcome === "loss" ? 1 : 0),
+            duelDraws: s.gameStats.duelDraws + (outcome === "draw" ? 1 : 0),
+          },
+        },
+        "play",
+      ),
+    ),
+
+  completeQuest: (id) => get().update((s) => stampQuest(s, id)),
+
+  claimQuest: (id) => {
+    const date = todayKey();
+    const { log, claimed } = claimQuestInLog(get().save.questLog, id, date);
+    if (!claimed) return false;
+    const quest = QUESTS.find((q) => q.id === id);
+    const points = quest?.points ?? 0;
     get().update((s) => ({
       ...s,
-      gameStats: {
-        ...s.gameStats,
-        duelWins: s.gameStats.duelWins + (outcome === "win" ? 1 : 0),
-        duelLosses: s.gameStats.duelLosses + (outcome === "loss" ? 1 : 0),
-        duelDraws: s.gameStats.duelDraws + (outcome === "draw" ? 1 : 0),
-      },
-    })),
+      questLog: log,
+      harmonyPoints: s.harmonyPoints + points,
+    }));
+    return true;
+  },
 
   replaceSave: (json) => {
     const imported = importSave(json);
