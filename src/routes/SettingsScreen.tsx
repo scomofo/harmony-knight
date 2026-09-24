@@ -4,6 +4,7 @@ import { useStore } from "../lib/game/store.ts";
 import { exportSave } from "../lib/game/schema.ts";
 import { setMotionPolicy } from "../lib/game/effects.ts";
 import { setMuted, setVolume } from "../lib/game/audio.ts";
+import { InstallApp } from "../components/game/InstallApp.tsx";
 
 export function SettingsScreen() {
   const save = useStore((s) => s.save);
@@ -114,6 +115,11 @@ export function SettingsScreen() {
             <option value={0.5}>Half</option>
           </select>
         </label>
+      </section>
+
+      <section className="mt-4 space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+        <h2 className="font-semibold">App</h2>
+        <InstallApp />
       </section>
 
       <section className="mt-4 space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4">
