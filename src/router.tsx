@@ -24,6 +24,7 @@ import { CreationsScreen } from "./routes/CreationsScreen.tsx";
 import { StrikeScreen } from "./routes/StrikeScreen.tsx";
 import { DuelScreen } from "./routes/DuelScreen.tsx";
 import { GradesScreen } from "./routes/GradesScreen.tsx";
+import { GrownUpsScreen } from "./routes/GrownUpsScreen.tsx";
 
 const ROUTE_TITLES: Array<[RegExp, string]> = [
   [/^\/onboarding/, "Begin your quest"],
@@ -36,6 +37,7 @@ const ROUTE_TITLES: Array<[RegExp, string]> = [
   [/^\/strike/, "Strike"],
   [/^\/duel/, "Duel"],
   [/^\/grades/, "Grades"],
+  [/^\/grown-ups/, "Grown-ups"],
   [/^\/settings/, "Settings"],
 ];
 
@@ -140,8 +142,9 @@ const creationsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cr
 const strikeRoute = createRoute({ getParentRoute: () => rootRoute, path: "/strike", component: StrikeScreen });
 const duelRoute = createRoute({ getParentRoute: () => rootRoute, path: "/duel", component: DuelScreen });
 const gradesRoute = createRoute({ getParentRoute: () => rootRoute, path: "/grades", component: GradesScreen });
+const grownUpsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/grown-ups", component: GrownUpsScreen });
 
-const routeTree = rootRoute.addChildren([indexRoute, onboardingRoute, pathRoute, practiceRoute, settingsRoute, lessonRoute, gamesRoute, studiesRoute, studyDrillRoute, creationsRoute, strikeRoute, duelRoute, gradesRoute]);
+const routeTree = rootRoute.addChildren([indexRoute, onboardingRoute, pathRoute, practiceRoute, settingsRoute, lessonRoute, gamesRoute, studiesRoute, studyDrillRoute, creationsRoute, strikeRoute, duelRoute, gradesRoute, grownUpsRoute]);
 const router = createRouter({ routeTree });
 
 declare module "@tanstack/react-router" {
