@@ -42,6 +42,8 @@ function LearnBlockView({ block, index }: { block: LearnBlock; index: number }) 
       lane={`learn-${index}`}
       noteDuration={block.noteDuration ?? 0.5}
       durations={block.durations}
+      gains={block.gains}
+      types={block.types}
     />
   );
 }

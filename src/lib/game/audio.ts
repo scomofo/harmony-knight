@@ -196,6 +196,9 @@ export function playSequence(
     gap?: number;
     gain?: number;
     type?: OscillatorType;
+    /** Per-note overrides: gains[i] / types[i] fall back to gain / type. */
+    gains?: number[];
+    types?: OscillatorType[];
     onNoteStart?: (index: number, time: number) => void;
     onDone?: (cancelled: boolean) => void;
   } = {},
@@ -220,8 +223,8 @@ export function playSequence(
         lane: key,
         at: onset,
         duration: dur,
-        gain: opts.gain,
-        type: opts.type,
+        gain: opts.gains?.[i] ?? opts.gain,
+        type: opts.types?.[i] ?? opts.type,
         onStart: (t) => opts.onNoteStart?.(i, t),
         onEnd: noteDone,
       });
