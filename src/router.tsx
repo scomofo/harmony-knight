@@ -9,9 +9,10 @@ import {
   useNavigate,
   useRouterState,
 } from "@tanstack/react-router";
-import { stopAll } from "./lib/game/audio.ts";
+import { stopAll, setVoice } from "./lib/game/audio.ts";
 import { cancelEffects, setMotionPolicy } from "./lib/game/effects.ts";
 import { useStore } from "./lib/game/store.ts";
+import { resolveInstrument, resolveTheme } from "./lib/game/shop.ts";
 import { EffectLayer } from "./components/game/EffectLayer.tsx";
 import { BreakReminder } from "./components/game/BreakReminder.tsx";
 import { HomeScreen, LearningPathScreen, OnboardingScreen } from "./routes/Screens.tsx";
@@ -25,6 +26,8 @@ import { StrikeScreen } from "./routes/StrikeScreen.tsx";
 import { DuelScreen } from "./routes/DuelScreen.tsx";
 import { GradesScreen } from "./routes/GradesScreen.tsx";
 import { GrownUpsScreen } from "./routes/GrownUpsScreen.tsx";
+import { ShopScreen } from "./routes/ShopScreen.tsx";
+import { EndlessScreen } from "./routes/EndlessScreen.tsx";
 import { SharedScreen } from "./routes/SharedScreen.tsx";
 import { SingScreen } from "./routes/SingScreen.tsx";
 
@@ -40,6 +43,8 @@ const ROUTE_TITLES: Array<[RegExp, string]> = [
   [/^\/duel/, "Duel"],
   [/^\/grades/, "Grades"],
   [/^\/grown-ups/, "Grown-ups"],
+  [/^\/shop/, "Shop"],
+  [/^\/endless/, "Endless practice"],
   [/^\/shared/, "Shared melody"],
   [/^\/sing/, "Singing studio"],
   [/^\/settings/, "Settings"],
@@ -53,6 +58,7 @@ export function titleFor(pathname: string): string {
 
 function Shell() {
   const settings = useStore((s) => s.save.settings);
+  const shop = useStore((s) => s.save.shop);
   const onboarded = useStore((s) => s.save.onboarded);
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -67,6 +73,20 @@ function Shell() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Equipped shop instrument -> default voice for all playback. Resolved
+  // defensively by id; unknown ids fall back to the default voice.
+  useEffect(() => {
+    setVoice(resolveInstrument(shop.instrument).voice);
+  }, [shop.instrument]);
+
+  // Equipped theme -> page background + accent. High-contrast mode keeps
+  // its solid black base: the theme never overrides accessibility.
+  useEffect(() => {
+    const theme = resolveTheme(shop.theme);
+    document.documentElement.style.setProperty("--hk-accent", theme.accent);
+    document.body.style.background = settings.highContrast ? "" : theme.bg;
+  }, [shop.theme, settings.highContrast]);
 
   // Tab hiding pauses everything: audio, effects, timers.
   useEffect(() => {
@@ -99,7 +119,7 @@ function Shell() {
       <EffectLayer />
       <header className="border-b border-white/10">
         <nav className="mx-auto flex max-w-2xl items-center gap-4 p-3 text-sm">
-          <Link to="/" className="font-bold text-amber-200">
+          <Link to="/" className="hk-accent-text font-bold">
             ⚔️ Harmony Knight
           </Link>
           <Link to="/path" className="text-white/70 hover:text-white">
@@ -147,10 +167,12 @@ const strikeRoute = createRoute({ getParentRoute: () => rootRoute, path: "/strik
 const duelRoute = createRoute({ getParentRoute: () => rootRoute, path: "/duel", component: DuelScreen });
 const gradesRoute = createRoute({ getParentRoute: () => rootRoute, path: "/grades", component: GradesScreen });
 const grownUpsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/grown-ups", component: GrownUpsScreen });
+const shopRoute = createRoute({ getParentRoute: () => rootRoute, path: "/shop", component: ShopScreen });
+const endlessRoute = createRoute({ getParentRoute: () => rootRoute, path: "/endless", component: EndlessScreen });
 const sharedRoute = createRoute({ getParentRoute: () => rootRoute, path: "/shared/$payload", component: SharedScreen });
 const singRoute = createRoute({ getParentRoute: () => rootRoute, path: "/sing", component: SingScreen });
 
-const routeTree = rootRoute.addChildren([indexRoute, onboardingRoute, pathRoute, practiceRoute, settingsRoute, lessonRoute, gamesRoute, studiesRoute, studyDrillRoute, creationsRoute, strikeRoute, duelRoute, gradesRoute, grownUpsRoute, sharedRoute, singRoute]);
+const routeTree = rootRoute.addChildren([indexRoute, onboardingRoute, pathRoute, practiceRoute, settingsRoute, lessonRoute, gamesRoute, studiesRoute, studyDrillRoute, creationsRoute, strikeRoute, duelRoute, gradesRoute, grownUpsRoute, shopRoute, endlessRoute, sharedRoute, singRoute]);
 const router = createRouter({ routeTree });
 
 declare module "@tanstack/react-router" {

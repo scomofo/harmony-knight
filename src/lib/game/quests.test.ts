@@ -9,6 +9,9 @@ import {
   claimablePoints,
   completeQuest,
   currentStreak,
+  daysBetween,
+  freezeAvailable,
+  guardedStreak,
   questStatus,
   todayKey,
 } from "./quests.ts";
@@ -80,5 +83,49 @@ describe("streaks", () => {
   it("crosses month boundaries", () => {
     const days = ["2026-08-31", "2026-09-01"];
     expect(currentStreak(days, "2026-09-01")).toBe(2);
+  });
+});
+
+describe("streak freeze", () => {
+  it("is available until first use, then once per 7 days", () => {
+    expect(freezeAvailable(null, "2026-09-23")).toBe(true);
+    expect(freezeAvailable("2026-09-23", "2026-09-23")).toBe(false);
+    expect(freezeAvailable("2026-09-23", "2026-09-29")).toBe(false);
+    expect(freezeAvailable("2026-09-23", "2026-09-30")).toBe(true);
+  });
+
+  it("bridges a single missed day when the freeze is ready", () => {
+    // Streak through the 21st, missed the 22nd, back on the 23rd.
+    const days = ["2026-09-20", "2026-09-21"];
+    expect(currentStreak(days, "2026-09-23")).toBe(0);
+    const guarded = guardedStreak(days, "2026-09-23", null);
+    expect(guarded.freezeBridged).toBe(true);
+    expect(guarded.streak).toBe(3); // 2 prior days + today; the gap is forgiven
+  });
+
+  it("does not bridge when the freeze was used this week", () => {
+    const days = ["2026-09-20", "2026-09-21"];
+    const guarded = guardedStreak(days, "2026-09-23", "2026-09-20");
+    expect(guarded).toEqual({ streak: 0, freezeBridged: false });
+  });
+
+  it("does not bridge a two-day gap", () => {
+    const days = ["2026-09-20"];
+    const guarded = guardedStreak(days, "2026-09-23", null);
+    expect(guarded).toEqual({ streak: 0, freezeBridged: false });
+  });
+
+  it("leaves a healthy streak untouched", () => {
+    const days = ["2026-09-22", "2026-09-23"];
+    expect(guardedStreak(days, "2026-09-23", null)).toEqual({
+      streak: 2,
+      freezeBridged: false,
+    });
+  });
+
+  it("daysBetween counts whole days across month boundaries", () => {
+    expect(daysBetween("2026-09-23", "2026-09-30")).toBe(7);
+    expect(daysBetween("2026-08-31", "2026-09-01")).toBe(1);
+    expect(daysBetween("2026-09-23", "2026-09-23")).toBe(0);
   });
 });

@@ -11,8 +11,7 @@
 
 import { midiToFreq } from "./music.ts";
 
-export type ToneOptions = {
-  /** Seconds from now to start. */
+export type ToneOptions = {  /** Seconds from now to start. */
   at?: number;
   /** Duration in seconds. */
   duration?: number;
@@ -43,6 +42,22 @@ type Bus = {
 let bus: Bus | null = null;
 let masterVolume = 0.8;
 let muted = false;
+
+/**
+ * Equipped instrument voice: the default oscillator shape (and optional
+ * gain trim) used when a tone doesn't name its own type. Set from the
+ * shop's equipped instrument; the shop resolves by id string and falls
+ * back to the default voice for unknown ids, so this never throws.
+ */
+export type VoiceSpec = { type: OscillatorType; gain?: number };
+let voice: VoiceSpec = { type: "sine" };
+export function setVoice(v: VoiceSpec): void {
+  voice = v;
+}
+/** For tests: the currently equipped voice. */
+export function currentVoice(): VoiceSpec {
+  return voice;
+}
 /** key -> active tones. The "" key is the shared default lane. */
 const lanes = new Map<string, Set<ScheduledTone>>();
 
@@ -129,9 +144,9 @@ export function playTone(
 
   const osc = b.ctx.createOscillator();
   const gain = b.ctx.createGain();
-  osc.type = opts.type ?? "sine";
+  osc.type = opts.type ?? voice.type;
   osc.frequency.setValueAtTime(midiToFreq(midi), startAt);
-  const peak = (opts.gain ?? 0.5) * (muted ? 0 : 1);
+  const peak = (opts.gain ?? voice.gain ?? 0.5) * (muted ? 0 : 1);
   // Simple envelope: quick attack, gentle release. No clicks.
   gain.gain.setValueAtTime(0.0001, startAt);
   gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, peak), startAt + 0.02);
@@ -269,4 +284,5 @@ export function activeToneCount(): number {
 export function __resetAudioForTests(): void {
   lanes.clear();
   bus = null;
+  voice = { type: "sine" };
 }

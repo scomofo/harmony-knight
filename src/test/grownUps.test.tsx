@@ -92,13 +92,13 @@ describe("dashboard content", () => {
     });
   }
 
-  it("surfaces concepts and notes that need practice", async () => {
+  it("surfaces struggling skills and one weekly suggestion", async () => {
     act(() => {
       useStore.getState().update((s) => ({
         ...s,
         concepts: {
-          "note-names": {
-            conceptId: "note-names",
+          "dotted-rhythm": {
+            conceptId: "dotted-rhythm",
             intervalDays: 1,
             dueAt: 0,
             lastResult: "wrong",
@@ -110,8 +110,15 @@ describe("dashboard content", () => {
       }));
     });
     await unlock();
-    expect(await screen.findByText(/note names/)).toBeTruthy();
-    expect(screen.getByText(/Note E4/)).toBeTruthy();
+    // Shaky note evidence rates the note-reading domain poorly.
+    expect(await screen.findByText("Could use a boost")).toBeTruthy();
+    expect(screen.getAllByText("Note reading").length).toBeGreaterThan(0);
+    // ONE concrete weekly suggestion names the sticking point.
+    expect(screen.getByText("This week — one thing")).toBeTruthy();
+    expect(screen.getByText("This week: 5 minutes of note finding on the keyboard")).toBeTruthy();
+    expect(screen.getByText(/Note E4 keeps slipping/)).toBeTruthy();
+    // No streak-shaming anywhere on the dashboard.
+    expect(screen.queryByText(/streak/i)).toBeNull();
   });
 
   it("shows smooth sailing when nothing is flagged", async () => {

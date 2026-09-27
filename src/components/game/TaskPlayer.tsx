@@ -34,10 +34,17 @@ export function TaskPlayer({
   lessonId,
   task,
   onResult,
+  solvedNote,
 }: {
   lessonId?: string;
   task: PracticalTask;
   onResult?: (r: { correct: boolean; firstTry: boolean; assisted: boolean }) => void;
+  /**
+   * Replaces the "saved in your lesson journal" line when solved. Used by
+   * headless hosts (Studies, Duel, trials, endless practice) so the copy
+   * never claims a lesson journal entry that isn't happening.
+   */
+  solvedNote?: string;
 }) {
   const recordTaskAttempt = useStore((s) => s.recordTaskAttempt);
   const [hintCount, setHintCount] = useState(0);
@@ -144,7 +151,7 @@ export function TaskPlayer({
       )}
       {solved && (
         <p className="mt-2 text-sm text-white/60">
-          Nicely done — this attempt is saved in your lesson journal.
+          {solvedNote ?? "Nicely done — this attempt is saved in your lesson journal."}
         </p>
       )}
     </div>

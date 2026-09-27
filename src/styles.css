@@ -2,6 +2,16 @@
 
 :root {
   color-scheme: dark;
+  /** Shop theme accent; the router sets this from the equipped theme. */
+  --hk-accent: #8b7ff0;
+}
+
+/* Theme accent utilities: a few surfaces follow the equipped theme. */
+.hk-accent-text {
+  color: var(--hk-accent);
+}
+.hk-accent-border {
+  border-color: var(--hk-accent);
 }
 
 body {

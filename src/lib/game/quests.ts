@@ -33,11 +33,57 @@ export function todayKey(now: Date = new Date()): string {
   return `${y}-${m}-${d}`;
 }
 
-function shiftKey(key: string, days: number): string {
+/** Shift a YYYY-MM-DD key by whole days (device-local). Exported for freeze logic. */
+export function shiftKey(key: string, days: number): string {
   const [y, m, d] = key.split("-").map(Number);
   const dt = new Date(y, m - 1, d);
   dt.setDate(dt.getDate() + days);
   return todayKey(dt);
+}
+
+/** Whole days from key `a` to key `b` (device-local calendar). */
+export function daysBetween(a: string, b: string): number {
+  const [ay, am, ad] = a.split("-").map(Number);
+  const [by, bm, bd] = b.split("-").map(Number);
+  const ms = new Date(by, bm - 1, bd).getTime() - new Date(ay, am - 1, ad).getTime();
+  return Math.round(ms / (24 * 60 * 60 * 1000));
+}
+
+/**
+ * The weekly streak freeze: one missed day per 7-day window keeps the
+ * streak. `lastUsed` is the YYYY-MM-DD the freeze was last consumed (null
+ * when never). No anxiety mechanics — a freeze is a quiet safety net, and
+ * a broken streak is simply 0 with no shaming copy anywhere.
+ */
+export function freezeAvailable(lastUsed: string | null, today: string): boolean {
+  if (!lastUsed) return true;
+  return daysBetween(lastUsed, today) >= 7;
+}
+
+/**
+ * Streak with the freeze applied. When today and yesterday are both absent
+ * but the day before is present, a ready freeze bridges the single gap so
+ * the streak survives one missed day. The bridged day is forgiven, not
+ * counted: streak = prior run + today.
+ */
+export function guardedStreak(
+  learningDays: string[],
+  today: string,
+  lastUsed: string | null,
+): { streak: number; freezeBridged: boolean } {
+  const plain = currentStreak(learningDays, today);
+  if (plain > 0) return { streak: plain, freezeBridged: false };
+  const set = new Set(learningDays);
+  if (!freezeAvailable(lastUsed, today)) return { streak: 0, freezeBridged: false };
+  const dayBefore = shiftKey(today, -2);
+  if (!set.has(dayBefore)) return { streak: 0, freezeBridged: false };
+  let run = 0;
+  let cursor = dayBefore;
+  while (set.has(cursor)) {
+    run += 1;
+    cursor = shiftKey(cursor, -1);
+  }
+  return { streak: run + 1, freezeBridged: true };
 }
 
 /** Status of every quest for a given day. */
