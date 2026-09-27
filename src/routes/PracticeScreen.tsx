@@ -9,11 +9,17 @@ import { authoredLessons, type TaskSpec } from "../lib/game/course.ts";
 import { dueConcepts, scheduleRecall } from "../lib/game/learning.ts";
 import { midiToLetter, nameToMidi } from "../lib/game/music.ts";
 import { notesNeedingWork, recentAccuracy } from "../lib/game/sr.ts";
+import {
+  buildTargetedTask,
+  confusionDue,
+  confusionKey,
+  difficultyFor,
+} from "../lib/game/adapt.ts";
 import type { NoteEvidence } from "../lib/game/schema.ts";
 import { useStore } from "../lib/game/store.ts";
 import { buildTask } from "../lib/game/tasks.ts";
 
-type Mode = "home" | "notes" | "concepts" | "tasks";
+type Mode = "home" | "notes" | "concepts" | "tasks" | "mixups";
 
 export function PracticeScreen() {
   const [mode, setMode] = useState<Mode>("home");
@@ -28,6 +34,7 @@ export function PracticeScreen() {
       {mode === "notes" && <NoteDrill />}
       {mode === "concepts" && <ConceptDrill />}
       {mode === "tasks" && <TaskReviewList />}
+      {mode === "mixups" && <ConfusionDrill />}
     </div>
   );
 }
@@ -37,6 +44,7 @@ function PracticeHome({ onPick }: { onPick: (m: Mode) => void }) {
   const now = Date.now();
   const needyNotes = notesNeedingWork(save.noteEvidence, now).length;
   const due = dueConcepts(save.concepts, now).length;
+  const mixups = confusionDue(save.confusion, now).length;
   const finishedWithTasks = authoredLessons().filter(
     (l) => save.lessons[l.id]?.step === "done" && l.tryTask,
   ).length;
@@ -63,8 +71,9 @@ function PracticeHome({ onPick }: { onPick: (m: Mode) => void }) {
         {card("notes", "🎹 Note reading", "See a note name, find it on the keyboard. Evidence is per exact note and octave.", needyNotes > 0 ? `${needyNotes} need work` : null)}
         {card("concepts", "🧠 Recall review", "Due concepts return as quick checks. Correct recall lengthens the interval; misses reset to one day.", due > 0 ? `${due} due` : null)}
         {card("tasks", "🛠️ Try-it again", "Redo practical tasks from finished lessons — a second look with fresh ears.", finishedWithTasks > 0 ? `${finishedWithTasks} available` : null)}
+        {card("mixups", "🔀 Untangle mix-ups", "Targeted recalls for pairs you've mixed up — short, spaced, and kind.", mixups > 0 ? `${mixups} to untangle` : null)}
       </div>
-      {needyNotes === 0 && due === 0 && (
+      {needyNotes === 0 && due === 0 && mixups === 0 && (
         <p className="mt-6 text-sm text-white/50">
           Everything is fresh. New notes unlock as you play, or <Link to="/path" className="underline">keep walking the path</Link>.
         </p>
@@ -354,7 +363,12 @@ function TaskReviewCard({
   open: boolean;
   onToggle: () => void;
 }) {
-  const task = useMemo(() => buildTask(lessonId, spec), [lessonId, spec]);
+  const save = useStore((s) => s.save);
+  const task = useMemo(() => {
+    // Adaptive engine (Phase 1): same per-domain difficulty as the lesson.
+    const diff = difficultyFor(spec.kind, save.adaptiveAttempts[spec.kind]);
+    return buildTask(lessonId, spec, diff.level);
+  }, [lessonId, spec, save.adaptiveAttempts]);
   return (
     <div className="rounded-xl border border-white/10 bg-white/5 p-4">
       <button type="button" onClick={onToggle} className="w-full text-left font-semibold">
@@ -365,6 +379,93 @@ function TaskReviewCard({
           <TaskPlayer lessonId={lessonId} task={task} />
         </div>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Confusion drill: targeted recall for mixed-up pairs
+// ---------------------------------------------------------------------------
+
+const DOMAIN_LABELS: Record<string, string> = {
+  "note-id": "note names",
+  "interval-id": "intervals",
+  "scale-id": "scales",
+  "chord-id": "chords",
+};
+
+function ConfusionDrill() {
+  const save = useStore((s) => s.save);
+  const recordConfusionRecall = useStore((s) => s.recordConfusionRecall);
+  const [openKey, setOpenKey] = useState<string | null>(null);
+  const [salt, setSalt] = useState(0);
+  const recordedRef = useRef<Set<string>>(new Set());
+  const due = confusionDue(save.confusion);
+
+  if (due.length === 0) {
+    return (
+      <div>
+        <h1 className="text-2xl font-bold">🔀 Untangle mix-ups</h1>
+        <p className="mt-2 text-sm text-white/60">
+          No mix-ups due right now. When you confuse two answers, they'll show up here
+          for a quick targeted recall.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h1 className="text-2xl font-bold">🔀 Untangle mix-ups</h1>
+      <p className="mt-1 text-sm text-white/60">
+        Short targeted recalls for pairs you've mixed up. Getting one right spaces the
+        next review further out — misses bring it back sooner. Nothing here gates lessons.
+      </p>
+      <div className="mt-4 space-y-3">
+        {due.map((pair) => {
+          const key = confusionKey(pair.domain, pair.correct, pair.chosen);
+          const task = buildTargetedTask(pair.domain, pair.correct, salt);
+          if (!task) return null;
+          const open = openKey === key;
+          return (
+            <div key={key} className="rounded-xl border border-white/10 bg-white/5 p-4">
+              <button
+                type="button"
+                onClick={() => setOpenKey(open ? null : key)}
+                className="w-full text-left"
+              >
+                <span className="font-semibold">
+                  {pair.correct} <span className="font-normal text-white/50">vs {pair.chosen}</span>
+                </span>
+                <span className="mt-1 block text-xs text-white/50">
+                  {DOMAIN_LABELS[pair.domain] ?? pair.domain} · mixed up {pair.misses}×{" "}
+                  <span className="text-white/40">{open ? "▾" : "▸"}</span>
+                </span>
+              </button>
+              {open && (
+                <div className="mt-3">
+                  <TaskPlayer
+                    task={task}
+                    onResult={(r) => {
+                      const once = `${key}:${salt}`;
+                      if (recordedRef.current.has(once)) return;
+                      recordedRef.current.add(once);
+                      recordConfusionRecall(pair.domain, pair.correct, r.correct && !r.assisted);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setSalt((n) => n + 1)}
+                    className="mt-3 rounded-xl border border-white/20 px-4 py-2 text-sm text-white/80"
+                  >
+                    Another one →
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

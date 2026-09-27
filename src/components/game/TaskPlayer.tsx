@@ -3,6 +3,7 @@ import { TeachingPlayer } from "./TeachingPlayer.tsx";
 import { DuetPlayer } from "./DuetPlayer.tsx";
 import { emitEffect } from "../../lib/game/effects.ts";
 import { useStore } from "../../lib/game/store.ts";
+import { describeDifficulty } from "../../lib/game/adapt.ts";
 import type { PracticalTask } from "../../lib/game/tasks.ts";
 
 /**
@@ -55,6 +56,10 @@ export function TaskPlayer({
           feedback: ok ? task.praise : task.nudge,
           correct: ok,
           assisted,
+          // Adaptive engine (Phase 1): feeds the per-domain attempt log
+          // and confusion-pair tracking in the store.
+          taskKind: task.kind,
+          answer: task.answer,
         })
       : attempts === 0 && ok && !assisted;
     onResult?.({ correct: ok, firstTry, assisted });
@@ -77,6 +82,11 @@ export function TaskPlayer({
   return (
     <div className="rounded-xl border border-white/10 bg-white/5 p-4" data-testid="task-player">
       <h2 className="font-semibold">Try it yourself</h2>
+      {task.difficulty !== undefined && describeDifficulty(task.difficulty).blurb && (
+        <p className="mt-1 text-xs text-white/50" data-testid="difficulty-blurb">
+          {describeDifficulty(task.difficulty).blurb}
+        </p>
+      )}
       <p className="mt-2 text-white/80">{task.prompt}</p>
 
       {task.audio && (

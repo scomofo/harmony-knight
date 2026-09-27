@@ -5,8 +5,9 @@
  */
 
 import type { QuestState } from "./quests.ts";
+import type { AdaptiveAttempt, ConfusionPair } from "./adapt.ts";
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 export const SAVE_KEY = "harmony-knight-save-v1";
 
 export type LessonStep = "learn" | "try" | "recall" | "done";
@@ -85,6 +86,13 @@ export type SaveData = {
   gameStats: GameStats;
   /** Daily quests: date -> quest id -> "done" | "claimed". */
   questLog: Record<string, Record<string, QuestState>>;
+  /**
+   * Adaptive engine (Phase 1): per-domain recent attempt log, newest last,
+   * capped at 10 per domain. Drives per-user difficulty.
+   */
+  adaptiveAttempts: Record<string, AdaptiveAttempt[]>;
+  /** Adaptive engine (Phase 1): confusion pairs with SR scheduling. */
+  confusion: Record<string, ConfusionPair>;
 };
 
 export type SavedCreation = {
@@ -138,6 +146,8 @@ export function defaultSave(): SaveData {
     creations: [],
     gameStats: defaultGameStats(),
     questLog: {},
+    adaptiveAttempts: {},
+    confusion: {},
   };
 }
 
@@ -181,6 +191,19 @@ const MIGRATIONS: Migration[] = [
         version: 3,
       };
     },
+  },
+  {
+    from: 3,
+    to: 4,
+    // v4 introduces the adaptive engine's evidence stores: per-domain
+    // attempt logs and confusion pairs. Both are additive; a v3 save
+    // keeps everything it had and starts with empty adaptive evidence.
+    migrate: (data) => ({
+      ...data,
+      adaptiveAttempts: isRecord(data.adaptiveAttempts) ? data.adaptiveAttempts : {},
+      confusion: isRecord(data.confusion) ? data.confusion : {},
+      version: 4,
+    }),
   },
 ];
 
@@ -299,6 +322,14 @@ function recordOfRecords(v: unknown): v is Record<string, Record<string, unknown
   return isRecord(v) && Object.values(v).every(isRecord);
 }
 
+/** Adaptive attempt logs: record of arrays of attempt records. */
+function validAdaptiveAttempts(v: unknown): v is Record<string, AdaptiveAttempt[]> {
+  if (!isRecord(v)) return false;
+  return Object.values(v).every(
+    (arr) => Array.isArray(arr) && arr.every(isRecord),
+  );
+}
+
 /**
  * Validate an imported save object: format, field ranges, and version.
  * Never throws; returns false for anything unsafe to adopt.
@@ -321,6 +352,8 @@ export function validateSave(data: unknown): data is SaveData {
   if (!Array.isArray(data.creations) || !data.creations.every(validCreation)) return false;
   if (!validGameStats(data.gameStats)) return false;
   if (!validQuestLog(data.questLog)) return false;
+  if (!validAdaptiveAttempts(data.adaptiveAttempts)) return false;
+  if (!recordOfRecords(data.confusion)) return false;
   // ~5MB cap keeps quota failures predictable.
   try {
     if (JSON.stringify(data).length > 5 * 1024 * 1024) return false;
