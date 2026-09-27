@@ -40,7 +40,7 @@ export function SettingsScreen() {
     const text = await file.text();
     // Validate first; only with explicit confirmation do we replace.
     const ok = window.confirm(
-      "Replace your current progress with this backup? Your current progress will be overwritten.",
+      "Replace this profile's progress with this backup? This profile's current progress will be overwritten. Other profiles are untouched.",
     );
     if (!ok) {
       setImportMsg("Import cancelled — your progress is untouched.");
@@ -161,6 +161,9 @@ export function SettingsScreen() {
 
       <section className="mt-4 rounded-2xl border border-red-400/20 bg-red-500/5 p-4">
         <h2 className="font-semibold text-red-200">Danger zone</h2>
+        <p className="mt-1 text-sm text-white/50">
+          This resets the current profile only — other profiles are untouched.
+        </p>
         {!confirmReset ? (
           <button type="button" onClick={() => setConfirmReset(true)} className="mt-2 rounded-lg border border-red-400/40 px-4 py-2 text-red-200">
             Reset all progress

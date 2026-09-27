@@ -18,7 +18,7 @@ import {
 import { OnboardingScreen } from "../routes/Screens.tsx";
 import { LessonScreen } from "../routes/LessonScreen.tsx";
 import { useStore } from "../lib/game/store.ts";
-import { SAVE_KEY } from "../lib/game/schema.ts";
+import { PROFILES_KEY, type ProfilesData } from "../lib/game/schema.ts";
 
 // Minimal fake Web Audio so audio.ts never touches the real thing.
 class FakeGain {
@@ -139,9 +139,10 @@ describe("lesson flow", () => {
     useStore.getState().finishLesson("ch1-l2-dynamics");
     await flushPersist();
 
-    const raw = window.localStorage.getItem(SAVE_KEY);
+    const raw = window.localStorage.getItem(PROFILES_KEY);
     expect(raw).toBeTruthy();
-    expect(JSON.parse(raw!).lessons["ch1-l2-dynamics"].step).toBe("done");
+    const parsed = JSON.parse(raw!) as ProfilesData;
+    expect(parsed.profiles[parsed.activeProfileId].save.lessons["ch1-l2-dynamics"].step).toBe("done");
 
     // Simulated reload: fresh module registry -> fresh store hydrates from localStorage.
     vi.resetModules();

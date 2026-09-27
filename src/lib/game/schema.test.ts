@@ -33,7 +33,8 @@ describe("v1 -> v3 migration chain", () => {
       duelDraws: 0,
     });
     expect(migrated?.questLog).toEqual({});
-    expect(migrated?.settings.grownUpsPin).toBeNull();
+    // The grown-ups PIN moved to device level (profiles container); the
+    // per-save migration chain no longer manages it.
     expect(migrated && validateSave(migrated)).toBe(true);
   });
 
@@ -144,12 +145,14 @@ describe("validateSave (strict)", () => {
     expect(bad(null)).toBe(false);
   });
 
-  it("rejects non-string grown-ups PINs", () => {
-    const bad = (grownUpsPin: unknown) =>
-      validateSave({ ...defaultSave(), settings: { ...defaultSave().settings, grownUpsPin } });
-    expect(bad(null)).toBe(true);
-    expect(bad("1234")).toBe(true);
-    expect(bad(1234)).toBe(false);
+  it("ignores a stale grown-ups PIN copy lingering in settings", () => {
+    // The PIN is device-level now; an old backup's per-save copy is simply
+    // ignored, never a validation failure.
+    const withStale = {
+      ...defaultSave(),
+      settings: { ...defaultSave().settings, grownUpsPin: "1234" },
+    };
+    expect(validateSave(withStale)).toBe(true);
   });
 
   it("rejects malformed grade windows", () => {
