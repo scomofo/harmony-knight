@@ -129,6 +129,63 @@ export function todayKey(now = new Date()): string {
   return `${y}-${m}-${d}`;
 }
 
+/**
+ * Human-readable names for recall concept ids. Kept next to the recall
+ * logic because DueRecall and review screens render these; unknown ids
+ * fall back to the raw id so new content never renders blank.
+ */
+export const CONCEPT_NAMES: Record<string, string> = {
+  "pitch-direction": "High vs. low pitch",
+  dynamics: "Loud and soft (dynamics)",
+  timbre: "Tone color (timbre)",
+  "note-alphabet": "The note alphabet",
+  "staff-basics": "Reading the staff",
+  "landmark-notes": "Landmark notes",
+  accidentals: "Sharps and flats (accidentals)",
+  pulse: "Steady pulse",
+  "note-durations": "Note durations",
+  meter: "Meter",
+  "dotted-rhythm": "Dotted rhythms",
+  "rhythm-symbols": "Rhythm symbols",
+  "odd-meters": "Odd meters",
+  "major-scale": "The major scale",
+  "minor-scales": "Minor scales",
+  modes: "Modes",
+  "key-signatures": "Key signatures",
+  "circle-of-fifths": "The circle of fifths",
+  intervals: "Intervals",
+  consonance: "Consonance",
+  "triad-qualities": "Triad qualities",
+  "triad-inversions": "Triad inversions",
+  "roman-numerals": "Roman numerals",
+  cadences: "Cadences",
+  "open-endings": "Open endings",
+  "closing-gestures": "Closing gestures",
+  "melody-over-chords": "Melody over chords",
+  "melodic-shape": "Melodic shape",
+  "melodic-decoration": "Melodic decoration",
+  "voice-motion": "Voice motion",
+  parallels: "Parallel motion",
+  "first-species": "First-species counterpoint",
+  "species-23": "Second/third-species counterpoint",
+  "species-45": "Fourth/fifth-species counterpoint",
+  "seventh-chords": "Seventh chords",
+  extensions: "Chord extensions",
+  "borrowed-chords": "Borrowed chords",
+  "pivot-chords": "Pivot chords",
+  "secondary-dominants": "Secondary dominants",
+  tonicization: "Tonicization",
+  "related-keys": "Related keys",
+  "musical-form": "Musical form",
+  fugue: "Fugue",
+  transformations: "Motivic transformations",
+};
+
+/** Display name for a concept id; falls back to the raw id. */
+export function conceptName(conceptId: string): string {
+  return CONCEPT_NAMES[conceptId] ?? conceptId;
+}
+
 /** Record a learning day without streak debt: a day counts once. */
 export function recordLearningDay(days: string[], now = new Date()): string[] {
   const key = todayKey(now);

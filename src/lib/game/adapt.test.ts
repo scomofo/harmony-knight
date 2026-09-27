@@ -546,7 +546,7 @@ describe("adaptive store wiring", () => {
 /* ------------------------------------------------------------------ */
 
 describe("adaptive schema migration", () => {
-  it("migrates a v3 save to v4 with empty adaptive evidence", () => {
+  it("migrates a v3 save through the chain with empty adaptive evidence", () => {
     const v3 = {
       version: 3,
       createdAt: 1,

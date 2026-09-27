@@ -1,11 +1,17 @@
 import { useEffect, useState } from "react";
 import { onEffect, type ResolvedEffect } from "../../lib/game/effects.ts";
+import { playEffectCue } from "../../lib/game/audio.ts";
+import { CALM_CLASS, EFFECT_CLASS } from "../../lib/game/effectStyles.ts";
 
 /**
- * Renders semantic effect events as written feedback.
- * The written announcement IS the reduced-motion equivalent: same
- * information, no travel, no pulse. Full-expression visuals are layered
- * through data attributes for CSS.
+ * Renders semantic effect events three ways:
+ * - a written announcement (the reduced-motion equivalent and the
+ *   screen-reader path — same information, no travel, no pulse),
+ * - a paired sound cue through the voice engine (unless muted),
+ * - a scoped visual expression: the event's CSS class is applied to the
+ *   anchor element for the preset's duration, then removed. Newer events
+ *   with the same cancel key (or navigation/mute/tab-hide) cancel the
+ *   prior expression via the bus's cleanup contract.
  */
 export function EffectLayer() {
   const [current, setCurrent] = useState<ResolvedEffect | null>(null);
@@ -14,8 +20,23 @@ export function EffectLayer() {
     () =>
       onEffect((effect) => {
         setCurrent(effect);
-        const t = window.setTimeout(() => setCurrent(null), effect.preset.durationMs + 200);
-        return () => window.clearTimeout(t);
+        if (!effect.policy.muted) playEffectCue(effect.preset.soundCue);
+        const cls = EFFECT_CLASS[effect.preset.event];
+        const el = effect.request.anchor
+          ? document.getElementById(effect.request.anchor)
+          : null;
+        if (el) {
+          el.classList.add(cls);
+          if (effect.calm) el.classList.add(CALM_CLASS);
+        }
+        const t = window.setTimeout(
+          () => setCurrent(null),
+          effect.preset.durationMs + 200,
+        );
+        return () => {
+          window.clearTimeout(t);
+          if (el) el.classList.remove(cls, CALM_CLASS);
+        };
       }),
     [],
   );

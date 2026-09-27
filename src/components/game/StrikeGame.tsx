@@ -108,7 +108,7 @@ export function StrikeGame({
       const fever = combo >= FEVER_THRESHOLD;
       setHud({ score: s.score, combo, fever, judged: judgedRef.current.size });
       if (judgment !== "miss" && combo === FEVER_THRESHOLD) {
-        emitEffect({ event: "fever", cancelKey: "strike" });
+        emitEffect({ event: "fever", anchor: "strike-game", cancelKey: "strike" });
       }
       flashesRef.current.push({
         text: judgment === "perfect" ? "PERFECT" : judgment === "good" ? "Good" : "Miss",
@@ -156,7 +156,7 @@ export function StrikeGame({
     const s = scoreStrike(ordered);
     setResult(s);
     setPhase("done");
-    emitEffect({ event: "phrase-win", cancelKey: "strike" });
+    emitEffect({ event: "phrase-win", anchor: "strike-game", cancelKey: "strike" });
     onFinish?.(s);
   }, [chart, onFinish]);
 
@@ -312,7 +312,7 @@ export function StrikeGame({
   /* ---------------- render ---------------- */
 
   return (
-    <div data-testid="strike-game">
+    <div id="strike-game" data-testid="strike-game">
       <div className="relative">
         <canvas
           ref={canvasRef}

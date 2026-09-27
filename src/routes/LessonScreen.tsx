@@ -7,7 +7,7 @@ import {
   lessonMeta,
   type LearnBlock,
 } from "../lib/game/course.ts";
-import { canTransition, dueConcepts, scheduleRecall } from "../lib/game/learning.ts";
+import { canTransition, conceptName, dueConcepts, scheduleRecall } from "../lib/game/learning.ts";
 import { stopAll } from "../lib/game/audio.ts";
 import { DuetPlayer } from "../components/game/DuetPlayer.tsx";
 import { cancelEffects, emitEffect } from "../lib/game/effects.ts";
@@ -16,6 +16,7 @@ import type { LessonStep } from "../lib/game/schema.ts";
 import { TeachingPlayer } from "../components/game/TeachingPlayer.tsx";
 import { TaskPlayer } from "../components/game/TaskPlayer.tsx";
 import { LessonVisualView } from "../components/game/LessonVisual.tsx";
+import { LessonCelebration } from "../components/game/LessonCelebration.tsx";
 import { buildTask } from "../lib/game/tasks.ts";
 import { difficultyFor, masteryForLesson } from "../lib/game/adapt.ts";
 
@@ -81,6 +82,14 @@ export function LessonScreen({ lessonId }: { lessonId: string }) {
     return i >= 0 ? all[i + 1] : undefined;
   }, [lessonId]);
 
+  const task = useMemo(() => {
+    if (!body?.tryTask) return null;
+    // Adaptive engine (Phase 1): per-domain difficulty from recent
+    // evidence. Deterministic per (seed, level).
+    const diff = difficultyFor(body.tryTask.kind, save.adaptiveAttempts[body.tryTask.kind]);
+    return buildTask(body.id, body.tryTask, diff.level);
+  }, [body, save.adaptiveAttempts]);
+
   if (!body) {
     const meta = lessonMeta(lessonId);
     return (
@@ -108,7 +117,7 @@ export function LessonScreen({ lessonId }: { lessonId: string }) {
     const assisted = !!hintShown[checkId];
     setPicked((p) => ({ ...p, [checkId]: choiceIndex }));
     answerCheck(lessonId, checkId, correct, assisted);
-    emitEffect({ event: correct && !assisted ? "correct" : correct ? "assisted" : "needs-work", cancelKey: checkId });
+    emitEffect({ event: correct && !assisted ? "correct" : correct ? "assisted" : "needs-work", anchor: checkId, cancelKey: checkId });
   };
 
   const showHint = (checkId: string) => {
@@ -139,13 +148,6 @@ export function LessonScreen({ lessonId }: { lessonId: string }) {
   };
 
   const chapter = chapterById(body.chapterId);
-  const task = useMemo(() => {
-    if (!body.tryTask) return null;
-    // Adaptive engine (Phase 1): per-domain difficulty from recent
-    // evidence. Deterministic per (seed, level).
-    const diff = difficultyFor(body.tryTask.kind, save.adaptiveAttempts[body.tryTask.kind]);
-    return buildTask(body.id, body.tryTask, diff.level);
-  }, [body, save.adaptiveAttempts]);
   const mastery = masteryForLesson(progress);
 
   return (
@@ -209,7 +211,7 @@ export function LessonScreen({ lessonId }: { lessonId: string }) {
             const choice = picked[check.id];
             const answered = choice !== undefined;
             return (
-              <fieldset key={check.id} className="rounded-xl border border-white/10 bg-white/5 p-4">
+              <fieldset key={check.id} id={check.id} className="rounded-xl border border-white/10 bg-white/5 p-4">
                 <legend className="sr-only">Recall check {ci + 1}</legend>
                 <p className="font-semibold">{check.question}</p>
                 {check.audio && (
@@ -275,14 +277,12 @@ export function LessonScreen({ lessonId }: { lessonId: string }) {
 
       {step === "done" && (
         <div className="mt-6 space-y-4 text-center">
-          <div className="text-5xl" aria-hidden>🎼</div>
-          <h2 className="text-xl font-bold">Lesson complete</h2>
-          {earned !== null && earned > 0 && (
-            <p className="text-amber-300">+{earned} harmony points — first completion.</p>
-          )}
-          {earned === 0 && (
-            <p className="text-white/60">Revisits don't award points again — the knowledge is the reward.</p>
-          )}
+          <LessonCelebration
+            lessonTitle={body.title}
+            firstTry={(progress?.checks ?? []).filter((c) => c.correctFirstTry).length}
+            total={body.checks.length}
+            earned={earned}
+          />
           {mastery.mastered ? (
             <p className="text-emerald-300" data-testid="mastery-state">
               🌟 Mastered — {Math.round(mastery.accuracy * 100)}% first-try. Beautiful work.
@@ -350,7 +350,7 @@ export function DueRecall() {
       <h3 className="font-semibold text-amber-200">Due for recall</h3>
       <ul className="mt-1 list-disc pl-5 text-sm text-white/80">
         {due.map((d) => (
-          <li key={d.conceptId}>{d.conceptId}</li>
+          <li key={d.conceptId}>{conceptName(d.conceptId)}</li>
         ))}
       </ul>
       <p className="mt-2 text-xs text-white/60">Revisit the lesson to refresh — spacing grows to 30 days.</p>

@@ -81,7 +81,7 @@ export function DuelGame({
     thinkTimer.current = window.setTimeout(() => {
       setRivalThinking(false);
       setRivalRevealed(true);
-      emitEffect({ event: "clash", cancelKey: `duel-${duelSeed}-${roundIndex}` });
+      emitEffect({ event: "clash", anchor: "duel-game", cancelKey: `duel-${duelSeed}-${roundIndex}` });
     }, 900);
   };
 
@@ -99,6 +99,7 @@ export function DuelGame({
       setFinished(result);
       emitEffect({
         event: s.outcome === "win" ? "mastery" : s.outcome === "draw" ? "correct" : "needs-work",
+        anchor: "duel-game",
         cancelKey: `duel-${duelSeed}-done`,
       });
       onFinish?.(result);
@@ -144,7 +145,7 @@ export function DuelGame({
   }
 
   return (
-    <div data-testid="duel-game">
+    <div id="duel-game" data-testid="duel-game">
       <div className="flex items-center justify-between">
         <h2 className="font-bold">
           ⚔️ You <span className="text-amber-300">{scoreSoFar.player}</span>
