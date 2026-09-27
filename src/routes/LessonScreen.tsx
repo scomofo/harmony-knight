@@ -18,6 +18,7 @@ import { TaskPlayer } from "../components/game/TaskPlayer.tsx";
 import { LessonVisualView } from "../components/game/LessonVisual.tsx";
 import { LessonCelebration } from "../components/game/LessonCelebration.tsx";
 import { buildTask } from "../lib/game/tasks.ts";
+import { difficultyFor, masteryForLesson } from "../lib/game/adapt.ts";
 
 function LearnBlockView({ block, index }: { block: LearnBlock; index: number }) {
   if (block.kind === "text") return <p className="leading-relaxed text-white/90">{block.body}</p>;
@@ -81,10 +82,13 @@ export function LessonScreen({ lessonId }: { lessonId: string }) {
     return i >= 0 ? all[i + 1] : undefined;
   }, [lessonId]);
 
-  const task = useMemo(
-    () => (body?.tryTask ? buildTask(body.id, body.tryTask) : null),
-    [body],
-  );
+  const task = useMemo(() => {
+    if (!body?.tryTask) return null;
+    // Adaptive engine (Phase 1): per-domain difficulty from recent
+    // evidence. Deterministic per (seed, level).
+    const diff = difficultyFor(body.tryTask.kind, save.adaptiveAttempts[body.tryTask.kind]);
+    return buildTask(body.id, body.tryTask, diff.level);
+  }, [body, save.adaptiveAttempts]);
 
   if (!body) {
     const meta = lessonMeta(lessonId);
@@ -144,6 +148,7 @@ export function LessonScreen({ lessonId }: { lessonId: string }) {
   };
 
   const chapter = chapterById(body.chapterId);
+  const mastery = masteryForLesson(progress);
 
   return (
     <div className="mx-auto max-w-2xl p-4 pb-16 sm:p-6">
@@ -278,6 +283,15 @@ export function LessonScreen({ lessonId }: { lessonId: string }) {
             total={body.checks.length}
             earned={earned}
           />
+          {mastery.mastered ? (
+            <p className="text-emerald-300" data-testid="mastery-state">
+              🌟 Mastered — {Math.round(mastery.accuracy * 100)}% first-try. Beautiful work.
+            </p>
+          ) : (
+            <p className="text-white/60" data-testid="mastery-state">
+              Good reps in — a quick revisit would lock this in. The next lesson is open whenever you're ready.
+            </p>
+          )}
           <DueRecall />
           <div className="flex flex-col gap-2">
             {nextLesson && (

@@ -34,6 +34,15 @@ import { completeLesson, recordCheck, recordLearningDay, startLesson } from "./l
 import { recordNoteAnswer } from "./sr.ts";
 import { advanceGrade, trialPassed } from "./grades.ts";
 import {
+  CONFUSION_DOMAINS,
+  appendAttempt,
+  confusionKey,
+  recordConfusionHit,
+  recordConfusionMiss,
+  type AdaptiveAttempt,
+} from "./adapt.ts";
+import type { TaskKind } from "./tasks.ts";
+import {
   QUESTS,
   claimQuest as claimQuestInLog,
   completeQuest as completeQuestInLog,
@@ -91,8 +100,26 @@ type Store = {
   recordTaskAttempt: (
     lessonId: string,
     taskId: string,
-    attempt: { draft: unknown; feedback: string | null; correct: boolean; assisted: boolean },
+    attempt: {
+      draft: unknown;
+      feedback: string | null;
+      correct: boolean;
+      assisted: boolean;
+      /**
+       * Adaptive engine (Phase 1): the task's kind + canonical answer.
+       * When present, the attempt is appended to the per-domain adaptive
+       * log and confusion pairs are tracked from unassisted misses with
+       * a known named distractor.
+       */
+      taskKind?: TaskKind;
+      answer?: unknown;
+    },
   ) => boolean;
+  /**
+   * Record a targeted confusion-pair recall (Practice mix-up drill):
+   * an unassisted correct answer advances the pair's SR schedule.
+   */
+  recordConfusionRecall: (domain: string, correct: string, wasCorrect: boolean) => void;
   answerNote: (note: string, correct: boolean, correctFirstTry: boolean, recentAccuracy: number) => boolean;
   addPoints: (n: number) => void;
   touchLearningDay: () => void;
@@ -373,12 +400,61 @@ export const useStore = create<Store>()((set, get) => ({
     const tasks = existing
       ? prev.tasks.map((t) => (t.taskId === taskId ? record : t))
       : [...prev.tasks, record];
-    get().update((s) => ({
-      ...s,
-      lessons: { ...s.lessons, [lessonId]: { ...prev, tasks } },
-    }));
+    get().update((s) => {
+      const next: SaveData = {
+        ...s,
+        lessons: { ...s.lessons, [lessonId]: { ...prev, tasks } },
+      };
+      // Adaptive engine evidence (Phase 1): per-domain attempt log +
+      // confusion pairs. Pure helpers; judgment logic untouched.
+      if (attempt.taskKind) {
+        const kind = attempt.taskKind;
+        const entry: AdaptiveAttempt = {
+          at: Date.now(),
+          correct: attempt.correct,
+          firstTry: thisAttemptFirstTry,
+          assisted: attempt.assisted,
+        };
+        next.adaptiveAttempts = {
+          ...next.adaptiveAttempts,
+          [kind]: appendAttempt(next.adaptiveAttempts[kind] ?? [], entry),
+        };
+        if (CONFUSION_DOMAINS.has(kind) && typeof attempt.answer === "string") {
+          const correct = attempt.answer;
+          if (!attempt.correct && !attempt.assisted && typeof attempt.draft === "string" && attempt.draft !== correct) {
+            const key = confusionKey(kind, correct, attempt.draft);
+            next.confusion = {
+              ...next.confusion,
+              [key]: recordConfusionMiss(next.confusion[key] ?? null, kind, correct, attempt.draft),
+            };
+          } else if (attempt.correct && !attempt.assisted) {
+            next.confusion = recordConfusionHit(next.confusion, kind, correct);
+          }
+        }
+      }
+      return next;
+    });
     return thisAttemptFirstTry;
   },
+
+  recordConfusionRecall: (domain, correct, wasCorrect) =>
+    get().update((s) => {
+      const prefix = `${domain}|||${correct}|||`;
+      if (!wasCorrect) {
+        // A miss in the drill re-arms the pair as due now.
+        const key = Object.keys(s.confusion).find((k) => k.startsWith(prefix));
+        if (!key) return s;
+        const pair = s.confusion[key]!;
+        return {
+          ...s,
+          confusion: {
+            ...s.confusion,
+            [key]: recordConfusionMiss(pair, pair.domain, pair.correct, pair.chosen),
+          },
+        };
+      }
+      return { ...s, confusion: recordConfusionHit(s.confusion, domain, correct) };
+    }),
 
   answerNote: (note, correct, correctFirstTry, recentAccuracy) => {
     const prev: NoteEvidence | null = get().save.noteEvidence[note] ?? null;

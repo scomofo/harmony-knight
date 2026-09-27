@@ -21,6 +21,7 @@ import {
 } from "./music.ts";
 import { singPhrase } from "./pitch.ts";
 import type { LessonVisual, TaskSpec } from "./course.ts";
+import type { DifficultyLevel } from "./adapt.ts";
 
 /** Stable identifiers for every task family, keyed in course.ts lesson bodies. */
 export type TaskKind =
@@ -116,6 +117,19 @@ export interface PracticalTask {
   judge: (attempt: unknown) => boolean;
   /** How the learner performs the attempt; absent for choice/button families. */
   attemptInput?: AttemptInput;
+  /**
+   * Canonical correct value for choice-based tasks (e.g. "3rd", "E4").
+   * Present when the family has a single known-correct choice; used by
+   * the adaptive engine to identify which distractor was chosen on a
+   * miss (confusion pairs). Never part of judgment.
+   */
+  answer?: unknown;
+  /**
+   * Adaptive difficulty level this instance was generated at (0 gentle,
+   * 1 standard, 2 spicy). Set by buildTask when a level is threaded
+   * through; the UI uses it for explainable copy ("Getting trickier…").
+   */
+  difficulty?: DifficultyLevel;
   /** What to say when the learner gets it right. */
   praise: string;
   /** What to say when they need another go. */
@@ -165,6 +179,7 @@ export function buildComparePitchTask(
     ],
     audio: { notes, labels: ["1", "2"] },
     judge: (attempt) => attempt === answer,
+    answer,
     praise:
       "Exactly — your ears knew. High and low is pitch, and you heard it.",
     nudge: "Listen once more. Ask yourself: which one sounds more lifted?",
@@ -172,24 +187,37 @@ export function buildComparePitchTask(
 }
 
 /**
- * "Hear it, name it": one note from the C4–C5 naturals, three letter-name
+ * "Hear it, name it": one note from a pool of naturals, N letter-name
  * choices. Judgment is strict on the full name (letter + octave) so the
  * drill teaches exact note identity, not just the letter.
+ *
+ * Difficulty params (Phase 1 adaptive engine): `pool` sets the note
+ * range, `choiceCount` the number of choices. Defaults reproduce the
+ * original C4–C5 / 3-choice drill exactly.
  */
-export function buildNoteIdTask(seed: number): PracticalTask {
+export function buildNoteIdTask(
+  seed: number,
+  opts: { pool?: number[]; choiceCount?: number } = {},
+): PracticalTask {
   const rand = mulberry32(seed);
-  const pool = [60, 62, 64, 65, 67, 69, 71, 72]; // C4..C5 naturals
+  const pool = opts.pool ?? [60, 62, 64, 65, 67, 69, 71, 72]; // C4..C5 naturals
+  const choiceCount = Math.max(2, opts.choiceCount ?? 3);
   const idx = Math.floor(rand() * pool.length);
   const midi = pool[idx]!;
   const name = midiToName(midi);
   const neighborIdx = idx > 0 ? idx - 1 : idx + 1;
   const neighbor = midiToName(pool[neighborIdx]!);
   const direction = idx > 0 ? "below" : "above";
-  // Distractors: the two nearest other pool notes, shuffled with the answer.
-  const distractors = [pool[idx - 1], pool[idx + 1]]
-    .filter((n): n is number => n !== undefined && n !== midi)
-    .slice(0, 2)
-    .map((n) => midiToName(n));
+  // Distractors: nearest pool neighbors first, so the drill stays about
+  // fine distinctions even as the pool and choice count change.
+  const neighborOrder: number[] = [];
+  for (let d = 1; d < pool.length; d++) {
+    if (idx - d >= 0) neighborOrder.push(idx - d);
+    if (idx + d < pool.length) neighborOrder.push(idx + d);
+  }
+  const distractors = neighborOrder
+    .slice(0, choiceCount - 1)
+    .map((i) => midiToName(pool[i]!));
   const choices = [...distractors.map((d) => d), name];
   for (let i = choices.length - 1; i > 0; i--) {
     const j = Math.floor(rand() * (i + 1));
@@ -208,20 +236,44 @@ export function buildNoteIdTask(seed: number): PracticalTask {
       `It is ${name}. Listen once more and lock it in.`,
     ],
     judge: (attempt) => attempt === name,
+    answer: name,
     praise: `That's it — ${name}. The alphabet is becoming sound.`,
     nudge: "Not quite — listen once more and sing the scale along with it.",
   };
+}
+
+/** Natural (white-key) midis in [low, high], inclusive. */
+function naturalsBetween(low: number, high: number): number[] {
+  const out: number[] = [];
+  for (let m = low; m <= high; m++) {
+    if ([0, 2, 4, 5, 7, 9, 11].includes(m % 12)) out.push(m);
+  }
+  return out;
+}
+
+/** Difficulty options for note-id by adaptive level (0/1/2). */
+function noteIdOpts(level: DifficultyLevel): { pool?: number[]; choiceCount?: number } {
+  if (level === 0) return { pool: [60, 62, 64], choiceCount: 2 }; // C4–E4, gentle
+  if (level === 2) return { pool: naturalsBetween(60, 84), choiceCount: 4 }; // C4–C6, spicy
+  return {};
 }
 
 /**
  * "Which one matches?": a target rhythm on one pitch, then two candidates —
  * one identical, one different. Pure rhythm discrimination: pitch never
  * varies, so only the shape of time is judged. Deterministic per seed.
+ *
+ * Difficulty params (Phase 1 adaptive engine): `patterns` sets the rhythm
+ * vocabulary, `beat` the seconds per beat (slower is gentler). Defaults
+ * reproduce the original 6-pattern / 0.45s drill exactly.
  */
-export function buildRhythmEchoTask(seed: number): PracticalTask {
+export function buildRhythmEchoTask(
+  seed: number,
+  opts: { patterns?: number[][]; beat?: number } = {},
+): PracticalTask {
   const rand = mulberry32(seed);
   // Rhythms in beats (quarter = 1); every pattern totals 2 beats.
-  const patterns: number[][] = [
+  const patterns = opts.patterns ?? [
     [1, 1],
     [0.5, 0.5, 1],
     [1, 0.5, 0.5],
@@ -236,7 +288,7 @@ export function buildRhythmEchoTask(seed: number): PracticalTask {
   const other = patterns[otherIdx]!;
   const matchIsFirst = rand() < 0.5;
   const answer = matchIsFirst ? "1" : "2";
-  const beat = 0.45; // seconds per beat
+  const beat = opts.beat ?? 0.45; // seconds per beat
   const render = (p: number[]) => ({
     notes: p.map(() => 60),
     durations: p.map((b) => b * beat),
@@ -265,11 +317,29 @@ export function buildRhythmEchoTask(seed: number): PracticalTask {
       `Candidate ${answer} matches the target. Listen once more and feel it.`,
     ],
     judge: (attempt) => attempt === answer,
+    answer,
     praise:
       "Exactly — you heard the shape of time. Rhythm is pattern, and you caught it.",
     nudge:
       "Listen once more. Tap along — which candidate lands the same way as the target?",
   };
+}
+
+/** Difficulty options for rhythm-echo by adaptive level (0/1/2). */
+function rhythmEchoOpts(level: DifficultyLevel): { patterns?: number[][]; beat?: number } {
+  if (level === 0) {
+    return {
+      // Gentle: three simplest shapes, slower.
+      patterns: [
+        [1, 1],
+        [0.5, 0.5, 1],
+        [0.5, 0.5, 0.5, 0.5],
+      ],
+      beat: 0.55,
+    };
+  }
+  if (level === 2) return { beat: 0.38 }; // Spicy: full vocabulary, faster.
+  return {};
 }
 
 /**
@@ -328,6 +398,7 @@ export function buildScaleIdTask(
           `It is ${answer} — ${tonicName} ${answer.toLowerCase()}. Listen once more and lock in the color.`,
         ],
     judge: (attempt) => attempt === answer,
+    answer,
     praise: `Exactly — ${tonicName} ${answer.toLowerCase()}. You're hearing quality, not just notes.`,
     nudge: modes
       ? "Listen once more, and lean into the sixth note — bright or dark?"
@@ -335,20 +406,42 @@ export function buildScaleIdTask(
   };
 }
 
+/** An interval candidate for interval-id: size in semitones + display name. */
+export type IntervalOption = { semis: number; name: string };
+
+const INTERVAL_ID_STANDARD: IntervalOption[] = [
+  { semis: 4, name: "3rd" },
+  { semis: 7, name: "5th" },
+  { semis: 12, name: "Octave" },
+];
+
+/**
+ * Full spicy pool: adds the minor 3rd / perfect 4th. "3rd" keeps meaning
+ * the major 3rd at every level, so confusion-pair keys stay stable.
+ */
+export const INTERVAL_ID_FULL: IntervalOption[] = [
+  { semis: 3, name: "Minor 3rd" },
+  { semis: 4, name: "3rd" },
+  { semis: 5, name: "4th" },
+  { semis: 7, name: "5th" },
+  { semis: 12, name: "Octave" },
+];
+
 /**
  * "How far apart?": two notes played melodically (ascending), chosen from a
- * beginner-distinguishable set — major 3rd, perfect 5th, octave. The learner
- * names the interval. Deterministic per seed.
+ * distinguishable set. The learner names the interval. Deterministic per seed.
+ *
+ * Difficulty params (Phase 1 adaptive engine): `intervals` sets the
+ * candidate pool. Defaults reproduce the original 3rd/5th/octave drill.
  */
-export function buildIntervalIdTask(seed: number): PracticalTask {
+export function buildIntervalIdTask(
+  seed: number,
+  opts: { intervals?: IntervalOption[] } = {},
+): PracticalTask {
   const rand = mulberry32(seed);
   const lowers = [60, 62, 64, 65, 67]; // C D E F G
   const lower = lowers[Math.floor(rand() * lowers.length)]!;
-  const options = [
-    { semis: 4, name: "3rd" },
-    { semis: 7, name: "5th" },
-    { semis: 12, name: "Octave" },
-  ];
+  const options = opts.intervals ?? INTERVAL_ID_STANDARD;
   const pick = options[Math.floor(rand() * options.length)]!;
   const upper = lower + pick.semis;
   const choices = [...options.map((o) => o.name)];
@@ -356,6 +449,8 @@ export function buildIntervalIdTask(seed: number): PracticalTask {
     const j = Math.floor(rand() * (i + 1));
     [choices[i], choices[j]] = [choices[j]!, choices[i]!];
   }
+  const hasThirdPair =
+    options.some((o) => o.name === "3rd") && options.some((o) => o.name === "Minor 3rd");
 
   return {
     kind: "interval-id",
@@ -365,13 +460,25 @@ export function buildIntervalIdTask(seed: number): PracticalTask {
     choices,
     hints: [
       "Sing both notes. Does the second feel like a small step up, a medium leap, or a big arrival back home?",
-      "Count the letter names from the first note to the second, including both ends — that count is the interval's number.",
+      hasThirdPair
+        ? "Both thirds span three letter names — the tell is color: bright and open (major 3rd) or darker and tender (minor 3rd). The 4th and 5th are wider leaps; the octave arrives home."
+        : "Count the letter names from the first note to the second, including both ends — that count is the interval's number.",
       `It is a ${pick.name === "Octave" ? "n octave" : pick.name}. Listen once more and feel the distance.`,
     ],
     judge: (attempt) => attempt === pick.name,
+    answer: pick.name,
     praise: `Exactly — a ${pick.name}. You're measuring musical distance by ear.`,
     nudge: "Listen once more. Small hop, medium leap, or all the way home?",
   };
+}
+
+/** Difficulty options for interval-id by adaptive level (0/1/2). */
+function intervalIdOpts(level: DifficultyLevel): { intervals?: IntervalOption[] } {
+  // Gentle: biggest contrast (3rd vs octave), two choices.
+  if (level === 0) return { intervals: INTERVAL_ID_STANDARD.filter((o) => o.name === "3rd" || o.name === "Octave") };
+  // Spicy: minor 3rd and 4th join, five choices.
+  if (level === 2) return { intervals: INTERVAL_ID_FULL };
+  return {};
 }
 
 /**
@@ -416,6 +523,7 @@ export function buildChordIdTask(
         `It is ${answer.toLowerCase()}. Listen once more and feel where the chord stands.`,
       ],
       judge: (attempt) => attempt === answer,
+      answer,
       praise: `Exactly — ${answer.toLowerCase()}. You're hearing how a chord stands.`,
       nudge: "Listen once more, and lean into the bass note — home, or not?",
     };
@@ -438,6 +546,7 @@ export function buildChordIdTask(
       `It is ${answer} — ${rootName} ${quality}. Listen once more and lock in the color.`,
     ],
     judge: (attempt) => attempt === answer,
+    answer,
     praise: `Exactly — ${rootName} ${quality}. You're hearing harmony, not just notes.`,
     nudge:
       "Listen once more, and lean into the middle note — bright or tender?",
@@ -517,6 +626,7 @@ export function buildCadenceIdTask(
     choices,
     hints,
     judge: (attempt) => attempt === answer,
+    answer,
     praise,
     nudge,
   };
@@ -621,6 +731,7 @@ export function buildMotionIdTask(seed: number): PracticalTask {
       `It is ${answer.toLowerCase()}. Play both voices once more and feel the dialogue.`,
     ],
     judge: (attempt) => attempt === answer,
+    answer,
     praise: `Exactly — ${answer.toLowerCase()}. You're hearing voices in dialogue.`,
     nudge: "Play each voice once more. Up, down, or staying put?",
   };
@@ -733,6 +844,7 @@ export function buildModulationIdTask(
     choices,
     hints,
     judge: (attempt) => attempt === answer,
+    answer,
     praise,
     nudge: "Listen once more — follow each phrase to its resting note.",
   };
@@ -766,6 +878,7 @@ export function buildSeventhIdTask(seed: number): PracticalTask {
       `It is ${answer} — ${rootName}${isMaj7 ? "maj7" : "7"}. Listen once more and feel the top note.`,
     ],
     judge: (attempt) => attempt === answer,
+    answer,
     praise: `Exactly — ${rootName}${isMaj7 ? "maj7" : "7"}. You're hearing chord color.`,
     nudge:
       "Listen once more, and lean into the very top note — glowing or leaning?",
@@ -804,6 +917,7 @@ export function buildMeterIdTask(seed: number): PracticalTask {
       `It is ${answer} per bar. Count along once more and feel the cycle.`,
     ],
     judge: (attempt) => attempt === answer,
+    answer,
     praise: `Exactly — ${answer}. You're feeling the bar lines.`,
     nudge: "Count along once more. Where does the low pulse come back?",
   };
@@ -951,6 +1065,7 @@ export function buildSpeciesIdTask(
       `It is ${answer.toLowerCase()} — listen once more and feel the rhythmic relationship.`,
     ],
     judge: (attempt) => attempt === answer,
+    answer,
     praise: `Exactly — ${answer.toLowerCase()}. You're hearing how independent lines share time.`,
     nudge:
       "Listen once more — count the upper notes against each slow bass note.",
@@ -1021,6 +1136,7 @@ export function buildTransformIdTask(seed: number): PracticalTask {
       `It is ${answer.toLowerCase()} — ${describe}. Listen once more and follow the shape.`,
     ],
     judge: (attempt) => attempt === answer,
+    answer,
     praise: `Exactly — ${answer.toLowerCase()}. You're hearing musical ideas transformed.`,
     nudge:
       "Listen once more — trace the shape of each phrase with your finger.",
@@ -2340,19 +2456,30 @@ export function buildFormIdTask(
   };
 }
 
-/** Build a concrete task from an authored spec (deterministic per seed). */
-export function buildTask(lessonId: string, spec: TaskSpec): PracticalTask {
+/**
+ * Build a concrete task from an authored spec (deterministic per seed).
+ *
+ * Phase 1 adaptive engine: `level` threads per-domain difficulty into the
+ * wired families (note-id, rhythm-echo, interval-id). Determinism holds
+ * per (seed, level): the same seed + level always builds the same task.
+ * Unwired families ignore the level (follow-up work).
+ */
+export function buildTask(
+  lessonId: string,
+  spec: TaskSpec,
+  level: DifficultyLevel = 1,
+): PracticalTask {
   switch (spec.kind) {
     case "compare-pitch":
       return buildComparePitchTask(spec.seed);
     case "note-id":
-      return buildNoteIdTask(spec.seed);
+      return { ...buildNoteIdTask(spec.seed, noteIdOpts(level)), difficulty: level };
     case "rhythm-echo":
-      return buildRhythmEchoTask(spec.seed);
+      return { ...buildRhythmEchoTask(spec.seed, rhythmEchoOpts(level)), difficulty: level };
     case "scale-id":
       return buildScaleIdTask(spec.seed, spec.variant);
     case "interval-id":
-      return buildIntervalIdTask(spec.seed);
+      return { ...buildIntervalIdTask(spec.seed, intervalIdOpts(level)), difficulty: level };
     case "chord-id":
       return buildChordIdTask(spec.seed, spec.variant);
     case "cadence-id":
