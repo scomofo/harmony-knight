@@ -21,6 +21,7 @@ import { SettingsScreen } from "./routes/SettingsScreen.tsx";
 import { GamesScreen } from "./routes/GamesScreen.tsx";
 import { StudiesHubScreen, StudyDrillScreen } from "./routes/StudiesScreen.tsx";
 import { CreationsScreen } from "./routes/CreationsScreen.tsx";
+import { ContestScreen } from "./routes/ContestScreen.tsx";
 import { StrikeScreen } from "./routes/StrikeScreen.tsx";
 import { DuelScreen } from "./routes/DuelScreen.tsx";
 import { GradesScreen } from "./routes/GradesScreen.tsx";
@@ -36,6 +37,7 @@ const ROUTE_TITLES: Array<[RegExp, string]> = [
   [/^\/games/, "Play"],
   [/^\/studies/, "Studies"],
   [/^\/create/, "Create"],
+  [/^\/contest/, "Contest"],
   [/^\/strike/, "Strike"],
   [/^\/duel/, "Duel"],
   [/^\/grades/, "Grades"],
@@ -143,6 +145,7 @@ const gamesRoute = createRoute({ getParentRoute: () => rootRoute, path: "/games"
 const studiesRoute = createRoute({ getParentRoute: () => rootRoute, path: "/studies", component: StudiesHubScreen });
 const studyDrillRoute = createRoute({ getParentRoute: () => rootRoute, path: "/studies/$studyId", component: StudyDrillScreen });
 const creationsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/create", component: CreationsScreen });
+const contestRoute = createRoute({ getParentRoute: () => rootRoute, path: "/contest", component: ContestScreen });
 const strikeRoute = createRoute({ getParentRoute: () => rootRoute, path: "/strike", component: StrikeScreen });
 const duelRoute = createRoute({ getParentRoute: () => rootRoute, path: "/duel", component: DuelScreen });
 const gradesRoute = createRoute({ getParentRoute: () => rootRoute, path: "/grades", component: GradesScreen });
@@ -150,7 +153,7 @@ const grownUpsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/gro
 const sharedRoute = createRoute({ getParentRoute: () => rootRoute, path: "/shared/$payload", component: SharedScreen });
 const singRoute = createRoute({ getParentRoute: () => rootRoute, path: "/sing", component: SingScreen });
 
-const routeTree = rootRoute.addChildren([indexRoute, onboardingRoute, pathRoute, practiceRoute, settingsRoute, lessonRoute, gamesRoute, studiesRoute, studyDrillRoute, creationsRoute, strikeRoute, duelRoute, gradesRoute, grownUpsRoute, sharedRoute, singRoute]);
+const routeTree = rootRoute.addChildren([indexRoute, onboardingRoute, pathRoute, practiceRoute, settingsRoute, lessonRoute, gamesRoute, studiesRoute, studyDrillRoute, creationsRoute, contestRoute, strikeRoute, duelRoute, gradesRoute, grownUpsRoute, sharedRoute, singRoute]);
 const router = createRouter({ routeTree });
 
 declare module "@tanstack/react-router" {

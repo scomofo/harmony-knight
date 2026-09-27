@@ -5,8 +5,13 @@
  */
 
 import type { QuestState } from "./quests.ts";
+import {
+  isValidContestWeek,
+  sanitizeContests,
+  type ContestWeek,
+} from "./contest.ts";
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 export const SAVE_KEY = "harmony-knight-save-v1";
 
 export type LessonStep = "learn" | "try" | "recall" | "done";
@@ -66,6 +71,11 @@ export type Settings = {
   playbackSpeed: 1 | 0.75 | 0.5;
   /** Kid-gate for the grown-ups dashboard. Null until a grown-up sets one. */
   grownUpsPin: string | null;
+  /**
+   * Creator "always sound good" mode: quantize to the palette and
+   * auto-harmonize the bass. Default on (no profiles exist yet).
+   */
+  cantFail: boolean;
 };
 
 export type SaveData = {
@@ -85,6 +95,8 @@ export type SaveData = {
   gameStats: GameStats;
   /** Daily quests: date -> quest id -> "done" | "claimed". */
   questLog: Record<string, Record<string, QuestState>>;
+  /** Weekly creation contests, keyed by ISO week id ("2026-W39"). */
+  contests: Record<string, ContestWeek>;
 };
 
 export type SavedCreation = {
@@ -101,6 +113,10 @@ export type GameStats = {
   duelWins: number;
   duelLosses: number;
   duelDraws: number;
+  /** Last finished duel (ms epoch, 0 = never). Duel anti-farming. */
+  lastDuelAt: number;
+  /** Duels finished per device-local day (YYYY-MM-DD -> count). Anti-farming. */
+  duelDayCounts: Record<string, number>;
 };
 
 export function defaultSettings(): Settings {
@@ -113,11 +129,20 @@ export function defaultSettings(): Settings {
     sessionMinutes: 3,
     playbackSpeed: 1,
     grownUpsPin: null,
+    cantFail: true,
   };
 }
 
 export function defaultGameStats(): GameStats {
-  return { strikePlays: 0, strikeBest: 0, duelWins: 0, duelLosses: 0, duelDraws: 0 };
+  return {
+    strikePlays: 0,
+    strikeBest: 0,
+    duelWins: 0,
+    duelLosses: 0,
+    duelDraws: 0,
+    lastDuelAt: 0,
+    duelDayCounts: {},
+  };
 }
 
 export function defaultSave(): SaveData {
@@ -138,6 +163,7 @@ export function defaultSave(): SaveData {
     creations: [],
     gameStats: defaultGameStats(),
     questLog: {},
+    contests: {},
   };
 }
 
@@ -182,6 +208,27 @@ const MIGRATIONS: Migration[] = [
       };
     },
   },
+  {
+    from: 3,
+    to: 4,
+    // v4 introduces the weekly creation contests, the creator "always sound
+    // good" toggle, and duel anti-farming stats. All additive: a v3 save
+    // keeps everything it had, gaining defaults for the new fields.
+    migrate: (data) => {
+      const rawSettings = isRecord(data.settings) ? data.settings : {};
+      return {
+        ...data,
+        settings: {
+          ...defaultSettings(),
+          ...rawSettings,
+          cantFail: typeof rawSettings.cantFail === "boolean" ? rawSettings.cantFail : true,
+        },
+        gameStats: sanitizeGameStats(data.gameStats),
+        contests: sanitizeContests(data.contests),
+        version: 4,
+      };
+    },
+  },
 ];
 
 /** Coerce unknown input into a valid GameStats, preserving good fields. */
@@ -190,12 +237,22 @@ export function sanitizeGameStats(v: unknown): GameStats {
   if (!isRecord(v)) return d;
   const num = (x: unknown, fallback: number): number =>
     typeof x === "number" && Number.isFinite(x) && x >= 0 ? Math.floor(x) : fallback;
+  const dayCounts: Record<string, number> = {};
+  if (isRecord(v.duelDayCounts)) {
+    for (const [day, count] of Object.entries(v.duelDayCounts)) {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(day) && typeof count === "number" && Number.isFinite(count) && count >= 0) {
+        dayCounts[day] = Math.floor(count);
+      }
+    }
+  }
   return {
     strikePlays: num(v.strikePlays, d.strikePlays),
     strikeBest: num(v.strikeBest, d.strikeBest),
     duelWins: num(v.duelWins, d.duelWins),
     duelLosses: num(v.duelLosses, d.duelLosses),
     duelDraws: num(v.duelDraws, d.duelDraws),
+    lastDuelAt: num(v.lastDuelAt, d.lastDuelAt),
+    duelDayCounts: dayCounts,
   };
 }
 
@@ -243,7 +300,8 @@ function validSettings(s: unknown): s is Settings {
     s.sessionMinutes >= 1 &&
     s.sessionMinutes <= 60 &&
     (s.playbackSpeed === 1 || s.playbackSpeed === 0.75 || s.playbackSpeed === 0.5) &&
-    (s.grownUpsPin === null || typeof s.grownUpsPin === "string")
+    (s.grownUpsPin === null || typeof s.grownUpsPin === "string") &&
+    typeof s.cantFail === "boolean"
   );
 }
 
@@ -258,13 +316,34 @@ function validQuestLog(v: unknown): boolean {
 
 function validGameStats(v: unknown): v is GameStats {
   if (!isRecord(v)) return false;
-  const keys = ["strikePlays", "strikeBest", "duelWins", "duelLosses", "duelDraws"] as const;
-  return keys.every((k) => {
+  const keys = ["strikePlays", "strikeBest", "duelWins", "duelLosses", "duelDraws", "lastDuelAt"] as const;
+  const intsOk = keys.every((k) => {
     const n = v[k];
     return (
       typeof n === "number" && Number.isFinite(n) && n >= 0 && Math.floor(n) === n
     );
   });
+  if (!intsOk) return false;
+  const days = v.duelDayCounts;
+  return (
+    isRecord(days) &&
+    Object.entries(days).every(
+      ([day, count]) =>
+        /^\d{4}-\d{2}-\d{2}$/.test(day) &&
+        typeof count === "number" &&
+        Number.isFinite(count) &&
+        count >= 0 &&
+        Math.floor(count) === count,
+    )
+  );
+}
+
+function validContests(v: unknown): v is Record<string, ContestWeek> {
+  if (!isRecord(v)) return false;
+  return Object.entries(v).every(
+    ([weekId, week]) =>
+      isValidContestWeek(week) && (week as ContestWeek).weekId === weekId,
+  );
 }
 
 function validCreation(v: unknown): v is SavedCreation {
@@ -321,6 +400,7 @@ export function validateSave(data: unknown): data is SaveData {
   if (!Array.isArray(data.creations) || !data.creations.every(validCreation)) return false;
   if (!validGameStats(data.gameStats)) return false;
   if (!validQuestLog(data.questLog)) return false;
+  if (!validContests(data.contests)) return false;
   // ~5MB cap keeps quota failures predictable.
   try {
     if (JSON.stringify(data).length > 5 * 1024 * 1024) return false;
