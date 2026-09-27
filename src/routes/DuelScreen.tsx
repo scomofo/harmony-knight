@@ -29,8 +29,8 @@ export function DuelScreen() {
       <p className="mt-1 text-white/70">
         Spar against the <span className="font-semibold text-rose-300">Discord Sentinel</span>:
         six rounds of ear-training questions, only first attempts count. The Sentinel
-        sharpens as your grade rises. Duels feed your harmony grade — lessons stay open
-        either way.
+        sharpens as your grade rises. Duels earn harmony points and sharpen your ear —
+        your grade itself is won in the Grades trials. Lessons stay open either way.
       </p>
       <div className="mt-4" key={runId}>
         <DuelGame grade={grade} onFinish={onFinish} />

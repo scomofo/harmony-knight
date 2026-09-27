@@ -6,7 +6,7 @@
 
 import type { QuestState } from "./quests.ts";
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 export const SAVE_KEY = "harmony-knight-save-v1";
 
 export type LessonStep = "learn" | "try" | "recall" | "done";
@@ -69,12 +69,53 @@ export type Settings = {
   // device share one grown-ups gate.
 };
 
+/* ------------------------------------------------------------------ */
+/* Player profile (first-session onboarding)                            */
+/* ------------------------------------------------------------------ */
+
+/** Self-reported age band, collected once during onboarding. */
+export type AgeBand = "under-7" | "7-9" | "10-12" | "13-plus";
+/** How much music the player has played before, in their own words. */
+export type ExperienceLevel = "brand-new" | "a-little" | "played-before";
+/** What the player hopes to get out of the game. */
+export type LearnerGoal = "play-songs" | "understand-music" | "make-music" | "just-exploring";
+/** Primary instrument, if any. */
+export type Instrument = "piano" | "guitar" | "voice" | "violin" | "ukulele" | "other" | "none-yet";
+
+export type PlacementAnswer = {
+  questionId: string;
+  correct: boolean;
+};
+
+/** Result of the onboarding placement diagnostic. */
+export type PlacementResult = {
+  completedAt: number;
+  answers: PlacementAnswer[];
+  /** Chapter number (1..11) the diagnostic recommends starting at. */
+  recommendedStartChapter: number;
+};
+
+export type PlayerProfile = {
+  /** Display name; empty until the player tells us. */
+  name: string;
+  ageBand: AgeBand;
+  experience: ExperienceLevel;
+  goal: LearnerGoal;
+  instrument: Instrument;
+  /** Null until the placement diagnostic is taken (or skipped). */
+  placement: PlacementResult | null;
+  /** When onboarding finished; null for pre-profile saves. */
+  completedAt: number | null;
+};
+
 export type SaveData = {
   version: number;
   createdAt: number;
   updatedAt: number;
   onboarded: boolean;
   settings: Settings;
+  /** First-session profile; defaults are unclaimed (completedAt null). */
+  profile: PlayerProfile;
   lessons: Record<string, LessonProgress>;
   concepts: Record<string, ConceptReview>;
   noteEvidence: Record<string, NoteEvidence>;
@@ -111,8 +152,25 @@ export function defaultSettings(): Settings {
     highContrast: false,
     reducedMotion: false,
     focusMode: true,
-    sessionMinutes: 3,
+    sessionMinutes: 20,
     playbackSpeed: 1,
+  };
+}
+
+/**
+ * Default profile for pre-profile saves (and for players who skip
+ * onboarding): every field is the "unclaimed" choice, and completedAt is
+ * null so the UI can invite the player to finish their profile.
+ */
+export function defaultProfile(): PlayerProfile {
+  return {
+    name: "",
+    ageBand: "7-9",
+    experience: "a-little",
+    goal: "just-exploring",
+    instrument: "none-yet",
+    placement: null,
+    completedAt: null,
   };
 }
 
@@ -128,6 +186,7 @@ export function defaultSave(): SaveData {
     updatedAt: now,
     onboarded: false,
     settings: defaultSettings(),
+    profile: defaultProfile(),
     lessons: {},
     concepts: {},
     noteEvidence: {},
@@ -182,7 +241,75 @@ const MIGRATIONS: Migration[] = [
       };
     },
   },
+  {
+    from: 3,
+    to: 4,
+    // v4 introduces the player profile (onboarding answers + placement
+    // diagnostic result). Existing saves get the unclaimed default profile;
+    // a partial profile is sanitized per-field so one bad value never
+    // wipes the rest.
+    migrate: (data) => ({
+      ...data,
+      profile: sanitizeProfile(data.profile),
+      version: 4,
+    }),
+  },
 ];
+
+/** Coerce unknown input into a valid PlayerProfile, preserving good fields. */
+export function sanitizeProfile(v: unknown): PlayerProfile {
+  const d = defaultProfile();
+  if (!isRecord(v)) return d;
+  const oneOf = <T extends string>(x: unknown, allowed: readonly T[], fallback: T): T =>
+    typeof x === "string" && (allowed as readonly string[]).includes(x) ? (x as T) : fallback;
+  return {
+    name: typeof v.name === "string" ? v.name.slice(0, 40) : d.name,
+    ageBand: oneOf(v.ageBand, ["under-7", "7-9", "10-12", "13-plus"] as const, d.ageBand),
+    experience: oneOf(v.experience, ["brand-new", "a-little", "played-before"] as const, d.experience),
+    goal: oneOf(v.goal, ["play-songs", "understand-music", "make-music", "just-exploring"] as const, d.goal),
+    instrument: oneOf(
+      v.instrument,
+      ["piano", "guitar", "voice", "violin", "ukulele", "other", "none-yet"] as const,
+      d.instrument,
+    ),
+    placement: sanitizePlacement(v.placement),
+    completedAt:
+      typeof v.completedAt === "number" && Number.isFinite(v.completedAt) && v.completedAt >= 0
+        ? v.completedAt
+        : null,
+  };
+}
+
+/** Coerce unknown input into a valid PlacementResult, or null when unusable. */
+export function sanitizePlacement(v: unknown): PlacementResult | null {
+  if (v === null || v === undefined) return null;
+  if (!isRecord(v)) return null;
+  const { completedAt, answers } = v;
+  const chapter = v.recommendedStartChapter;
+  if (
+    typeof completedAt !== "number" ||
+    !Number.isFinite(completedAt) ||
+    completedAt < 0 ||
+    typeof chapter !== "number" ||
+    !Number.isInteger(chapter) ||
+    chapter < 1 ||
+    chapter > 11 ||
+    !Array.isArray(answers) ||
+    !answers.every(
+      (a) => isRecord(a) && typeof a.questionId === "string" && typeof a.correct === "boolean",
+    )
+  ) {
+    return null;
+  }
+  return {
+    completedAt,
+    answers: answers.map((a) => {
+      const r = a as Record<string, unknown>;
+      return { questionId: r.questionId as string, correct: r.correct as boolean };
+    }),
+    recommendedStartChapter: chapter,
+  };
+}
 
 /** Coerce unknown input into a valid GameStats, preserving good fields. */
 export function sanitizeGameStats(v: unknown): GameStats {
@@ -248,6 +375,23 @@ function validSettings(s: unknown): s is Settings {
   );
 }
 
+function validPlayerProfile(v: unknown): v is PlayerProfile {
+  if (!isRecord(v)) return false;
+  const oneOf = (x: unknown, allowed: readonly string[]) =>
+    typeof x === "string" && allowed.includes(x);
+  return (
+    typeof v.name === "string" &&
+    v.name.length <= 40 &&
+    oneOf(v.ageBand, ["under-7", "7-9", "10-12", "13-plus"]) &&
+    oneOf(v.experience, ["brand-new", "a-little", "played-before"]) &&
+    oneOf(v.goal, ["play-songs", "understand-music", "make-music", "just-exploring"]) &&
+    oneOf(v.instrument, ["piano", "guitar", "voice", "violin", "ukulele", "other", "none-yet"]) &&
+    (v.placement === null || sanitizePlacement(v.placement) !== null) &&
+    (v.completedAt === null ||
+      (typeof v.completedAt === "number" && Number.isFinite(v.completedAt) && v.completedAt >= 0))
+  );
+}
+
 function validQuestLog(v: unknown): boolean {
   if (!isRecord(v)) return false;
   return Object.values(v).every(
@@ -310,6 +454,7 @@ export function validateSave(data: unknown): data is SaveData {
   if (typeof data.createdAt !== "number" || typeof data.updatedAt !== "number") return false;
   if (typeof data.onboarded !== "boolean") return false;
   if (!validSettings(data.settings)) return false;
+  if (!validPlayerProfile(data.profile)) return false;
   if (!recordOfRecords(data.lessons) || !recordOfRecords(data.concepts) || !recordOfRecords(data.noteEvidence))
     return false;
   if (typeof data.harmonyPoints !== "number" || !Number.isFinite(data.harmonyPoints) || data.harmonyPoints < 0)

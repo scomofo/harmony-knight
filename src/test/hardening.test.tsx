@@ -89,6 +89,22 @@ describe("BreakReminder", () => {
     expect(banner).toBeTruthy();
     expect(document.activeElement).not.toBe(screen.getByText("Keep playing"));
   });
+
+  it("stays quiet after the daily cap is reached", () => {
+    vi.useFakeTimers();
+    onboard();
+    useStore.getState().updateSettings({ sessionMinutes: 1 });
+    const today = new Date().toISOString().slice(0, 10);
+    window.localStorage.setItem(
+      "harmony-knight-break-count-v1",
+      JSON.stringify({ date: today, count: 3 }),
+    );
+    render(<BreakReminder />);
+    act(() => {
+      vi.advanceTimersByTime(61_000);
+    });
+    expect(screen.queryByText(/stretch/)).toBeNull();
+  });
 });
 
 describe("pagehide flush", () => {

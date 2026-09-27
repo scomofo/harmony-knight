@@ -11,6 +11,8 @@ import {
   PROFILES_VERSION,
   PROFILE_AVATARS,
   SAVE_KEY,
+  SAVE_VERSION,
+  defaultProfile,
   defaultProfiles,
   defaultSave,
   migrateToProfiles,
@@ -95,9 +97,16 @@ describe("migrateToProfiles", () => {
     expect(data!.activeProfileId).toBe(profile.id);
 
     // Everything survives except the PIN, which moves to device level.
+    // The v3 save also migrates to v4 (player profile), gaining the default
+    // profile and nothing else.
     const expectedSettings = { ...(original.settings as Record<string, unknown>) };
     delete expectedSettings.grownUpsPin;
-    expect(profile.save).toEqual({ ...original, settings: expectedSettings });
+    expect(profile.save).toEqual({
+      ...original,
+      version: SAVE_VERSION,
+      profile: defaultProfile(),
+      settings: expectedSettings,
+    });
     expect(
       (profile.save.settings as unknown as Record<string, unknown>).grownUpsPin,
     ).toBeUndefined();

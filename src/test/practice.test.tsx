@@ -9,7 +9,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { PracticeKeyboard } from "../components/game/PracticeKeyboard.tsx";
-import { ConceptDrill, NoteDrill } from "../routes/PracticeScreen.tsx";
+import { ConceptDrill, NoteDrill, accidentalsUnlocked, drillRange } from "../routes/PracticeScreen.tsx";
 import { useStore } from "../lib/game/store.ts";
 
 class FakeParam {
@@ -112,6 +112,36 @@ describe("NoteDrill", () => {
     fireEvent.click(screen.getByText(/Next note/));
     // D4 is excluded as the just-played target; the drill continues elsewhere.
     expect(screen.queryByText(/Not quite/)).toBeNull();
+  });
+
+  it("renders an accidental target with its sharp sign", () => {
+    const { container } = render(<NoteDrill initialTarget="F#4" />);
+    const live = container.querySelector('[aria-live="polite"]');
+    // Letter + sharp sign + octave — never a mislabeled white key.
+    expect(live?.textContent).toBe("F♯4");
+  });
+});
+
+describe("drillRange", () => {
+  it("is white keys only until ch2-l4 is finished", () => {
+    expect(accidentalsUnlocked({})).toBe(false);
+    expect(drillRange({})).toEqual(["C4", "D4", "E4", "F4", "G4", "A4", "B4", "C5"]);
+    const inProgress = { "ch2-l4-accidentals": { step: "recall" } };
+    expect(accidentalsUnlocked(inProgress)).toBe(false);
+    expect(drillRange(inProgress)).not.toContain("F#4");
+  });
+
+  it("adds sharps (keyboard spellings) once ch2-l4 is done", () => {
+    const done = { "ch2-l4-accidentals": { step: "done" } };
+    expect(accidentalsUnlocked(done)).toBe(true);
+    const range = drillRange(done);
+    expect(range).toContain("C#4");
+    expect(range).toContain("F#4");
+    expect(range).toContain("A#4");
+    expect(range).toContain("C5");
+    // Flat spellings are not separate targets: each black key carries one
+    // (sharp) label on the practice keyboard.
+    expect(range).not.toContain("Db4");
   });
 });
 
