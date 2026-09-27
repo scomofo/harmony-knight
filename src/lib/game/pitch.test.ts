@@ -6,6 +6,8 @@ import {
   PitchSmoother,
   holdTick,
   HOLD_TICK_MS,
+  MAX_FREQ,
+  MIN_FREQ,
   MicPitch,
   type PitchResult,
   type TimedPitch,
@@ -33,6 +35,32 @@ describe("detectPitch", () => {
     expect(low?.midi).toBe(45);
     const high = detectPitch(sine(659.25, 44100), 44100); // E5
     expect(high?.midi).toBe(76);
+  });
+
+  it("listens up to D6 so high kid voices are not clipped", () => {
+    expect(MIN_FREQ).toBe(55);
+    expect(MAX_FREQ).toBe(1175);
+    const d6 = detectPitch(sine(1174.66, 44100), 44100); // D6
+    expect(d6).not.toBeNull();
+    expect(d6!.midi).toBe(86);
+    expect(Math.abs(d6!.cents)).toBeLessThanOrEqual(10);
+  });
+
+  it("keeps the low end honest: A2 is not misread as a high note", () => {
+    // Regression: with the gate at 1175 Hz the old full-frame
+    // normalization favored small lags and read 110 Hz as D6.
+    const a2 = detectPitch(sine(110, 44100), 44100);
+    expect(a2).not.toBeNull();
+    expect(a2!.midi).toBe(45);
+  });
+
+  it("never reports a frequency above the gate ceiling", () => {
+    // Pure tones above the gate alias to subharmonics (autocorrelation is
+    // octave-ambiguous on sines); the reported pitch still stays in range.
+    for (const f of [1400, 2000, 3000]) {
+      const p = detectPitch(sine(f, 44100), 44100);
+      if (p) expect(p.freq).toBeLessThanOrEqual(MAX_FREQ * 1.1);
+    }
   });
 
   it("reports cents sharp and flat", () => {

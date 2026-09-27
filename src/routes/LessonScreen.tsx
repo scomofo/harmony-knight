@@ -7,7 +7,7 @@ import {
   lessonMeta,
   type LearnBlock,
 } from "../lib/game/course.ts";
-import { canTransition, dueConcepts, scheduleRecall } from "../lib/game/learning.ts";
+import { canTransition, conceptName, dueConcepts, scheduleRecall } from "../lib/game/learning.ts";
 import { stopAll } from "../lib/game/audio.ts";
 import { DuetPlayer } from "../components/game/DuetPlayer.tsx";
 import { cancelEffects, emitEffect } from "../lib/game/effects.ts";
@@ -336,7 +336,7 @@ export function DueRecall() {
       <h3 className="font-semibold text-amber-200">Due for recall</h3>
       <ul className="mt-1 list-disc pl-5 text-sm text-white/80">
         {due.map((d) => (
-          <li key={d.conceptId}>{d.conceptId}</li>
+          <li key={d.conceptId}>{conceptName(d.conceptId)}</li>
         ))}
       </ul>
       <p className="mt-2 text-xs text-white/60">Revisit the lesson to refresh — spacing grows to 30 days.</p>

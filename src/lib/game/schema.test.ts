@@ -1,16 +1,19 @@
 /**
- * Schema hardening tests: the v1 -> v3 migration chain (gameStats, quest
- * log, grown-ups PIN), per-field sanitization, and strict import validation
- * for every persisted object.
+ * Schema hardening tests: the v1 -> v4 migration chain (gameStats, quest
+ * log, grown-ups PIN, player profile), per-field sanitization, and strict
+ * import validation for every persisted object.
  */
 import { describe, expect, it } from "vitest";
 import {
   SAVE_VERSION,
+  defaultProfile,
   defaultSave,
   exportSave,
   importSave,
   migrateSave,
   sanitizeGameStats,
+  sanitizePlacement,
+  sanitizeProfile,
   validateSave,
 } from "./schema.ts";
 
@@ -21,7 +24,7 @@ function v1Save(overrides: Record<string, unknown> = {}): Record<string, unknown
   return { ...base, version: 1, ...overrides };
 }
 
-describe("v1 -> v3 migration chain", () => {
+describe("v1 -> v4 migration chain", () => {
   it("adds default gameStats to a pre-games v1 save", () => {
     const migrated = migrateSave(v1Save());
     expect(migrated?.version).toBe(SAVE_VERSION); // chains v1 -> v2 -> v3
@@ -184,5 +187,106 @@ describe("validateSave (strict)", () => {
     const back = importSave(json);
     expect(back?.version).toBe(SAVE_VERSION);
     expect(back?.gameStats.strikePlays).toBe(0);
+  });
+});
+
+describe("v3 -> v4 profile migration", () => {
+  /** A save as written by the v3 build (pre-profile): no profile key. */
+  function v3Save(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+    const base = defaultSave() as unknown as Record<string, unknown>;
+    delete base.profile;
+    return { ...base, version: 3, ...overrides };
+  }
+
+  it("adds the unclaimed default profile to a pre-profile v3 save", () => {
+    const migrated = migrateSave(v3Save());
+    expect(migrated?.version).toBe(SAVE_VERSION);
+    expect(migrated?.profile).toEqual(defaultProfile());
+    expect(migrated?.profile.completedAt).toBeNull();
+    expect(migrated && validateSave(migrated)).toBe(true);
+  });
+
+  it("preserves a valid profile through migration", () => {
+    const profile = {
+      ...defaultProfile(),
+      name: "Avery",
+      ageBand: "10-12",
+      experience: "played-before",
+      completedAt: 123456,
+    };
+    const migrated = migrateSave(v3Save({ profile }));
+    expect(migrated?.profile.name).toBe("Avery");
+    expect(migrated?.profile.experience).toBe("played-before");
+    expect(migrated?.profile.completedAt).toBe(123456);
+  });
+
+  it("sanitizes a malformed profile per-field instead of wiping it", () => {
+    const profile = {
+      name: "Avery",
+      ageBand: "ancient",
+      experience: "played-before",
+      goal: "world-domination",
+      instrument: "lute",
+      placement: { garbage: true },
+      completedAt: "yesterday",
+    };
+    const migrated = migrateSave(v3Save({ profile }));
+    expect(migrated?.profile.name).toBe("Avery");
+    expect(migrated?.profile.ageBand).toBe(defaultProfile().ageBand);
+    expect(migrated?.profile.experience).toBe("played-before");
+    expect(migrated?.profile.goal).toBe(defaultProfile().goal);
+    expect(migrated?.profile.placement).toBeNull();
+    expect(migrated?.profile.completedAt).toBeNull();
+    expect(migrated && validateSave(migrated)).toBe(true);
+  });
+
+  it("keeps a well-formed placement through migration", () => {
+    const placement = {
+      completedAt: 999,
+      answers: [{ questionId: "pitch-1", correct: true }],
+      recommendedStartChapter: 2,
+    };
+    const migrated = migrateSave(v3Save({ profile: { ...defaultProfile(), placement } }));
+    expect(migrated?.profile.placement).toEqual(placement);
+  });
+
+  it("defaults the session length to 20 minutes for new saves", () => {
+    expect(defaultSave().settings.sessionMinutes).toBe(20);
+  });
+});
+
+describe("sanitizeProfile / sanitizePlacement", () => {
+  it("returns the default profile for non-records", () => {
+    expect(sanitizeProfile(null)).toEqual(defaultProfile());
+    expect(sanitizeProfile("nope")).toEqual(defaultProfile());
+  });
+
+  it("truncates overlong names", () => {
+    expect(sanitizeProfile({ name: "x".repeat(100) }).name).toHaveLength(40);
+  });
+
+  it("rejects out-of-range placement chapters", () => {
+    const base = { completedAt: 1, answers: [], recommendedStartChapter: 12 };
+    expect(sanitizePlacement(base)).toBeNull();
+    expect(sanitizePlacement({ ...base, recommendedStartChapter: 0 })).toBeNull();
+    expect(sanitizePlacement({ ...base, recommendedStartChapter: 3 })).toEqual({
+      completedAt: 1,
+      answers: [],
+      recommendedStartChapter: 3,
+    });
+  });
+
+  it("rejects malformed placement answers", () => {
+    expect(
+      sanitizePlacement({ completedAt: 1, answers: [{ questionId: 5, correct: true }], recommendedStartChapter: 1 }),
+    ).toBeNull();
+  });
+
+  it("validateSave rejects a save with a bad profile", () => {
+    expect(validateSave({ ...defaultSave(), profile: { ...defaultProfile(), ageBand: "old" } })).toBe(false);
+    expect(validateSave({ ...defaultSave(), profile: null })).toBe(false);
+    expect(
+      validateSave({ ...defaultSave(), profile: { ...defaultProfile(), name: "x".repeat(41) } }),
+    ).toBe(false);
   });
 });

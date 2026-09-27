@@ -1,46 +1,11 @@
-import { useState } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useStore } from "../lib/game/store.ts";
-import { TeachingPlayer } from "../components/game/TeachingPlayer.tsx";
 import { QuestStrip } from "../components/game/QuestStrip.tsx";
+import { OnboardingFlow } from "../components/game/OnboardingFlow.tsx";
 import { CHAPTERS, authoredLessons } from "../lib/game/course.ts";
 
 export function OnboardingScreen() {
-  const update = useStore((s) => s.update);
-  const navigate = useNavigate();
-  const [heard, setHeard] = useState(false);
-
-  const start = () => {
-    update((s) => ({ ...s, onboarded: true }));
-    navigate({ to: "/lesson/$lessonId", params: { lessonId: "ch1-l1-pitch" } });
-  };
-
-  return (
-    <div className="mx-auto flex min-h-[80vh] max-w-xl flex-col justify-center p-6">
-      <div className="text-6xl" aria-hidden>⚔️</div>
-      <h1 className="mt-4 text-3xl font-bold">Quest of the Harmony Knight</h1>
-      <p className="mt-3 leading-relaxed text-white/80">
-        Music theory in short, focused sessions. Learn one idea, try it, recall it — then return
-        to your saved place. No account. Your progress stays in this browser.
-      </p>
-      <div className="mt-6" onClick={() => setHeard(true)}>
-        <TeachingPlayer
-          midis={[60, 64, 67, 72]}
-          caption="Optional: hear what a lesson sounds like. A rising major arpeggio."
-          lane="onboarding"
-        />
-      </div>
-      {heard && <p className="mt-2 text-sm text-emerald-300">That's the sound of C major climbing upward.</p>}
-      <button
-        type="button"
-        onClick={start}
-        className="mt-8 rounded-xl bg-indigo-500 px-6 py-4 text-lg font-bold text-white"
-      >
-        Begin the first lesson
-      </button>
-      <p className="mt-3 text-center text-sm text-white/50">About 3 minutes. Untimed. You can stop anytime.</p>
-    </div>
-  );
+  return <OnboardingFlow />;
 }
 
 export function HomeScreen() {
@@ -83,8 +48,10 @@ export function HomeScreen() {
         </Link>
       ) : (
         <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5">
-          <p className="font-semibold">Chapter 1 complete — well played, knight.</p>
-          <p className="mt-1 text-sm text-white/60">More chapters are being authored.</p>
+          <p className="font-semibold">Quest complete — every authored lesson is done. Well played, knight.</p>
+          <p className="mt-1 text-sm text-white/60">
+            Revisit any lesson from the learning path, keep recalls fresh in Practice, or try for the next grade.
+          </p>
         </div>
       )}
 
