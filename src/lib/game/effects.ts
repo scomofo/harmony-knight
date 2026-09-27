@@ -66,7 +66,7 @@ export const EFFECT_PRESETS: Record<EffectEvent, EffectPreset> = {
     motion: "quiet clue reveal, no celebratory burst",
     calm: "label + highlighted inspection area",
     durationMs: 300,
-    soundCue: "none",
+    soundCue: "soft",
     visual: "highlight",
   },
   mastery: {
@@ -106,7 +106,7 @@ export const EFFECT_PRESETS: Record<EffectEvent, EffectPreset> = {
     motion: "warm edge glow while active",
     calm: "static badge while active",
     durationMs: 0,
-    soundCue: "none",
+    soundCue: "tick",
     visual: "badge",
   },
 };

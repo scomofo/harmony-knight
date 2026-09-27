@@ -5,6 +5,7 @@ import { midiToName } from "../lib/game/music.ts";
 import { playSequence, playTone, stopLane } from "../lib/game/audio.ts";
 import { emitEffect } from "../lib/game/effects.ts";
 import { MicPitch, singPhrase, holdTick, HOLD_TICK_MS, type MicState, type TimedPitch } from "../lib/game/pitch.ts";
+import { pitchDeviationCopy } from "../lib/game/feedback.ts";
 
 /**
  * Singing studio: call-and-response pitch matching with the microphone.
@@ -39,11 +40,14 @@ export function SingScreen() {
   const [roundsDone, setRoundsDone] = useState(0);
   const [streak, setStreak] = useState(0);
   const [display, setDisplay] = useState<PitchDisplay>(null);
+  const [noteSummary, setNoteSummary] = useState<string | null>(null);
 
   const micRef = useRef<MicPitch | null>(null);
   const pitchRef = useRef<TimedPitch | null>(null);
   const holdRef = useRef(0);
   const graceUntilRef = useRef(0);
+  /** Accumulates per-frame cents for the current note → average deviation summary. */
+  const centsAccRef = useRef({ sum: 0, n: 0 });
   // Ref mirrors so the frame loop and timers never read stale state.
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
@@ -74,7 +78,9 @@ export function SingScreen() {
       setPhase("listen");
       setListenIdx(-1);
       setDisplay(null);
+      setNoteSummary(null);
       holdRef.current = 0;
+      centsAccRef.current = { sum: 0, n: 0 };
       playSequence(p, {
         lane: "sing",
         noteDuration: 0.6,
@@ -108,8 +114,11 @@ export function SingScreen() {
       if (celebrate) {
         playTone(p[idx], { lane: "sing-confirm", duration: 0.4 });
         emitEffect({ event: "correct" });
+        const acc = centsAccRef.current;
+        if (acc.n > 0) setNoteSummary(pitchDeviationCopy(acc.sum / acc.n));
       }
       holdRef.current = 0;
+      centsAccRef.current = { sum: 0, n: 0 };
       beginOnsetGrace();
       if (idx + 1 >= p.length) finishRound();
       else setSingIdx(idx + 1);
@@ -131,6 +140,12 @@ export function SingScreen() {
       const inGrace = performance.now() < graceUntilRef.current;
       holdRef.current = holdTick(holdRef.current, onTarget, inGrace);
       const holdPct = Math.min(1, holdRef.current / HOLD_MS);
+      // Accumulate cents on frames singing the right note — the average
+      // becomes the per-note deviation summary on completion.
+      if (pitch && pitch.midi === target) {
+        centsAccRef.current.sum += pitch.cents;
+        centsAccRef.current.n += 1;
+      }
       setDisplay(
         pitch
           ? { name: midiToName(pitch.midi), cents: pitch.cents, holdPct }
@@ -314,6 +329,11 @@ export function SingScreen() {
               >
                 Skip this note
               </button>
+              {noteSummary && (
+                <p role="status" className="mx-auto mt-4 max-w-[300px] text-sm text-white/75">
+                  🎯 {noteSummary}
+                </p>
+              )}
             </div>
           )}
 

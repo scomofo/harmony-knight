@@ -16,6 +16,7 @@ import type { LessonStep } from "../lib/game/schema.ts";
 import { TeachingPlayer } from "../components/game/TeachingPlayer.tsx";
 import { TaskPlayer } from "../components/game/TaskPlayer.tsx";
 import { LessonVisualView } from "../components/game/LessonVisual.tsx";
+import { LessonCelebration } from "../components/game/LessonCelebration.tsx";
 import { buildTask } from "../lib/game/tasks.ts";
 
 function LearnBlockView({ block, index }: { block: LearnBlock; index: number }) {
@@ -107,7 +108,7 @@ export function LessonScreen({ lessonId }: { lessonId: string }) {
     const assisted = !!hintShown[checkId];
     setPicked((p) => ({ ...p, [checkId]: choiceIndex }));
     answerCheck(lessonId, checkId, correct, assisted);
-    emitEffect({ event: correct && !assisted ? "correct" : correct ? "assisted" : "needs-work", cancelKey: checkId });
+    emitEffect({ event: correct && !assisted ? "correct" : correct ? "assisted" : "needs-work", anchor: checkId, cancelKey: checkId });
   };
 
   const showHint = (checkId: string) => {
@@ -204,7 +205,7 @@ export function LessonScreen({ lessonId }: { lessonId: string }) {
             const choice = picked[check.id];
             const answered = choice !== undefined;
             return (
-              <fieldset key={check.id} className="rounded-xl border border-white/10 bg-white/5 p-4">
+              <fieldset key={check.id} id={check.id} className="rounded-xl border border-white/10 bg-white/5 p-4">
                 <legend className="sr-only">Recall check {ci + 1}</legend>
                 <p className="font-semibold">{check.question}</p>
                 {check.audio && (
@@ -270,14 +271,12 @@ export function LessonScreen({ lessonId }: { lessonId: string }) {
 
       {step === "done" && (
         <div className="mt-6 space-y-4 text-center">
-          <div className="text-5xl" aria-hidden>🎼</div>
-          <h2 className="text-xl font-bold">Lesson complete</h2>
-          {earned !== null && earned > 0 && (
-            <p className="text-amber-300">+{earned} harmony points — first completion.</p>
-          )}
-          {earned === 0 && (
-            <p className="text-white/60">Revisits don't award points again — the knowledge is the reward.</p>
-          )}
+          <LessonCelebration
+            lessonTitle={body.title}
+            firstTry={(progress?.checks ?? []).filter((c) => c.correctFirstTry).length}
+            total={body.checks.length}
+            earned={earned}
+          />
           <DueRecall />
           <div className="flex flex-col gap-2">
             {nextLesson && (
