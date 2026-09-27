@@ -2,8 +2,8 @@
  * Shareable creations: link encoding round-trips, hostile payloads, and
  * WAV encoding against a synthetic PCM buffer (jsdom has no Web Audio).
  */
-import { describe, expect, it } from "vitest";
-import { bufferToWav, decodeShare, encodeShare } from "./share.ts";
+import { describe, expect, it, vi, afterEach } from "vitest";
+import { bufferToWav, decodeShare, encodeShare, renderCreationWav } from "./share.ts";
 
 describe("share links", () => {
   it("round-trips a melody through a URL-safe payload", () => {
@@ -86,5 +86,68 @@ describe("WAV export", () => {
     const view = new DataView((await blobBytes(blob)).buffer);
     expect(view.getInt16(44, true)).toBe(32767);
     expect(view.getInt16(46, true)).toBe(-32767);
+  });
+});
+
+describe("WAV export with the real voice engine", () => {
+  /** Minimal OfflineAudioContext: renders samples, returns a dummy buffer. */
+  class FakeOffline {
+    sampleRate: number;
+    destination = {};
+    constructor(_channels: number, _length: number, sampleRate: number) {
+      this.sampleRate = sampleRate;
+    }
+    createBuffer(channels: number, length: number, rate: number) {
+      const data = new Float32Array(length);
+      return {
+        sampleRate: rate,
+        numberOfChannels: channels,
+        length,
+        getChannelData: () => data,
+      };
+    }
+    createGain() {
+      return {
+        gain: {
+          value: 1,
+          setValueAtTime: () => {},
+          exponentialRampToValueAtTime: () => {},
+        },
+        connect: () => {},
+      };
+    }
+    createBufferSource() {
+      return {
+        buffer: null,
+        loop: false,
+        playbackRate: { value: 1 },
+        connect: () => {},
+        start: () => {},
+        stop: () => {},
+      };
+    }
+    async startRendering() {
+      return {
+        sampleRate: this.sampleRate,
+        numberOfChannels: 1,
+        length: 100,
+        getChannelData: () => new Float32Array(100),
+      };
+    }
+  }
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("renders a creation through the requested procedural voice", async () => {
+    vi.stubGlobal("OfflineAudioContext", FakeOffline);
+    const blob = await renderCreationWav([60, 64], { voice: "music-box" });
+    expect(blob).toBeInstanceOf(Blob);
+    expect(blob.size).toBe(44 + 100 * 2);
+  });
+
+  it("accepts the default (piano) voice without being told", async () => {
+    vi.stubGlobal("OfflineAudioContext", FakeOffline);
+    const blob = await renderCreationWav([60]);
+    expect(blob.size).toBe(44 + 100 * 2);
   });
 });

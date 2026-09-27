@@ -18,7 +18,7 @@ import {
 import { OnboardingScreen } from "../routes/Screens.tsx";
 import { LessonScreen } from "../routes/LessonScreen.tsx";
 import { useStore } from "../lib/game/store.ts";
-import { SAVE_KEY } from "../lib/game/schema.ts";
+import { PROFILES_KEY, type ProfilesData } from "../lib/game/schema.ts";
 
 // Minimal fake Web Audio so audio.ts never touches the real thing.
 class FakeGain {
@@ -85,39 +85,64 @@ describe("lesson flow", () => {
   it("onboarding -> learn -> try -> recall -> done, through the real UI", async () => {
     render(<RouterProvider router={makeTestRouter("/onboarding")} />);
 
-    // 1. Onboarding renders.
-    expect(await screen.findByText("Quest of the Harmony Knight")).toBeTruthy();
+    // 1. Onboarding: profile screens.
+    expect(await screen.findByText("Who's playing?")).toBeTruthy();
+    fireEvent.click(screen.getByText("7 to 9"));
+    fireEvent.click(screen.getByText("Continue →"));
+    expect(screen.getByText("Your music so far")).toBeTruthy();
+    fireEvent.click(screen.getByText("Brand new"));
+    fireEvent.click(screen.getByText("Continue →"));
+    expect(screen.getByText("What do you want to do?")).toBeTruthy();
+    fireEvent.click(screen.getByText("Just exploring"));
+    fireEvent.click(screen.getByText("Not yet"));
+    fireEvent.click(screen.getByText("Continue →"));
 
-    // 2. Begin the first lesson.
-    fireEvent.click(screen.getByText("Begin the first lesson"));
+    // 2. Placement diagnostic: skip it, take the recommended default.
+    expect(screen.getByText("A quick check-in")).toBeTruthy();
+    fireEvent.click(screen.getByText(/Skip the check-in/));
+    expect(screen.getByText("Your starting point")).toBeTruthy();
+    expect(screen.getByText(/Starting at the beginning/)).toBeTruthy();
+
+    // Profile + placement-skip persisted.
+    const profile = useStore.getState().save.profile;
+    expect(profile.ageBand).toBe("7-9");
+    expect(profile.experience).toBe("brand-new");
+    expect(profile.goal).toBe("just-exploring");
+    expect(profile.instrument).toBe("none-yet");
+    expect(profile.placement).toBeNull();
+
+    // 3. Begin the recommended first lesson.
+    fireEvent.click(screen.getByText(/Begin Chapter 1/));
+    expect(useStore.getState().save.onboarded).toBe(true);
     await waitFor(() => expect(screen.getByText("High and Low: Pitch")).toBeTruthy());
 
-    // 3. Learn -> Try.
+    // 4. Learn -> Try.
     fireEvent.click(screen.getByText("Continue to Try it"));
     expect(screen.getByText(/check my recall/i)).toBeTruthy();
 
-    // 4. Try -> Recall.
+    // 5. Try -> Recall.
     fireEvent.click(screen.getByText(/I've tried it — check my recall/i));
     expect(screen.getByText(/The second is higher than the first/)).toBeTruthy();
 
-    // 5. Answer check 1 WRONG ("Descending"), explanation appears.
+    // 6. Answer check 1 WRONG ("Descending"), explanation appears.
     fireEvent.click(screen.getByText("Descending"));
     await waitFor(() =>
       expect(screen.getByText(/Ascending means moving to a higher pitch/)).toBeTruthy(),
     );
 
-    // 6. Answer check 2 RIGHT ("The dynamics"), explanation appears.
+    // 7. Answer check 2 RIGHT ("The dynamics"), explanation appears.
     fireEvent.click(screen.getByText("The dynamics"));
     await waitFor(() =>
       expect(screen.getByText(/Only the loudness changed/)).toBeTruthy(),
     );
 
-    // 7. Finish the lesson.
+    // 7. Finish the lesson — the celebration shows stats, not the old copy.
     fireEvent.click(screen.getByText("Finish lesson"));
-    await waitFor(() => expect(screen.getByText("Lesson complete")).toBeTruthy());
-    expect(screen.getByText(/harmony points — first completion/)).toBeTruthy();
+    await waitFor(() => expect(screen.getByText(/Beautiful work!/)).toBeTruthy());
+    expect(screen.getByText(/1\/2 first try/)).toBeTruthy();
+    expect(screen.getByText(/harmony points/)).toBeTruthy();
 
-    // 8. Store reflects the finished lesson.
+    // 9. Store reflects the finished lesson.
     const save = useStore.getState().save;
     expect(save.lessons["ch1-l1-pitch"]?.step).toBe("done");
     const checks = save.lessons["ch1-l1-pitch"]?.checks ?? [];
@@ -139,9 +164,10 @@ describe("lesson flow", () => {
     useStore.getState().finishLesson("ch1-l2-dynamics");
     await flushPersist();
 
-    const raw = window.localStorage.getItem(SAVE_KEY);
+    const raw = window.localStorage.getItem(PROFILES_KEY);
     expect(raw).toBeTruthy();
-    expect(JSON.parse(raw!).lessons["ch1-l2-dynamics"].step).toBe("done");
+    const parsed = JSON.parse(raw!) as ProfilesData;
+    expect(parsed.profiles[parsed.activeProfileId].save.lessons["ch1-l2-dynamics"].step).toBe("done");
 
     // Simulated reload: fresh module registry -> fresh store hydrates from localStorage.
     vi.resetModules();
