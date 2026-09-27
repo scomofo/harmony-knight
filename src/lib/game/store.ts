@@ -49,6 +49,27 @@ import {
   todayKey,
   type QuestId,
 } from "./quests.ts";
+import {
+  CONTEST_VOTING_BONUS,
+  MAX_KEPT_WEEKS,
+  createContestWeek,
+  submissionPointsDue,
+  submitToContest,
+  voteInContest,
+  votingBonusAvailable,
+  type ContestEntry,
+  type ContestMatchup,
+  type ContestWeek,
+} from "./contest.ts";
+import type { Palette } from "./palettes.ts";
+
+/** Keep only the most recent contest weeks (storage bound). */
+function pruneContestWeeks(weeks: Record<string, ContestWeek>): Record<string, ContestWeek> {
+  const ids = Object.keys(weeks).sort();
+  if (ids.length <= MAX_KEPT_WEEKS) return weeks;
+  const keep = new Set(ids.slice(-MAX_KEPT_WEEKS));
+  return Object.fromEntries(Object.entries(weeks).filter(([id]) => keep.has(id)));
+}
 
 /** Stamp a quest completion + learning day onto a save draft. Idempotent per day. */
 function stampQuest(save: SaveData, id: QuestId): SaveData {
@@ -142,6 +163,19 @@ type Store = {
     result: { score: number },
   ) => void;
   recordDuelResult: (outcome: "win" | "loss" | "draw") => void;
+  /** Ensure this week's contest exists (seeded bot bracket). */
+  ensureContestWeek: (weekId: string, palette: Palette) => void;
+  /**
+   * Submit a creation to the week's contest. Returns harmony points paid
+   * (submission reward, once per creation per week; 0 when already in).
+   */
+  submitContestEntry: (weekId: string, entry: ContestEntry) => number;
+  /** Record a head-to-head vote in the week's contest. */
+  voteContest: (weekId: string, matchup: ContestMatchup, winnerId: string) => void;
+  /**
+   * Claim the vote-every-matchup bonus once per week. Returns points paid.
+   */
+  claimContestVoteBonus: (weekId: string) => number;
   /** Record a daily quest completion (idempotent per day). */
   completeQuest: (id: QuestId) => void;
   /**
@@ -519,8 +553,9 @@ export const useStore = create<Store>()((set, get) => ({
     }),
 
   recordDuelResult: (outcome) =>
-    get().update((s) =>
-      stampQuest(
+    get().update((s) => {
+      const day = todayKey();
+      return stampQuest(
         {
           ...s,
           gameStats: {
@@ -528,11 +563,73 @@ export const useStore = create<Store>()((set, get) => ({
             duelWins: s.gameStats.duelWins + (outcome === "win" ? 1 : 0),
             duelLosses: s.gameStats.duelLosses + (outcome === "loss" ? 1 : 0),
             duelDraws: s.gameStats.duelDraws + (outcome === "draw" ? 1 : 0),
+            // Anti-farming: cooldown anchor + per-day count for diminishing returns.
+            lastDuelAt: Date.now(),
+            duelDayCounts: {
+              ...s.gameStats.duelDayCounts,
+              [day]: (s.gameStats.duelDayCounts[day] ?? 0) + 1,
+            },
           },
         },
         "play",
-      ),
-    ),
+      );
+    }),
+
+  ensureContestWeek: (weekId, palette) =>
+    get().update((s) => {
+      if (s.contests[weekId]) return s;
+      const weeks = { ...s.contests, [weekId]: createContestWeek(weekId, palette) };
+      return { ...s, contests: pruneContestWeeks(weeks) };
+    }),
+
+  submitContestEntry: (weekId, entry) => {
+    const week = get().save.contests[weekId];
+    if (!week) return 0;
+    const next = submitToContest(week, entry);
+    if (!next) return 0; // already submitted
+    const points = submissionPointsDue(week, entry.id);
+    get().update((s) => ({
+      ...s,
+      contests: {
+        ...s.contests,
+        [weekId]: {
+          ...next,
+          rewardsPaid: {
+            ...next.rewardsPaid,
+            submissions: [...next.rewardsPaid.submissions, entry.id],
+          },
+        },
+      },
+      harmonyPoints: s.harmonyPoints + points,
+    }));
+    return points;
+  },
+
+  voteContest: (weekId, matchup, winnerId) =>
+    get().update((s) => {
+      const week = s.contests[weekId];
+      if (!week) return s;
+      return { ...s, contests: { ...s.contests, [weekId]: voteInContest(week, matchup, winnerId) } };
+    }),
+
+  /** Claim the vote-every-matchup bonus once; returns points paid (0 or bonus). */
+  claimContestVoteBonus: (weekId) => {
+    const week = get().save.contests[weekId];
+    if (!week || !votingBonusAvailable(week)) return 0;
+    get().update((s) => {
+      const w = s.contests[weekId];
+      if (!w || !votingBonusAvailable(w)) return s;
+      return {
+        ...s,
+        contests: {
+          ...s.contests,
+          [weekId]: { ...w, rewardsPaid: { ...w.rewardsPaid, votingBonus: true } },
+        },
+        harmonyPoints: s.harmonyPoints + CONTEST_VOTING_BONUS,
+      };
+    });
+    return CONTEST_VOTING_BONUS;
+  },
 
   completeQuest: (id) => get().update((s) => stampQuest(s, id)),
 

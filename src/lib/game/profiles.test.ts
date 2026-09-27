@@ -97,8 +97,9 @@ describe("migrateToProfiles", () => {
     expect(data!.activeProfileId).toBe(profile.id);
 
     // Everything survives except the PIN, which moves to device level.
-    // The v3 save also migrates to v4 (player profile), gaining the default
-    // profile and nothing else.
+    // The v3 save also migrates through the chain (player profile, adaptive
+    // evidence, contests + duel anti-farming stats), gaining defaults for
+    // the new fields and nothing else.
     const expectedSettings = { ...(original.settings as Record<string, unknown>) };
     delete expectedSettings.grownUpsPin;
     expect(profile.save).toEqual({
@@ -106,6 +107,11 @@ describe("migrateToProfiles", () => {
       version: SAVE_VERSION,
       profile: defaultProfile(),
       settings: expectedSettings,
+      gameStats: {
+        ...(original.gameStats as Record<string, unknown>),
+        duelDayCounts: {},
+        lastDuelAt: 0,
+      },
     });
     expect(
       (profile.save.settings as unknown as Record<string, unknown>).grownUpsPin,
@@ -127,6 +133,8 @@ describe("migrateToProfiles", () => {
       duelWins: 2,
       duelLosses: 1,
       duelDraws: 0,
+      duelDayCounts: {},
+      lastDuelAt: 0,
     });
     expect(profile.save.questLog).toEqual({ "2026-09-25": { learn: "done", play: "claimed" } });
     expect(profile.save.settings.volume).toBe(0.5);
@@ -151,6 +159,8 @@ describe("migrateToProfiles", () => {
       duelWins: 0,
       duelLosses: 0,
       duelDraws: 0,
+      duelDayCounts: {},
+      lastDuelAt: 0,
     });
     expect(profile.save.questLog).toEqual({});
     expect(profile.save.harmonyPoints).toBe(1234);

@@ -27,13 +27,15 @@ function v1Save(overrides: Record<string, unknown> = {}): Record<string, unknown
 describe("v1 -> v4 migration chain", () => {
   it("adds default gameStats to a pre-games v1 save", () => {
     const migrated = migrateSave(v1Save());
-    expect(migrated?.version).toBe(SAVE_VERSION); // chains v1 -> v2 -> v3
+    expect(migrated?.version).toBe(SAVE_VERSION); // chains v1 -> v2 -> v3 -> v4
     expect(migrated?.gameStats).toEqual({
       strikePlays: 0,
       strikeBest: 0,
       duelWins: 0,
       duelLosses: 0,
       duelDraws: 0,
+      lastDuelAt: 0,
+      duelDayCounts: {},
     });
     expect(migrated?.questLog).toEqual({});
     // The grown-ups PIN moved to device level (profiles container); the
@@ -44,7 +46,8 @@ describe("v1 -> v4 migration chain", () => {
   it("preserves valid gameStats written by the games-era v1 build", () => {
     const stats = { strikePlays: 4, strikeBest: 1234, duelWins: 2, duelLosses: 1, duelDraws: 0 };
     const migrated = migrateSave(v1Save({ gameStats: stats }));
-    expect(migrated?.gameStats).toEqual(stats);
+    // v1-era stats gain the v4 anti-farming defaults; old fields untouched.
+    expect(migrated?.gameStats).toEqual({ ...stats, lastDuelAt: 0, duelDayCounts: {} });
   });
 
   it("migrating keeps lesson progress and settings intact", () => {
@@ -79,7 +82,15 @@ describe("sanitizeGameStats", () => {
         duelLosses: 2.7,
         duelDraws: 1,
       }),
-    ).toEqual({ strikePlays: 0, strikeBest: 0, duelWins: 0, duelLosses: 2, duelDraws: 1 });
+    ).toEqual({
+      strikePlays: 0,
+      strikeBest: 0,
+      duelWins: 0,
+      duelLosses: 2,
+      duelDraws: 1,
+      lastDuelAt: 0,
+      duelDayCounts: {},
+    });
   });
 
   it("returns defaults for non-records", () => {
@@ -90,6 +101,26 @@ describe("sanitizeGameStats", () => {
       duelWins: 0,
       duelLosses: 0,
       duelDraws: 0,
+      lastDuelAt: 0,
+      duelDayCounts: {},
+    });
+  });
+
+  it("sanitizes the new anti-farming fields individually", () => {
+    expect(
+      sanitizeGameStats({
+        strikePlays: 1,
+        lastDuelAt: -50,
+        duelDayCounts: { "2026-09-26": 3, bogus: 2, "2026-09-25": -1 },
+      }),
+    ).toEqual({
+      strikePlays: 1,
+      strikeBest: 0,
+      duelWins: 0,
+      duelLosses: 0,
+      duelDraws: 0,
+      lastDuelAt: 0,
+      duelDayCounts: { "2026-09-26": 3 },
     });
   });
 });

@@ -6,8 +6,13 @@
 
 import type { QuestState } from "./quests.ts";
 import type { AdaptiveAttempt, ConfusionPair } from "./adapt.ts";
+import {
+  isValidContestWeek,
+  sanitizeContests,
+  type ContestWeek,
+} from "./contest.ts";
 
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 export const SAVE_KEY = "harmony-knight-save-v1";
 
 export type LessonStep = "learn" | "try" | "recall" | "done";
@@ -68,6 +73,11 @@ export type Settings = {
   // NOTE: the grown-ups PIN is intentionally NOT here. It is device-level
   // (see DeviceSettings below), not per-profile, so siblings sharing a
   // device share one grown-ups gate.
+  /**
+   * Creator "always sound good" mode: quantize to the palette and
+   * auto-harmonize the bass. Default on.
+   */
+  cantFail: boolean;
 };
 
 /* ------------------------------------------------------------------ */
@@ -135,6 +145,8 @@ export type SaveData = {
   adaptiveAttempts: Record<string, AdaptiveAttempt[]>;
   /** Adaptive engine (Phase 1): confusion pairs with SR scheduling. */
   confusion: Record<string, ConfusionPair>;
+  /** Weekly creation contests, keyed by ISO week id ("2026-W39"). */
+  contests: Record<string, ContestWeek>;
 };
 
 export type SavedCreation = {
@@ -151,6 +163,10 @@ export type GameStats = {
   duelWins: number;
   duelLosses: number;
   duelDraws: number;
+  /** Last finished duel (ms epoch, 0 = never). Duel anti-farming. */
+  lastDuelAt: number;
+  /** Duels finished per device-local day (YYYY-MM-DD -> count). Anti-farming. */
+  duelDayCounts: Record<string, number>;
 };
 
 export function defaultSettings(): Settings {
@@ -162,6 +178,7 @@ export function defaultSettings(): Settings {
     focusMode: true,
     sessionMinutes: 20,
     playbackSpeed: 1,
+    cantFail: true,
   };
 }
 
@@ -183,7 +200,15 @@ export function defaultProfile(): PlayerProfile {
 }
 
 export function defaultGameStats(): GameStats {
-  return { strikePlays: 0, strikeBest: 0, duelWins: 0, duelLosses: 0, duelDraws: 0 };
+  return {
+    strikePlays: 0,
+    strikeBest: 0,
+    duelWins: 0,
+    duelLosses: 0,
+    duelDraws: 0,
+    lastDuelAt: 0,
+    duelDayCounts: {},
+  };
 }
 
 export function defaultSave(): SaveData {
@@ -207,6 +232,7 @@ export function defaultSave(): SaveData {
     questLog: {},
     adaptiveAttempts: {},
     confusion: {},
+    contests: {},
   };
 }
 
@@ -277,6 +303,29 @@ const MIGRATIONS: Migration[] = [
       version: 5,
     }),
   },
+  {
+    from: 5,
+    to: 6,
+    // v6 introduces the weekly creation contests, the creator "always sound
+    // good" toggle, and duel anti-farming stats. All additive: a v5 save
+    // keeps everything it had, gaining defaults for the new fields.
+    // (The grown-ups PIN stays device-level; a stale settings copy passes
+    // through for migrateToProfiles to relocate.)
+    migrate: (data) => {
+      const rawSettings = isRecord(data.settings) ? data.settings : {};
+      return {
+        ...data,
+        settings: {
+          ...defaultSettings(),
+          ...rawSettings,
+          cantFail: typeof rawSettings.cantFail === "boolean" ? rawSettings.cantFail : true,
+        },
+        gameStats: sanitizeGameStats(data.gameStats),
+        contests: sanitizeContests(data.contests),
+        version: 6,
+      };
+    },
+  },
 ];
 
 /** Coerce unknown input into a valid PlayerProfile, preserving good fields. */
@@ -340,12 +389,22 @@ export function sanitizeGameStats(v: unknown): GameStats {
   if (!isRecord(v)) return d;
   const num = (x: unknown, fallback: number): number =>
     typeof x === "number" && Number.isFinite(x) && x >= 0 ? Math.floor(x) : fallback;
+  const dayCounts: Record<string, number> = {};
+  if (isRecord(v.duelDayCounts)) {
+    for (const [day, count] of Object.entries(v.duelDayCounts)) {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(day) && typeof count === "number" && Number.isFinite(count) && count >= 0) {
+        dayCounts[day] = Math.floor(count);
+      }
+    }
+  }
   return {
     strikePlays: num(v.strikePlays, d.strikePlays),
     strikeBest: num(v.strikeBest, d.strikeBest),
     duelWins: num(v.duelWins, d.duelWins),
     duelLosses: num(v.duelLosses, d.duelLosses),
     duelDraws: num(v.duelDraws, d.duelDraws),
+    lastDuelAt: num(v.lastDuelAt, d.lastDuelAt),
+    duelDayCounts: dayCounts,
   };
 }
 
@@ -392,7 +451,8 @@ function validSettings(s: unknown): s is Settings {
     typeof s.sessionMinutes === "number" &&
     s.sessionMinutes >= 1 &&
     s.sessionMinutes <= 60 &&
-    (s.playbackSpeed === 1 || s.playbackSpeed === 0.75 || s.playbackSpeed === 0.5)
+    (s.playbackSpeed === 1 || s.playbackSpeed === 0.75 || s.playbackSpeed === 0.5) &&
+    typeof s.cantFail === "boolean"
     // grownUpsPin is no longer part of Settings (device-level now); a stale
     // copy lingering in an old persisted save is simply ignored.
   );
@@ -426,13 +486,34 @@ function validQuestLog(v: unknown): boolean {
 
 function validGameStats(v: unknown): v is GameStats {
   if (!isRecord(v)) return false;
-  const keys = ["strikePlays", "strikeBest", "duelWins", "duelLosses", "duelDraws"] as const;
-  return keys.every((k) => {
+  const keys = ["strikePlays", "strikeBest", "duelWins", "duelLosses", "duelDraws", "lastDuelAt"] as const;
+  const intsOk = keys.every((k) => {
     const n = v[k];
     return (
       typeof n === "number" && Number.isFinite(n) && n >= 0 && Math.floor(n) === n
     );
   });
+  if (!intsOk) return false;
+  const days = v.duelDayCounts;
+  return (
+    isRecord(days) &&
+    Object.entries(days).every(
+      ([day, count]) =>
+        /^\d{4}-\d{2}-\d{2}$/.test(day) &&
+        typeof count === "number" &&
+        Number.isFinite(count) &&
+        count >= 0 &&
+        Math.floor(count) === count,
+    )
+  );
+}
+
+function validContests(v: unknown): v is Record<string, ContestWeek> {
+  if (!isRecord(v)) return false;
+  return Object.entries(v).every(
+    ([weekId, week]) =>
+      isValidContestWeek(week) && (week as ContestWeek).weekId === weekId,
+  );
 }
 
 function validCreation(v: unknown): v is SavedCreation {
@@ -500,6 +581,7 @@ export function validateSave(data: unknown): data is SaveData {
   if (!validQuestLog(data.questLog)) return false;
   if (!validAdaptiveAttempts(data.adaptiveAttempts)) return false;
   if (!recordOfRecords(data.confusion)) return false;
+  if (!validContests(data.contests)) return false;
   // ~5MB cap keeps quota failures predictable.
   try {
     if (JSON.stringify(data).length > 5 * 1024 * 1024) return false;
