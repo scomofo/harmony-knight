@@ -67,7 +67,7 @@ export function SettingsScreen() {
       >
         <p className="font-semibold">Grown-ups</p>
         <p className="mt-1 text-sm text-white/60">
-          Progress, streaks, and what might need practice — behind a kid-gate PIN.
+          Progress, skills, and one weekly suggestion — behind a kid-gate PIN.
         </p>
       </Link>
 

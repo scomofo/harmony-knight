@@ -11,8 +11,9 @@ import {
   sanitizeContests,
   type ContestWeek,
 } from "./contest.ts";
+import { defaultShop, sanitizeShop, type ShopState } from "./shop.ts";
 
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 export const SAVE_KEY = "harmony-knight-save-v1";
 
 export type LessonStep = "learn" | "try" | "recall" | "done";
@@ -147,6 +148,19 @@ export type SaveData = {
   confusion: Record<string, ConfusionPair>;
   /** Weekly creation contests, keyed by ISO week id ("2026-W39"). */
   contests: Record<string, ContestWeek>;
+  /** Shop: owned cosmetics and what's equipped. */
+  shop: ShopState;
+  /**
+   * Endless-practice evidence, keyed by task kind:
+   * { attempts, first-try correct }. Feeds skill ratings only — never
+   * grade trials.
+   */
+  practiceEvidence: Record<string, { attempts: number; correct: number }>;
+  /**
+   * Streak freeze: YYYY-MM-DD the weekly freeze was last consumed, or
+   * null when never used. One missed day per 7-day window keeps the streak.
+   */
+  streakFreeze: string | null;
 };
 
 export type SavedCreation = {
@@ -233,6 +247,9 @@ export function defaultSave(): SaveData {
     adaptiveAttempts: {},
     confusion: {},
     contests: {},
+    shop: defaultShop(),
+    practiceEvidence: {},
+    streakFreeze: null,
   };
 }
 
@@ -325,6 +342,19 @@ const MIGRATIONS: Migration[] = [
         version: 6,
       };
     },
+  },
+  {
+    from: 6,
+    to: 7,
+    // v7 introduces the shop, endless-practice evidence, and the streak
+    // freeze. All additive; a v6 save keeps everything it had.
+    migrate: (data) => ({
+      ...data,
+      shop: sanitizeShop(data.shop),
+      practiceEvidence: sanitizePracticeEvidence(data.practiceEvidence),
+      streakFreeze: validDateKey(data.streakFreeze) ? data.streakFreeze : null,
+      version: 7,
+    }),
   },
 ];
 
@@ -428,6 +458,26 @@ export function migrateSave(raw: unknown): SaveData | null {
   }
   const merged: SaveData = { ...defaultSave(), ...current, version: SAVE_VERSION };
   return validateSave(merged) ? merged : null;
+}
+
+/** Coerce unknown input into practice evidence, preserving good entries. */
+export function sanitizePracticeEvidence(v: unknown): Record<string, { attempts: number; correct: number }> {
+  if (!isRecord(v)) return {};
+  const out: Record<string, { attempts: number; correct: number }> = {};
+  for (const [kind, w] of Object.entries(v)) {
+    if (!isRecord(w)) continue;
+    const num = (x: unknown): number | null =>
+      typeof x === "number" && Number.isFinite(x) && x >= 0 ? Math.floor(x) : null;
+    const attempts = num(w.attempts);
+    const correct = num(w.correct);
+    if (attempts === null || correct === null) continue;
+    out[kind] = { attempts, correct: Math.min(correct, attempts) };
+  }
+  return out;
+}
+
+function validDateKey(v: unknown): v is string {
+  return typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
 }
 
 /* ------------------------------------------------------------------ */
@@ -543,6 +593,24 @@ function validGradeWindows(v: unknown): boolean {
   });
 }
 
+function validShop(v: unknown): v is ShopState {
+  if (!isRecord(v)) return false;
+  if (!Array.isArray(v.owned) || !v.owned.every((id) => typeof id === "string")) return false;
+  return (
+    typeof v.theme === "string" && typeof v.avatar === "string" && typeof v.instrument === "string"
+  );
+}
+
+function validPracticeEvidence(v: unknown): boolean {
+  if (!isRecord(v)) return false;
+  return Object.values(v).every((w) => {
+    if (!isRecord(w)) return false;
+    const num = (x: unknown) =>
+      typeof x === "number" && Number.isFinite(x) && x >= 0 && Math.floor(x) === x;
+    return num(w.attempts) && num(w.correct) && (w.correct as number) <= (w.attempts as number);
+  });
+}
+
 /** Every value in the record must itself be a record (no primitives/arrays). */
 function recordOfRecords(v: unknown): v is Record<string, Record<string, unknown>> {
   return isRecord(v) && Object.values(v).every(isRecord);
@@ -582,6 +650,9 @@ export function validateSave(data: unknown): data is SaveData {
   if (!validAdaptiveAttempts(data.adaptiveAttempts)) return false;
   if (!recordOfRecords(data.confusion)) return false;
   if (!validContests(data.contests)) return false;
+  if (!validShop(data.shop)) return false;
+  if (!validPracticeEvidence(data.practiceEvidence)) return false;
+  if (data.streakFreeze !== null && !validDateKey(data.streakFreeze)) return false;
   // ~5MB cap keeps quota failures predictable.
   try {
     if (JSON.stringify(data).length > 5 * 1024 * 1024) return false;

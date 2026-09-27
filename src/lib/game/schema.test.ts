@@ -27,7 +27,7 @@ function v1Save(overrides: Record<string, unknown> = {}): Record<string, unknown
 describe("v1 -> v4 migration chain", () => {
   it("adds default gameStats to a pre-games v1 save", () => {
     const migrated = migrateSave(v1Save());
-    expect(migrated?.version).toBe(SAVE_VERSION); // chains v1 -> v2 -> v3 -> v4
+    expect(migrated?.version).toBe(SAVE_VERSION); // chains v1 -> v7
     expect(migrated?.gameStats).toEqual({
       strikePlays: 0,
       strikeBest: 0,
@@ -40,6 +40,9 @@ describe("v1 -> v4 migration chain", () => {
     expect(migrated?.questLog).toEqual({});
     // The grown-ups PIN moved to device level (profiles container); the
     // per-save migration chain no longer manages it.
+    expect(migrated?.shop).toEqual({ owned: [], theme: "midnight", avatar: "knight", instrument: "sine" });
+    expect(migrated?.practiceEvidence).toEqual({});
+    expect(migrated?.streakFreeze).toBeNull();
     expect(migrated && validateSave(migrated)).toBe(true);
   });
 
@@ -322,5 +325,52 @@ describe("sanitizeProfile / sanitizePlacement", () => {
     expect(
       validateSave({ ...defaultSave(), profile: { ...defaultProfile(), name: "x".repeat(41) } }),
     ).toBe(false);
+  });
+});
+
+describe("v3 -> v7 migration (shop, endless evidence, streak freeze)", () => {
+  /** A save as written by the v3 build: no shop/practiceEvidence/streakFreeze. */
+  function v3Save(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+    const base = defaultSave() as unknown as Record<string, unknown>;
+    delete base.shop;
+    delete base.practiceEvidence;
+    delete base.streakFreeze;
+    return { ...base, version: 3, ...overrides };
+  }
+
+  it("adds defaults for the new fields", () => {
+    const migrated = migrateSave(v3Save());
+    expect(migrated?.version).toBe(SAVE_VERSION);
+    expect(migrated?.shop).toEqual({ owned: [], theme: "midnight", avatar: "knight", instrument: "sine" });
+    expect(migrated?.practiceEvidence).toEqual({});
+    expect(migrated?.streakFreeze).toBeNull();
+    expect(migrated && validateSave(migrated)).toBe(true);
+  });
+
+  it("sanitizes malformed new fields instead of rejecting the save", () => {
+    const migrated = migrateSave(
+      v3Save({
+        shop: { owned: ["dragon", "bogus"], theme: "ember", avatar: 42, instrument: "piano" },
+        practiceEvidence: { "chord-id": { attempts: 5, correct: 9 }, broken: "nope" },
+        streakFreeze: "not-a-date",
+      }),
+    );
+    expect(migrated).not.toBeNull();
+    // "ember" theme not owned -> default; avatar not a string -> default;
+    // "piano" not owned (costs 60) -> default.
+    expect(migrated?.shop).toEqual({
+      owned: ["dragon"],
+      theme: "midnight",
+      avatar: "knight",
+      instrument: "sine",
+    });
+    expect(migrated?.practiceEvidence).toEqual({ "chord-id": { attempts: 5, correct: 5 } });
+    expect(migrated?.streakFreeze).toBeNull();
+    expect(migrated && validateSave(migrated)).toBe(true);
+  });
+
+  it("rejects saves with an invalid shop shape", () => {
+    const bad = { ...defaultSave(), shop: { owned: "nope" } };
+    expect(validateSave(bad)).toBe(false);
   });
 });

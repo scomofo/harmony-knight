@@ -3,6 +3,8 @@ import { useStore } from "../lib/game/store.ts";
 import { QuestStrip } from "../components/game/QuestStrip.tsx";
 import { ProfileSwitcher } from "../components/game/ProfileSwitcher.tsx";
 import { OnboardingFlow } from "../components/game/OnboardingFlow.tsx";
+import { SkillRatings } from "../components/game/SkillRatings.tsx";
+import { resolveAvatar } from "../lib/game/shop.ts";
 import { CHAPTERS, authoredLessons } from "../lib/game/course.ts";
 import { masteryForLesson } from "../lib/game/adapt.ts";
 
@@ -13,6 +15,7 @@ export function OnboardingScreen() {
 export function HomeScreen() {
   const save = useStore((s) => s.save);
   const lessons = authoredLessons();
+  const avatar = resolveAvatar(save.shop.avatar);
 
   // Recommendation: resume unfinished -> start next new -> due recall -> free choice.
   const inProgress = lessons.find((l) => {
@@ -26,10 +29,17 @@ export function HomeScreen() {
   return (
     <div className="mx-auto max-w-2xl p-4 sm:p-6">
       <ProfileSwitcher />
-      <h1 className="mt-4 text-2xl font-bold">Your quest</h1>
+      <h1 className="mt-4 flex items-center gap-3 text-2xl font-bold">
+        <span className="text-4xl" role="img" aria-label={`Avatar: ${avatar.name}`}>
+          {avatar.emoji}
+        </span>
+        Your quest
+      </h1>
       <p className="mt-1 text-white/60">
         {save.harmonyPoints} harmony points · Grade {save.grade} · {save.learningDays.length} learning days
       </p>
+
+      <SkillRatings />
 
       <QuestStrip />
 
@@ -74,6 +84,12 @@ export function HomeScreen() {
         </Link>
         <Link to="/path" className="rounded-xl border border-white/15 bg-white/5 p-4 font-semibold">
           Learning path
+        </Link>
+        <Link to="/endless" className="rounded-xl border border-white/15 bg-white/5 p-4 font-semibold">
+          ♾️ Endless practice
+        </Link>
+        <Link to="/shop" className="rounded-xl border border-white/15 bg-white/5 p-4 font-semibold">
+          🛍️ Shop
         </Link>
       </div>
 

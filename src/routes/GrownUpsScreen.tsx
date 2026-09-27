@@ -1,8 +1,15 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useStore } from "../lib/game/store.ts";
 import { CHAPTERS } from "../lib/game/course.ts";
-import { currentStreak, todayKey } from "../lib/game/quests.ts";
+import { todayKey } from "../lib/game/quests.ts";
+import {
+  computeRatings,
+  masteredDomains,
+  strugglingDomains,
+  weeklyAction,
+} from "../lib/game/ratings.ts";
+import { SkillRatings } from "../components/game/SkillRatings.tsx";
 
 function dayKeys(n: number): string[] {
   const out: string[] = [];
@@ -15,15 +22,14 @@ function dayKeys(n: number): string[] {
   return out;
 }
 
-function pretty(id: string): string {
-  return id.replace(/[-_]/g, " ");
-}
-
 /**
  * Grown-ups dashboard: what the learner has done, where they're thriving,
- * and what might need practice. Behind a 4-digit kid-gate PIN — a speed
- * bump for little fingers, not real security (everything is local). The PIN
- * is per-device: one gate for every learner profile on this device.
+ * and what might need practice — mastered and struggling skills from the
+ * skill ratings, plus ONE concrete weekly suggestion. Streaks are
+ * deliberately absent — skill growth is the story here. Behind a 4-digit
+ * kid-gate PIN — a speed bump for little fingers, not real security
+ * (everything is local). The PIN is per-device: one gate for every
+ * learner profile on this device.
  */
 export function GrownUpsScreen() {
   const pin = useStore((s) => s.grownUpsPin);
@@ -128,7 +134,21 @@ function PinGate({ mode, onDone }: { mode: "set" | "enter"; onDone: () => void }
 
 function Dashboard({ onChangePin }: { onChangePin: () => void }) {
   const save = useStore((s) => s.save);
-  const streak = currentStreak(save.learningDays, todayKey());
+
+  const ratings = useMemo(
+    () =>
+      computeRatings({
+        lessons: save.lessons,
+        concepts: save.concepts,
+        noteEvidence: save.noteEvidence,
+        gradeWindows: save.gradeWindows,
+        practiceEvidence: save.practiceEvidence,
+      }),
+    [save.lessons, save.concepts, save.noteEvidence, save.gradeWindows, save.practiceEvidence],
+  );
+  const mastered = masteredDomains(ratings);
+  const struggling = strugglingDomains(ratings);
+  const action = weeklyAction(ratings, save.concepts, save.noteEvidence);
 
   const chapters = CHAPTERS.map((ch) => ({
     title: ch.title,
@@ -138,13 +158,6 @@ function Dashboard({ onChangePin }: { onChangePin: () => void }) {
   const totalDone = chapters.reduce((n, c) => n + c.done, 0);
   const totalLessons = chapters.reduce((n, c) => n + c.total, 0);
 
-  const struggling = Object.values(save.concepts).filter(
-    (c) => c.lastResult === "wrong" || c.lastResult === "assisted",
-  );
-  const weakNotes = Object.values(save.noteEvidence).filter(
-    (n) => n.attempts >= 3 && n.firstTryCorrect / n.attempts < 0.7,
-  );
-
   const weekQuests = dayKeys(7).reduce(
     (n, key) => n + Object.keys(save.questLog[key] ?? {}).length,
     0,
@@ -153,9 +166,9 @@ function Dashboard({ onChangePin }: { onChangePin: () => void }) {
   const stats = save.gameStats;
   const statCards: Array<[string, string]> = [
     ["Learning days", String(save.learningDays.length)],
-    ["Day streak", String(streak)],
     ["Harmony points", String(save.harmonyPoints)],
     ["Grade", String(save.grade)],
+    ["Strong skills", String(mastered.length)],
   ];
 
   return (
@@ -167,7 +180,7 @@ function Dashboard({ onChangePin }: { onChangePin: () => void }) {
         </Link>
       </div>
       <p className="mt-1 text-sm text-white/50">
-        Progress, gently. The lock resets every visit — little knights stay out.
+        Skills, gently. The lock resets every visit — little knights stay out.
       </p>
 
       <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -179,7 +192,56 @@ function Dashboard({ onChangePin }: { onChangePin: () => void }) {
         ))}
       </div>
 
-      <section className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4">
+      <section
+        aria-label="This week's suggestion"
+        className="mt-4 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-4"
+      >
+        <h2 className="font-semibold text-emerald-200">This week — one thing</h2>
+        <p className="mt-1 font-medium">{action.headline}</p>
+        <p className="mt-1 text-sm text-white/70">{action.detail}</p>
+      </section>
+
+      <div className="mt-4">
+        <SkillRatings />
+      </div>
+
+      <section className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+        <h2 className="font-semibold">Thriving</h2>
+        {mastered.length === 0 ? (
+          <p className="mt-2 text-sm text-white/60">
+            No mastered skills yet — mastery takes a dozen or so solid first-try answers in a domain.
+          </p>
+        ) : (
+          <ul className="mt-2 space-y-1 text-sm text-white/75">
+            {mastered.map((r) => (
+              <li key={r.domain}>
+                {r.label}{" "}
+                <span className="font-semibold text-emerald-300">{r.grade}</span>{" "}
+                <span className="text-white/40">({r.correct}/{r.attempts} first-try)</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+        <h2 className="font-semibold">Could use a boost</h2>
+        {struggling.length === 0 ? (
+          <p className="mt-2 text-sm text-white/60">Nothing flagged — smooth sailing.</p>
+        ) : (
+          <ul className="mt-2 space-y-1 text-sm text-white/75">
+            {struggling.map((r) => (
+              <li key={r.domain}>
+                {r.label}{" "}
+                <span className="font-semibold text-amber-300">{r.grade}</span>{" "}
+                <span className="text-white/40">({r.correct}/{r.attempts} first-try)</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
         <h2 className="font-semibold">
           Lessons <span className="text-sm font-normal text-white/50">{totalDone}/{totalLessons}</span>
         </h2>
@@ -208,32 +270,6 @@ function Dashboard({ onChangePin }: { onChangePin: () => void }) {
             </li>
           ))}
         </ul>
-      </section>
-
-      <section className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
-        <h2 className="font-semibold">Might need practice</h2>
-        {struggling.length === 0 && weakNotes.length === 0 ? (
-          <p className="mt-2 text-sm text-white/60">Nothing flagged — smooth sailing.</p>
-        ) : (
-          <ul className="mt-2 space-y-1 text-sm text-white/75">
-            {struggling.map((c) => (
-              <li key={c.conceptId}>
-                {pretty(c.conceptId)}{" "}
-                <span className="text-white/40">
-                  (last try: {c.lastResult === "assisted" ? "needed help" : "missed"})
-                </span>
-              </li>
-            ))}
-            {weakNotes.map((n) => (
-              <li key={n.note}>
-                Note {n.note}{" "}
-                <span className="text-white/40">
-                  ({n.firstTryCorrect}/{n.attempts} first-try correct)
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
       </section>
 
       <section className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">

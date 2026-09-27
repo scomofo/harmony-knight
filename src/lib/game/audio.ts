@@ -22,8 +22,7 @@ import {
 export type { EffectCue, VoiceId };
 export { VOICE_IDS };
 
-export type ToneOptions = {
-  /** Seconds from now to start. */
+export type ToneOptions = {  /** Seconds from now to start. */
   at?: number;
   /** Duration in seconds. */
   duration?: number;
@@ -36,7 +35,7 @@ export type ToneOptions = {
    */
   type?: OscillatorType;
   /** Instrument voice; defaults to the global voice (piano). */
-  voice?: VoiceId;
+  voice?: VoiceId | VoiceSpec;
   /** Called on the audio clock when the tone starts (for highlight sync). */
   onStart?: (time: number) => void;
   /** Called when the tone ends or is cancelled. */
@@ -60,18 +59,43 @@ type Bus = {
 let bus: Bus | null = null;
 let masterVolume = 0.8;
 let muted = false;
-/** Global instrument voice. "piano" renders procedurally; "sine" is the legacy oscillator. */
-let currentVoice: VoiceId = "piano";
+/**
+ * Equipped instrument voice: the default oscillator shape (and optional
+ * gain trim) used when a tone doesn't name its own type. Set from the
+ * shop's equipped instrument; the shop resolves by id string and falls
+ * back to the default voice for unknown ids, so this never throws.
+ */
+export type VoiceSpec = { type: OscillatorType; gain?: number };
 
-/** Select the global instrument voice (used by lessons, games, creations). */
-export function setVoice(v: VoiceId): void {
-  currentVoice = v;
-  if (bus) void ensureVoiceSamples(bus.ctx, v).catch(() => {});
+/**
+ * Global instrument voice. A VoiceId ("piano" renders procedurally;
+ * "sine" is the legacy oscillator) or a shop VoiceSpec (oscillator shape
+ * + optional gain trim).
+ */
+let globalVoice: VoiceId | VoiceSpec = "piano";
+
+/** Select the global instrument voice (used by lessons, games, creations, shop). */
+export function setVoice(v: VoiceId | VoiceSpec): void {
+  globalVoice = v;
+  if (bus && typeof v === "string") void ensureVoiceSamples(bus.ctx, v).catch(() => {});
 }
 
 /** The current global instrument voice. */
-export function getVoice(): VoiceId {
-  return currentVoice;
+export function getVoice(): VoiceId | VoiceSpec {
+  return globalVoice;
+}
+/** For tests: the currently equipped voice. */
+export function currentVoice(): VoiceId | VoiceSpec {
+  return globalVoice;
+}
+
+/**
+ * The global voice as a VoiceId, for the sampled-voice paths. Shop
+ * VoiceSpecs have no samples; they fall back to the default piano.
+ */
+export function voiceIdOrDefault(): VoiceId {
+  const v = getVoice();
+  return typeof v === "string" ? v : "piano";
 }
 /** key -> active tones. The "" key is the shared default lane. */
 const lanes = new Map<string, Set<ScheduledTone>>();
@@ -94,7 +118,7 @@ function getBus(): Bus {
   bus = { ctx, master, sfx, music };
   // Warm the default voice's samples off the critical path; playTone falls
   // back to oscillators until they're ready.
-  void ensureVoiceSamples(ctx, currentVoice).catch(() => {});
+  void ensureVoiceSamples(ctx, voiceIdOrDefault()).catch(() => {});
   return bus;
 }
 
@@ -159,13 +183,16 @@ export function playTone(
   const at = opts.at ?? 0;
   const duration = opts.duration ?? 0.5;
   const startAt = b.ctx.currentTime + at;
-  const voice = opts.voice ?? currentVoice;
+  const voice = opts.voice ?? getVoice();
+  const isSpec = typeof voice === "object";
   // An explicit oscillator type forces the oscillator path: the timbre
   // lesson (ch1-l3) teaches sine vs triangle and must not be re-voiced.
-  const useOsc = opts.type !== undefined || voice === "sine";
+  // A shop VoiceSpec is always oscillator-based; "sine" is the legacy
+  // oscillator voice; "piano" (and any other VoiceId) uses samples.
+  const useOsc = opts.type !== undefined || voice === "sine" || isSpec;
 
   const gain = b.ctx.createGain();
-  const peak = (opts.gain ?? 0.5) * (muted ? 0 : 1);
+  const peak = (opts.gain ?? (isSpec ? voice.gain : undefined) ?? 0.5) * (muted ? 0 : 1);
   // Simple envelope: quick attack, gentle release. No clicks.
   gain.gain.setValueAtTime(0.0001, startAt);
   gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, peak), startAt + 0.02);
@@ -173,7 +200,7 @@ export function playTone(
   gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
 
   let source: AudioScheduledSourceNode;
-  const sampled = !useOsc ? voiceSampleFor(b.ctx, voice, midi) : null;
+  const sampled = !useOsc && !isSpec ? voiceSampleFor(b.ctx, voice, midi) : null;
   if (sampled) {
     const src = b.ctx.createBufferSource();
     src.buffer = sampled.buffer;
@@ -182,7 +209,7 @@ export function playTone(
     source = src;
   } else {
     const osc = b.ctx.createOscillator();
-    osc.type = opts.type ?? "triangle";
+    osc.type = opts.type ?? (isSpec ? voice.type : "triangle");
     osc.frequency.setValueAtTime(midiToFreq(midi), startAt);
     osc.connect(gain);
     source = osc;
@@ -233,7 +260,7 @@ export function playEffectCue(cue: EffectCue): void {
   if (cue === "none" || muted) return;
   try {
     const b = getBus();
-    playCue(b.ctx, b.sfx, cue, currentVoice);
+    playCue(b.ctx, b.sfx, cue, voiceIdOrDefault());
   } catch {
     /* cues are decorative */
   }
@@ -332,5 +359,5 @@ export function activeToneCount(): number {
 export function __resetAudioForTests(): void {
   lanes.clear();
   bus = null;
-  currentVoice = "piano";
+  globalVoice = "piano";
 }

@@ -7,8 +7,9 @@
  * offline, via OfflineAudioContext.
  */
 import { parseCreationData } from "./creations.ts";
-import { getVoice, type VoiceId } from "./audio.ts";
+import { type VoiceId } from "./audio.ts";
 import { renderVoiceNote } from "./voice.ts";
+import { voiceIdOrDefault } from "./audio.ts";
 
 export type SharedCreation = {
   name: string;
@@ -72,7 +73,7 @@ export async function renderCreationWav(
 ): Promise<Blob> {
   const noteDuration = opts.noteDuration ?? 0.5;
   const gap = opts.gap ?? 0.05;
-  const voice = opts.voice ?? getVoice();
+  const voice = opts.voice ?? voiceIdOrDefault();
   const sampleRate = 44100;
   const total = notes.length * (noteDuration + gap) + 0.2;
   const ctx = new OfflineAudioContext(1, Math.ceil(total * sampleRate), sampleRate);

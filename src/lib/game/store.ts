@@ -46,6 +46,8 @@ import {
   QUESTS,
   claimQuest as claimQuestInLog,
   completeQuest as completeQuestInLog,
+  freezeAvailable,
+  shiftKey,
   todayKey,
   type QuestId,
 } from "./quests.ts";
@@ -62,6 +64,7 @@ import {
   type ContestWeek,
 } from "./contest.ts";
 import type { Palette } from "./palettes.ts";
+import { buyItem, equipItem } from "./shop.ts";
 
 /** Keep only the most recent contest weeks (storage bound). */
 function pruneContestWeeks(weeks: Record<string, ContestWeek>): Record<string, ContestWeek> {
@@ -144,6 +147,18 @@ type Store = {
   answerNote: (note: string, correct: boolean, correctFirstTry: boolean, recentAccuracy: number) => boolean;
   addPoints: (n: number) => void;
   touchLearningDay: () => void;
+  /**
+   * Buy a shop item with harmony points. Returns the outcome; the shop
+   * state and point balance update only on success.
+   */
+  buyShopItem: (itemId: string) => "ok" | "already-owned" | "insufficient-points" | "unknown-item";
+  /** Equip an owned (or default) shop item. */
+  equipShopItem: (itemId: string) => void;
+  /**
+   * Record one endless-practice round: first-try correctness per task
+   * kind. Feeds skill ratings only, never grade trials or lesson journals.
+   */
+  recordEndlessAttempt: (kind: string, correctFirstTry: boolean) => void;
   /** Set the grade directly (used by trial advancement). */
   setGrade: (grade: number) => void;
   /**
@@ -503,7 +518,50 @@ export const useStore = create<Store>()((set, get) => ({
   addPoints: (n) => get().update((s) => ({ ...s, harmonyPoints: s.harmonyPoints + n })),
 
   touchLearningDay: () =>
-    get().update((s) => ({ ...s, learningDays: recordLearningDay(s.learningDays) })),
+    get().update((s) => {
+      const today = todayKey();
+      const set = new Set(s.learningDays);
+      // Weekly streak freeze: returning after exactly one missed day
+      // consumes the freeze (when available) so the streak survives.
+      const missedYesterday = !set.has(today) && !set.has(shiftKey(today, -1));
+      const consume =
+        missedYesterday && set.has(shiftKey(today, -2)) && freezeAvailable(s.streakFreeze, today);
+      return {
+        ...s,
+        learningDays: recordLearningDay(s.learningDays),
+        streakFreeze: consume ? today : s.streakFreeze,
+      };
+    }),
+
+  buyShopItem: (itemId) => {
+    const save = get().save;
+    const result = buyItem(save.shop, itemId, save.harmonyPoints);
+    if (!result.ok) return result.reason;
+    get().update((s) => ({
+      ...s,
+      shop: result.state,
+      harmonyPoints: s.harmonyPoints - result.spent,
+    }));
+    return "ok";
+  },
+
+  equipShopItem: (itemId) =>
+    get().update((s) => ({ ...s, shop: equipItem(s.shop, itemId) })),
+
+  recordEndlessAttempt: (kind, correctFirstTry) =>
+    get().update((s) => {
+      const prev = s.practiceEvidence[kind] ?? { attempts: 0, correct: 0 };
+      return {
+        ...s,
+        practiceEvidence: {
+          ...s.practiceEvidence,
+          [kind]: {
+            attempts: prev.attempts + 1,
+            correct: prev.correct + (correctFirstTry ? 1 : 0),
+          },
+        },
+      };
+    }),
 
   setGrade: (grade) =>
     get().update((s) => ({ ...s, grade: Math.max(0, Math.min(10, Math.round(grade))) })),
