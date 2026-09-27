@@ -10,6 +10,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { titleFor } from "../router.tsx";
 import { BreakReminder } from "../components/game/BreakReminder.tsx";
 import { useStore } from "../lib/game/store.ts";
+import { PROFILES_KEY, type ProfilesData } from "../lib/game/schema.ts";
 import { setMotionPolicy } from "../lib/game/effects.ts";
 
 beforeEach(() => {
@@ -96,9 +97,10 @@ describe("pagehide flush", () => {
     s.addPoints(7);
     // The debounce (150ms) has not fired: nothing on disk yet beyond reset.
     window.dispatchEvent(new Event("pagehide"));
-    const raw = window.localStorage.getItem("harmony-knight-save-v1");
+    const raw = window.localStorage.getItem(PROFILES_KEY);
     expect(raw).toBeTruthy();
-    expect(JSON.parse(raw!).harmonyPoints).toBe(7);
+    const parsed = JSON.parse(raw!) as ProfilesData;
+    expect(parsed.profiles[parsed.activeProfileId].save.harmonyPoints).toBe(7);
   });
 });
 
