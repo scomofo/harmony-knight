@@ -10,6 +10,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { titleFor } from "../router.tsx";
 import { BreakReminder } from "../components/game/BreakReminder.tsx";
 import { useStore } from "../lib/game/store.ts";
+import { PROFILES_KEY, type ProfilesData } from "../lib/game/schema.ts";
 import { setMotionPolicy } from "../lib/game/effects.ts";
 
 beforeEach(() => {
@@ -88,6 +89,22 @@ describe("BreakReminder", () => {
     expect(banner).toBeTruthy();
     expect(document.activeElement).not.toBe(screen.getByText("Keep playing"));
   });
+
+  it("stays quiet after the daily cap is reached", () => {
+    vi.useFakeTimers();
+    onboard();
+    useStore.getState().updateSettings({ sessionMinutes: 1 });
+    const today = new Date().toISOString().slice(0, 10);
+    window.localStorage.setItem(
+      "harmony-knight-break-count-v1",
+      JSON.stringify({ date: today, count: 3 }),
+    );
+    render(<BreakReminder />);
+    act(() => {
+      vi.advanceTimersByTime(61_000);
+    });
+    expect(screen.queryByText(/stretch/)).toBeNull();
+  });
 });
 
 describe("pagehide flush", () => {
@@ -96,9 +113,10 @@ describe("pagehide flush", () => {
     s.addPoints(7);
     // The debounce (150ms) has not fired: nothing on disk yet beyond reset.
     window.dispatchEvent(new Event("pagehide"));
-    const raw = window.localStorage.getItem("harmony-knight-save-v1");
+    const raw = window.localStorage.getItem(PROFILES_KEY);
     expect(raw).toBeTruthy();
-    expect(JSON.parse(raw!).harmonyPoints).toBe(7);
+    const parsed = JSON.parse(raw!) as ProfilesData;
+    expect(parsed.profiles[parsed.activeProfileId].save.harmonyPoints).toBe(7);
   });
 });
 

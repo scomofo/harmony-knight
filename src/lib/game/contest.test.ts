@@ -20,7 +20,7 @@ import {
   votingBonusAvailable,
 } from "./contest.ts";
 import { STARTER_PALETTE } from "./palettes.ts";
-import { defaultSave, migrateSave, validateSave } from "./schema.ts";
+import { SAVE_VERSION, defaultSave, migrateSave, validateSave } from "./schema.ts";
 
 const WEEK = "2026-W39";
 
@@ -207,8 +207,8 @@ describe("contest save validation + migration", () => {
     expect(sanitizeContests([])).toEqual({});
   });
 
-  it("migrates a v3 save to v4: contests + cantFail + duel stats", () => {
-    // Simulate a genuine v3 save: none of the v4 fields exist yet.
+  it("migrates a v3 save through the chain: contests + cantFail + duel stats", () => {
+    // Simulate a genuine v3 save: none of the newer fields exist yet.
     const v3settings = { ...defaultSave().settings } as Record<string, unknown>;
     delete v3settings.cantFail;
     const v3stats = { ...defaultSave().gameStats } as Record<string, unknown>;
@@ -223,7 +223,7 @@ describe("contest save validation + migration", () => {
     delete v3.contests;
     const migrated = migrateSave(v3);
     expect(migrated).not.toBeNull();
-    expect(migrated!.version).toBe(4);
+    expect(migrated!.version).toBe(SAVE_VERSION);
     expect(migrated!.contests).toEqual({});
     expect(migrated!.settings.cantFail).toBe(true);
     expect(migrated!.gameStats.lastDuelAt).toBe(0);

@@ -10,6 +10,17 @@
  */
 
 import { midiToFreq } from "./music.ts";
+import {
+  ensureVoiceSamples,
+  playCue,
+  voiceSampleFor,
+  VOICE_IDS,
+  type EffectCue,
+  type VoiceId,
+} from "./voice.ts";
+
+export type { EffectCue, VoiceId };
+export { VOICE_IDS };
 
 export type ToneOptions = {
   /** Seconds from now to start. */
@@ -18,8 +29,14 @@ export type ToneOptions = {
   duration?: number;
   /** 0..1 gain for this tone. */
   gain?: number;
-  /** Oscillator shape. */
+  /**
+   * Oscillator shape. Explicitly setting a type forces the oscillator path
+   * (used by the timbre lesson, which teaches sine vs triangle) even when
+   * a sampled voice is selected.
+   */
   type?: OscillatorType;
+  /** Instrument voice; defaults to the global voice (piano). */
+  voice?: VoiceId;
   /** Called on the audio clock when the tone starts (for highlight sync). */
   onStart?: (time: number) => void;
   /** Called when the tone ends or is cancelled. */
@@ -27,7 +44,7 @@ export type ToneOptions = {
 };
 
 type ScheduledTone = {
-  osc: OscillatorNode;
+  source: AudioScheduledSourceNode;
   gain: GainNode;
   onEnd?: (cancelled: boolean) => void;
   endTimer: number;
@@ -43,6 +60,19 @@ type Bus = {
 let bus: Bus | null = null;
 let masterVolume = 0.8;
 let muted = false;
+/** Global instrument voice. "piano" renders procedurally; "sine" is the legacy oscillator. */
+let currentVoice: VoiceId = "piano";
+
+/** Select the global instrument voice (used by lessons, games, creations). */
+export function setVoice(v: VoiceId): void {
+  currentVoice = v;
+  if (bus) void ensureVoiceSamples(bus.ctx, v).catch(() => {});
+}
+
+/** The current global instrument voice. */
+export function getVoice(): VoiceId {
+  return currentVoice;
+}
 /** key -> active tones. The "" key is the shared default lane. */
 const lanes = new Map<string, Set<ScheduledTone>>();
 
@@ -62,6 +92,9 @@ function getBus(): Bus {
   master.connect(ctx.destination);
   applyMaster();
   bus = { ctx, master, sfx, music };
+  // Warm the default voice's samples off the critical path; playTone falls
+  // back to oscillators until they're ready.
+  void ensureVoiceSamples(ctx, currentVoice).catch(() => {});
   return bus;
 }
 
@@ -126,21 +159,37 @@ export function playTone(
   const at = opts.at ?? 0;
   const duration = opts.duration ?? 0.5;
   const startAt = b.ctx.currentTime + at;
+  const voice = opts.voice ?? currentVoice;
+  // An explicit oscillator type forces the oscillator path: the timbre
+  // lesson (ch1-l3) teaches sine vs triangle and must not be re-voiced.
+  const useOsc = opts.type !== undefined || voice === "sine";
 
-  const osc = b.ctx.createOscillator();
   const gain = b.ctx.createGain();
-  osc.type = opts.type ?? "sine";
-  osc.frequency.setValueAtTime(midiToFreq(midi), startAt);
   const peak = (opts.gain ?? 0.5) * (muted ? 0 : 1);
   // Simple envelope: quick attack, gentle release. No clicks.
   gain.gain.setValueAtTime(0.0001, startAt);
   gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, peak), startAt + 0.02);
   gain.gain.setValueAtTime(Math.max(0.0001, peak), startAt + Math.max(0.02, duration - 0.08));
   gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
-  osc.connect(gain);
+
+  let source: AudioScheduledSourceNode;
+  const sampled = !useOsc ? voiceSampleFor(b.ctx, voice, midi) : null;
+  if (sampled) {
+    const src = b.ctx.createBufferSource();
+    src.buffer = sampled.buffer;
+    src.playbackRate.value = sampled.rate;
+    src.connect(gain);
+    source = src;
+  } else {
+    const osc = b.ctx.createOscillator();
+    osc.type = opts.type ?? "triangle";
+    osc.frequency.setValueAtTime(midiToFreq(midi), startAt);
+    osc.connect(gain);
+    source = osc;
+  }
   gain.connect(b.music);
 
-  const tone: ScheduledTone = { osc, gain, onEnd: opts.onEnd, endTimer: 0 };
+  const tone: ScheduledTone = { source, gain, onEnd: opts.onEnd, endTimer: 0 };
   track(key, tone);
   let finished = false;
   const finish = (cancelled: boolean) => {
@@ -159,8 +208,8 @@ export function playTone(
   tone.endTimer = window.setTimeout(() => finish(false), startDelayMs + duration * 1000 + 50);
 
   try {
-    osc.start(startAt);
-    osc.stop(startAt + duration + 0.05);
+    source.start(startAt);
+    source.stop(startAt + duration + 0.05);
   } catch {
     finish(true);
   }
@@ -168,12 +217,26 @@ export function playTone(
   return () => {
     window.clearTimeout(startTimer);
     try {
-      osc.stop();
+      source.stop();
     } catch {
       /* already stopped */
     }
     finish(true);
   };
+}
+
+/**
+ * Play a UI sound cue (effect bus pairings) on the sfx bus through the
+ * current voice. Best-effort: never throws, silent when muted.
+ */
+export function playEffectCue(cue: EffectCue): void {
+  if (cue === "none" || muted) return;
+  try {
+    const b = getBus();
+    playCue(b.ctx, b.sfx, cue, currentVoice);
+  } catch {
+    /* cues are decorative */
+  }
 }
 
 /**
@@ -242,7 +305,7 @@ export function stopLane(key = ""): void {
   if (!lane) return;
   [...lane].forEach((tone) => {
     try {
-      tone.osc.stop();
+      tone.source.stop();
     } catch {
       /* already stopped */
     }
@@ -269,4 +332,5 @@ export function activeToneCount(): number {
 export function __resetAudioForTests(): void {
   lanes.clear();
   bus = null;
+  currentVoice = "piano";
 }

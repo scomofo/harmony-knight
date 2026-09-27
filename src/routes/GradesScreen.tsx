@@ -170,6 +170,7 @@ function GradeTrial({ grade, onDone }: { grade: number; onDone: () => void }) {
       if (passed) addPoints(TRIAL_PASS_POINTS);
       emitEffect({
         event: passed ? "mastery" : "needs-work",
+        anchor: "grade-trial",
         cancelKey: `trial-${grade}`,
       });
       setOutcome({ passed, grade: nextGrade });
@@ -233,7 +234,7 @@ function GradeTrial({ grade, onDone }: { grade: number; onDone: () => void }) {
   const req = trialRequirement(grade);
 
   return (
-    <div className="mx-auto max-w-2xl p-4">
+    <div id="grade-trial" className="mx-auto max-w-2xl p-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold">Grade {grade} trial</h1>
         <p className="text-sm text-white/60">

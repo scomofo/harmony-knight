@@ -28,9 +28,9 @@ export type TimedPitch = PitchResult & {
   tMs: number;
 };
 
-/** Singing range we listen for: A1 (55 Hz) up to A5 (880 Hz). */
+/** Singing range we listen for: A1 (55 Hz) up to D6 (~1175 Hz) — high kid voices included. */
 export const MIN_FREQ = 55;
-export const MAX_FREQ = 880;
+export const MAX_FREQ = 1175;
 
 /** Frames below this RMS are silence/whisper, not a pitch. */
 export const SILENCE_RMS = 0.02;
@@ -51,39 +51,60 @@ export function detectPitch(samples: Float32Array, sampleRate: number): PitchRes
   const rms = Math.sqrt(sum / n);
   if (rms < SILENCE_RMS) return null;
 
-  const zeroLag = sum; // sum of squares = autocorrelation at lag 0
   const minLag = Math.max(1, Math.floor(sampleRate / MAX_FREQ));
   const maxLag = Math.min(n - 1, Math.ceil(sampleRate / MIN_FREQ));
 
-  // Normalized autocorrelation per lag, recomputed incrementally would be
-  // nicer; the direct loop is ~1M multiply-adds for 2048 samples — fine.
-  let bestLag = -1;
-  let bestNorm = 0;
-  for (let lag = minLag; lag <= maxLag; lag++) {
+  // Prefix sums of squares: window energies in O(1) so the correlation is
+  // normalized by the two *overlapping* windows, not the whole frame.
+  // Dividing by the full-frame energy biases toward small lags (fewer
+  // summed terms at large lags), which misreads low notes as high ones
+  // once the gate reaches up to D6.
+  const sq = new Float64Array(n + 1);
+  for (let i = 0; i < n; i++) sq[i + 1] = sq[i] + samples[i] * samples[i];
+  const windowEnergy = (from: number, to: number): number => sq[to]! - sq[from]!;
+
+  // Normalized autocorrelation per lag. The direct loop is ~1M
+  // multiply-adds for 2048 samples — fine. One extra lag is computed on
+  // each side so peak picking can demand a true interior local maximum
+  // (a bare edge would mistake a descending slope for a peak).
+  const loLag = Math.max(1, minLag - 1);
+  const hiLag = Math.min(n - 1, maxLag + 1);
+  const norms: number[] = [];
+  for (let lag = loLag; lag <= hiLag; lag++) {
     let corr = 0;
     for (let i = 0; i < n - lag; i++) corr += samples[i] * samples[i + lag];
-    const norm = corr / zeroLag;
-    if (norm > bestNorm) {
-      bestNorm = norm;
-      bestLag = lag;
+    const denom = Math.sqrt(windowEnergy(0, n - lag) * windowEnergy(lag, n));
+    norms.push(denom > 0 ? corr / denom : 0);
+  }
+  if (norms.length < 3) return null;
+
+  // Peak picking: the fundamental is the *first* strong local maximum
+  // scanning up from the shortest lag; later maxima sit at octave
+  // multiples of the true period. Taking the global max instead would
+  // read mid-range notes as their subharmonics (pure tones are
+  // octave-ambiguous to autocorrelation).
+  let globalMax = 0;
+  for (const v of norms) globalMax = Math.max(globalMax, v);
+  const threshold = Math.max(MIN_CLARITY, globalMax * 0.5);
+  let peak = -1;
+  for (let i = 1; i < norms.length - 1; i++) {
+    const v = norms[i]!;
+    if (v < threshold) continue;
+    if (v >= norms[i - 1]! && v >= norms[i + 1]!) {
+      peak = i;
+      break;
     }
   }
-  if (bestLag < 0 || bestNorm < MIN_CLARITY) return null;
+  if (peak < 0) return null;
+  const bestLag = loLag + peak;
+  const bestNorm = norms[peak]!;
 
   // Parabolic interpolation around the peak for sub-sample accuracy.
-  const corrAt = (lag: number): number => {
-    let c = 0;
-    for (let i = 0; i < n - lag; i++) c += samples[i] * samples[i + lag];
-    return c / zeroLag;
-  };
+  const a = norms[peak - 1]!;
+  const c = norms[peak + 1]!;
   let refined = bestLag;
-  if (bestLag > minLag && bestLag < maxLag) {
-    const a = corrAt(bestLag - 1);
-    const b = bestNorm;
-    const c = corrAt(bestLag + 1);
-    const denom = a - 2 * b + c;
-    if (denom !== 0) refined = bestLag + (0.5 * (a - c)) / denom;
-  }
+  const pdenom = a - 2 * bestNorm + c;
+  if (pdenom !== 0) refined = bestLag + (0.5 * (a - c)) / pdenom;
 
   const freq = sampleRate / refined;
   if (freq < MIN_FREQ * 0.9 || freq > MAX_FREQ * 1.1) return null;

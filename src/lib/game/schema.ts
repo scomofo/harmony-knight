@@ -5,13 +5,14 @@
  */
 
 import type { QuestState } from "./quests.ts";
+import type { AdaptiveAttempt, ConfusionPair } from "./adapt.ts";
 import {
   isValidContestWeek,
   sanitizeContests,
   type ContestWeek,
 } from "./contest.ts";
 
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 6;
 export const SAVE_KEY = "harmony-knight-save-v1";
 
 export type LessonStep = "learn" | "try" | "recall" | "done";
@@ -69,13 +70,53 @@ export type Settings = {
   focusMode: boolean;
   sessionMinutes: number;
   playbackSpeed: 1 | 0.75 | 0.5;
-  /** Kid-gate for the grown-ups dashboard. Null until a grown-up sets one. */
-  grownUpsPin: string | null;
+  // NOTE: the grown-ups PIN is intentionally NOT here. It is device-level
+  // (see DeviceSettings below), not per-profile, so siblings sharing a
+  // device share one grown-ups gate.
   /**
    * Creator "always sound good" mode: quantize to the palette and
-   * auto-harmonize the bass. Default on (no profiles exist yet).
+   * auto-harmonize the bass. Default on.
    */
   cantFail: boolean;
+};
+
+/* ------------------------------------------------------------------ */
+/* Player profile (first-session onboarding)                            */
+/* ------------------------------------------------------------------ */
+
+/** Self-reported age band, collected once during onboarding. */
+export type AgeBand = "under-7" | "7-9" | "10-12" | "13-plus";
+/** How much music the player has played before, in their own words. */
+export type ExperienceLevel = "brand-new" | "a-little" | "played-before";
+/** What the player hopes to get out of the game. */
+export type LearnerGoal = "play-songs" | "understand-music" | "make-music" | "just-exploring";
+/** Primary instrument, if any. */
+export type Instrument = "piano" | "guitar" | "voice" | "violin" | "ukulele" | "other" | "none-yet";
+
+export type PlacementAnswer = {
+  questionId: string;
+  correct: boolean;
+};
+
+/** Result of the onboarding placement diagnostic. */
+export type PlacementResult = {
+  completedAt: number;
+  answers: PlacementAnswer[];
+  /** Chapter number (1..11) the diagnostic recommends starting at. */
+  recommendedStartChapter: number;
+};
+
+export type PlayerProfile = {
+  /** Display name; empty until the player tells us. */
+  name: string;
+  ageBand: AgeBand;
+  experience: ExperienceLevel;
+  goal: LearnerGoal;
+  instrument: Instrument;
+  /** Null until the placement diagnostic is taken (or skipped). */
+  placement: PlacementResult | null;
+  /** When onboarding finished; null for pre-profile saves. */
+  completedAt: number | null;
 };
 
 export type SaveData = {
@@ -84,6 +125,8 @@ export type SaveData = {
   updatedAt: number;
   onboarded: boolean;
   settings: Settings;
+  /** First-session profile; defaults are unclaimed (completedAt null). */
+  profile: PlayerProfile;
   lessons: Record<string, LessonProgress>;
   concepts: Record<string, ConceptReview>;
   noteEvidence: Record<string, NoteEvidence>;
@@ -95,6 +138,13 @@ export type SaveData = {
   gameStats: GameStats;
   /** Daily quests: date -> quest id -> "done" | "claimed". */
   questLog: Record<string, Record<string, QuestState>>;
+  /**
+   * Adaptive engine (Phase 1): per-domain recent attempt log, newest last,
+   * capped at 10 per domain. Drives per-user difficulty.
+   */
+  adaptiveAttempts: Record<string, AdaptiveAttempt[]>;
+  /** Adaptive engine (Phase 1): confusion pairs with SR scheduling. */
+  confusion: Record<string, ConfusionPair>;
   /** Weekly creation contests, keyed by ISO week id ("2026-W39"). */
   contests: Record<string, ContestWeek>;
 };
@@ -126,10 +176,26 @@ export function defaultSettings(): Settings {
     highContrast: false,
     reducedMotion: false,
     focusMode: true,
-    sessionMinutes: 3,
+    sessionMinutes: 20,
     playbackSpeed: 1,
-    grownUpsPin: null,
     cantFail: true,
+  };
+}
+
+/**
+ * Default profile for pre-profile saves (and for players who skip
+ * onboarding): every field is the "unclaimed" choice, and completedAt is
+ * null so the UI can invite the player to finish their profile.
+ */
+export function defaultProfile(): PlayerProfile {
+  return {
+    name: "",
+    ageBand: "7-9",
+    experience: "a-little",
+    goal: "just-exploring",
+    instrument: "none-yet",
+    placement: null,
+    completedAt: null,
   };
 }
 
@@ -153,6 +219,7 @@ export function defaultSave(): SaveData {
     updatedAt: now,
     onboarded: false,
     settings: defaultSettings(),
+    profile: defaultProfile(),
     lessons: {},
     concepts: {},
     noteEvidence: {},
@@ -163,6 +230,8 @@ export function defaultSave(): SaveData {
     creations: [],
     gameStats: defaultGameStats(),
     questLog: {},
+    adaptiveAttempts: {},
+    confusion: {},
     contests: {},
   };
 }
@@ -211,9 +280,37 @@ const MIGRATIONS: Migration[] = [
   {
     from: 3,
     to: 4,
-    // v4 introduces the weekly creation contests, the creator "always sound
-    // good" toggle, and duel anti-farming stats. All additive: a v3 save
+    // v4 introduces the player profile (onboarding answers + placement
+    // diagnostic result). Existing saves get the unclaimed default profile;
+    // a partial profile is sanitized per-field so one bad value never
+    // wipes the rest.
+    migrate: (data) => ({
+      ...data,
+      profile: sanitizeProfile(data.profile),
+      version: 4,
+    }),
+  },
+  {
+    from: 4,
+    to: 5,
+    // v5 introduces the adaptive engine's evidence stores: per-domain
+    // attempt logs and confusion pairs. Both are additive; a v4 save
+    // keeps everything it had and starts with empty adaptive evidence.
+    migrate: (data) => ({
+      ...data,
+      adaptiveAttempts: isRecord(data.adaptiveAttempts) ? data.adaptiveAttempts : {},
+      confusion: isRecord(data.confusion) ? data.confusion : {},
+      version: 5,
+    }),
+  },
+  {
+    from: 5,
+    to: 6,
+    // v6 introduces the weekly creation contests, the creator "always sound
+    // good" toggle, and duel anti-farming stats. All additive: a v5 save
     // keeps everything it had, gaining defaults for the new fields.
+    // (The grown-ups PIN stays device-level; a stale settings copy passes
+    // through for migrateToProfiles to relocate.)
     migrate: (data) => {
       const rawSettings = isRecord(data.settings) ? data.settings : {};
       return {
@@ -225,11 +322,66 @@ const MIGRATIONS: Migration[] = [
         },
         gameStats: sanitizeGameStats(data.gameStats),
         contests: sanitizeContests(data.contests),
-        version: 4,
+        version: 6,
       };
     },
   },
 ];
+
+/** Coerce unknown input into a valid PlayerProfile, preserving good fields. */
+export function sanitizeProfile(v: unknown): PlayerProfile {
+  const d = defaultProfile();
+  if (!isRecord(v)) return d;
+  const oneOf = <T extends string>(x: unknown, allowed: readonly T[], fallback: T): T =>
+    typeof x === "string" && (allowed as readonly string[]).includes(x) ? (x as T) : fallback;
+  return {
+    name: typeof v.name === "string" ? v.name.slice(0, 40) : d.name,
+    ageBand: oneOf(v.ageBand, ["under-7", "7-9", "10-12", "13-plus"] as const, d.ageBand),
+    experience: oneOf(v.experience, ["brand-new", "a-little", "played-before"] as const, d.experience),
+    goal: oneOf(v.goal, ["play-songs", "understand-music", "make-music", "just-exploring"] as const, d.goal),
+    instrument: oneOf(
+      v.instrument,
+      ["piano", "guitar", "voice", "violin", "ukulele", "other", "none-yet"] as const,
+      d.instrument,
+    ),
+    placement: sanitizePlacement(v.placement),
+    completedAt:
+      typeof v.completedAt === "number" && Number.isFinite(v.completedAt) && v.completedAt >= 0
+        ? v.completedAt
+        : null,
+  };
+}
+
+/** Coerce unknown input into a valid PlacementResult, or null when unusable. */
+export function sanitizePlacement(v: unknown): PlacementResult | null {
+  if (v === null || v === undefined) return null;
+  if (!isRecord(v)) return null;
+  const { completedAt, answers } = v;
+  const chapter = v.recommendedStartChapter;
+  if (
+    typeof completedAt !== "number" ||
+    !Number.isFinite(completedAt) ||
+    completedAt < 0 ||
+    typeof chapter !== "number" ||
+    !Number.isInteger(chapter) ||
+    chapter < 1 ||
+    chapter > 11 ||
+    !Array.isArray(answers) ||
+    !answers.every(
+      (a) => isRecord(a) && typeof a.questionId === "string" && typeof a.correct === "boolean",
+    )
+  ) {
+    return null;
+  }
+  return {
+    completedAt,
+    answers: answers.map((a) => {
+      const r = a as Record<string, unknown>;
+      return { questionId: r.questionId as string, correct: r.correct as boolean };
+    }),
+    recommendedStartChapter: chapter,
+  };
+}
 
 /** Coerce unknown input into a valid GameStats, preserving good fields. */
 export function sanitizeGameStats(v: unknown): GameStats {
@@ -300,8 +452,26 @@ function validSettings(s: unknown): s is Settings {
     s.sessionMinutes >= 1 &&
     s.sessionMinutes <= 60 &&
     (s.playbackSpeed === 1 || s.playbackSpeed === 0.75 || s.playbackSpeed === 0.5) &&
-    (s.grownUpsPin === null || typeof s.grownUpsPin === "string") &&
     typeof s.cantFail === "boolean"
+    // grownUpsPin is no longer part of Settings (device-level now); a stale
+    // copy lingering in an old persisted save is simply ignored.
+  );
+}
+
+function validPlayerProfile(v: unknown): v is PlayerProfile {
+  if (!isRecord(v)) return false;
+  const oneOf = (x: unknown, allowed: readonly string[]) =>
+    typeof x === "string" && allowed.includes(x);
+  return (
+    typeof v.name === "string" &&
+    v.name.length <= 40 &&
+    oneOf(v.ageBand, ["under-7", "7-9", "10-12", "13-plus"]) &&
+    oneOf(v.experience, ["brand-new", "a-little", "played-before"]) &&
+    oneOf(v.goal, ["play-songs", "understand-music", "make-music", "just-exploring"]) &&
+    oneOf(v.instrument, ["piano", "guitar", "voice", "violin", "ukulele", "other", "none-yet"]) &&
+    (v.placement === null || sanitizePlacement(v.placement) !== null) &&
+    (v.completedAt === null ||
+      (typeof v.completedAt === "number" && Number.isFinite(v.completedAt) && v.completedAt >= 0))
   );
 }
 
@@ -378,6 +548,14 @@ function recordOfRecords(v: unknown): v is Record<string, Record<string, unknown
   return isRecord(v) && Object.values(v).every(isRecord);
 }
 
+/** Adaptive attempt logs: record of arrays of attempt records. */
+function validAdaptiveAttempts(v: unknown): v is Record<string, AdaptiveAttempt[]> {
+  if (!isRecord(v)) return false;
+  return Object.values(v).every(
+    (arr) => Array.isArray(arr) && arr.every(isRecord),
+  );
+}
+
 /**
  * Validate an imported save object: format, field ranges, and version.
  * Never throws; returns false for anything unsafe to adopt.
@@ -388,6 +566,7 @@ export function validateSave(data: unknown): data is SaveData {
   if (typeof data.createdAt !== "number" || typeof data.updatedAt !== "number") return false;
   if (typeof data.onboarded !== "boolean") return false;
   if (!validSettings(data.settings)) return false;
+  if (!validPlayerProfile(data.profile)) return false;
   if (!recordOfRecords(data.lessons) || !recordOfRecords(data.concepts) || !recordOfRecords(data.noteEvidence))
     return false;
   if (typeof data.harmonyPoints !== "number" || !Number.isFinite(data.harmonyPoints) || data.harmonyPoints < 0)
@@ -400,6 +579,8 @@ export function validateSave(data: unknown): data is SaveData {
   if (!Array.isArray(data.creations) || !data.creations.every(validCreation)) return false;
   if (!validGameStats(data.gameStats)) return false;
   if (!validQuestLog(data.questLog)) return false;
+  if (!validAdaptiveAttempts(data.adaptiveAttempts)) return false;
+  if (!recordOfRecords(data.confusion)) return false;
   if (!validContests(data.contests)) return false;
   // ~5MB cap keeps quota failures predictable.
   try {
@@ -427,4 +608,186 @@ export function importSave(json: string): SaveData | null {
     return null;
   }
   return migrateSave(parsed);
+}
+
+/* ------------------------------------------------------------------ */
+/* Multi-profile container (household)                                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Household profiles: one device can hold several learners, each with a
+ * full independent SaveData. The container is versioned separately from
+ * SaveData; a pre-profiles single save migrates into one "Default" profile.
+ * Everything stays in localStorage (PWA offline-safe).
+ */
+export const PROFILES_VERSION = 1;
+export const PROFILES_KEY = "harmony-knight-profiles-v1";
+
+export type ProfileData = {
+  id: string;
+  name: string;
+  /** Emoji from PROFILE_AVATARS. */
+  avatar: string;
+  createdAt: number;
+  save: SaveData;
+};
+
+/** Per-device (not per-profile) settings. */
+export type DeviceSettings = {
+  /** Kid-gate for the grown-ups dashboard. Null until a grown-up sets one. */
+  grownUpsPin: string | null;
+};
+
+export type ProfilesData = {
+  version: number;
+  activeProfileId: string;
+  profiles: Record<string, ProfileData>;
+  device: DeviceSettings;
+};
+
+/** Kid-friendly avatar choices for the profile picker. */
+export const PROFILE_AVATARS = [
+  "⚔️",
+  "🐉",
+  "🦊",
+  "🐱",
+  "🦄",
+  "🤖",
+  "🦉",
+  "🐸",
+  "🐼",
+  "🚀",
+  "⭐",
+  "👻",
+] as const;
+
+export const MAX_PROFILE_NAME_LENGTH = 24;
+
+/** Collision-resistant profile id. */
+export function newProfileId(): string {
+  const rand = Math.floor(Math.random() * 0xffffffff).toString(36);
+  return `p_${Date.now().toString(36)}_${rand}`;
+}
+
+/** Trim + clamp a profile name; falls back to "Knight" when blank. */
+export function sanitizeProfileName(name: unknown): string {
+  const clean = typeof name === "string" ? name.trim().slice(0, MAX_PROFILE_NAME_LENGTH) : "";
+  return clean.length > 0 ? clean : "Knight";
+}
+
+/** Keep only avatars from the curated set; unknown values get the knight. */
+export function sanitizeAvatar(avatar: unknown): string {
+  return typeof avatar === "string" && (PROFILE_AVATARS as readonly string[]).includes(avatar)
+    ? avatar
+    : PROFILE_AVATARS[0];
+}
+
+export function defaultDeviceSettings(): DeviceSettings {
+  return { grownUpsPin: null };
+}
+
+export function newProfile(name: string, avatar: string): ProfileData {
+  const now = Date.now();
+  return {
+    id: newProfileId(),
+    name: sanitizeProfileName(name),
+    avatar: sanitizeAvatar(avatar),
+    createdAt: now,
+    save: defaultSave(),
+  };
+}
+
+/** Fresh container: a single "Default" profile, nothing else. */
+export function defaultProfiles(): ProfilesData {
+  const profile = newProfile("Default", PROFILE_AVATARS[0]);
+  return {
+    version: PROFILES_VERSION,
+    activeProfileId: profile.id,
+    profiles: { [profile.id]: profile },
+    device: defaultDeviceSettings(),
+  };
+}
+
+function validProfile(p: unknown, key: string): p is ProfileData {
+  if (!isRecord(p)) return false;
+  return (
+    p.id === key &&
+    typeof p.name === "string" &&
+    p.name.length > 0 &&
+    p.name.length <= MAX_PROFILE_NAME_LENGTH &&
+    typeof p.avatar === "string" &&
+    p.avatar.length > 0 &&
+    typeof p.createdAt === "number" &&
+    Number.isFinite(p.createdAt) &&
+    validateSave(p.save)
+  );
+}
+
+function validDeviceSettings(v: unknown): v is DeviceSettings {
+  if (!isRecord(v)) return false;
+  return v.grownUpsPin === null || typeof v.grownUpsPin === "string";
+}
+
+/**
+ * Validate an imported profiles container. Never throws; returns false for
+ * anything unsafe to adopt.
+ */
+export function validateProfiles(data: unknown): data is ProfilesData {
+  if (!isRecord(data)) return false;
+  if (data.version !== PROFILES_VERSION) return false;
+  if (typeof data.activeProfileId !== "string" || data.activeProfileId.length === 0) return false;
+  if (!isRecord(data.profiles)) return false;
+  const entries = Object.entries(data.profiles);
+  if (entries.length === 0) return false;
+  if (!entries.every(([key, p]) => validProfile(p, key))) return false;
+  if (!(data.activeProfileId in data.profiles)) return false;
+  if (!validDeviceSettings(data.device)) return false;
+  // ~8MB cap keeps quota failures predictable across several profiles.
+  try {
+    if (JSON.stringify(data).length > 8 * 1024 * 1024) return false;
+  } catch {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Migrate unknown persisted data into a ProfilesData container. Accepts:
+ *  - a profiles container at PROFILES_VERSION (validated as-is), or
+ *  - a pre-profiles single save (schema v1..v3): migrated through the save
+ *    chain and wrapped into one "Default" profile. The grown-ups PIN, if
+ *    set on the old save, moves to device level.
+ * Returns null when the data cannot be adopted safely.
+ */
+export function migrateToProfiles(raw: unknown): ProfilesData | null {
+  if (!isRecord(raw)) return null;
+  // Anything container-shaped is a profiles container, valid or not: a
+  // corrupt container must NEVER be reinterpreted as a single save (the
+  // container version collides with save v1).
+  if ("profiles" in raw || "activeProfileId" in raw) {
+    return validateProfiles(raw) ? (raw as ProfilesData) : null;
+  }
+  // Legacy single save: run the save migration chain, then wrap.
+  const save = migrateSave(raw);
+  if (!save) return null;
+  const profile = newProfile("Default", PROFILE_AVATARS[0]);
+  const legacy = raw as Record<string, unknown>;
+  const legacySettings = isRecord(legacy.settings) ? legacy.settings : {};
+  // The PIN also survives on the migrated save record (v2->v3 migration
+  // stamps it onto settings); read it from either spot.
+  const migratedSettings = save.settings as unknown as Record<string, unknown>;
+  const pin =
+    typeof legacySettings.grownUpsPin === "string"
+      ? legacySettings.grownUpsPin
+      : typeof migratedSettings.grownUpsPin === "string"
+        ? migratedSettings.grownUpsPin
+        : null;
+  if (pin !== null) delete migratedSettings.grownUpsPin;
+  profile.save = save;
+  return {
+    version: PROFILES_VERSION,
+    activeProfileId: profile.id,
+    profiles: { [profile.id]: profile },
+    device: { grownUpsPin: pin },
+  };
 }
