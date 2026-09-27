@@ -3,7 +3,7 @@
  * and every preset pairs a real sound cue.
  */
 import { describe, expect, it } from "vitest";
-// @ts-ignore node:fs has no bundled types in this project (no @types/node);
+// @ts-expect-error node:fs has no bundled types in this project (no @types/node);
 // vitest runs on node, so the import resolves at runtime.
 import { readFileSync } from "node:fs";
 import { EFFECT_CLASS, EFFECT_EVENTS, CALM_CLASS } from "./effectStyles.ts";

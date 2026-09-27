@@ -92,7 +92,7 @@ export function buildComparePitchTask(
 ): PracticalTask {
   const rand = mulberry32(seed);
   const gapMin = opts.gapMin ?? 2;
-  let a = opts.low + Math.floor(rand() * (opts.high - opts.low - gapMin));
+  const a = opts.low + Math.floor(rand() * (opts.high - opts.low - gapMin));
   let b = a + gapMin + Math.floor(rand() * Math.min(12, opts.high - a - gapMin));
   if (b > opts.high) b = opts.high;
   const higherIsFirst = rand() < 0.5;
