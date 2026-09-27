@@ -1,16 +1,19 @@
 /**
- * Schema hardening tests: the v1 -> v3 migration chain (gameStats, quest
- * log, grown-ups PIN), per-field sanitization, and strict import validation
- * for every persisted object.
+ * Schema hardening tests: the v1 -> v4 migration chain (gameStats, quest
+ * log, grown-ups PIN, player profile), per-field sanitization, and strict
+ * import validation for every persisted object.
  */
 import { describe, expect, it } from "vitest";
 import {
   SAVE_VERSION,
+  defaultProfile,
   defaultSave,
   exportSave,
   importSave,
   migrateSave,
   sanitizeGameStats,
+  sanitizePlacement,
+  sanitizeProfile,
   validateSave,
 } from "./schema.ts";
 
@@ -24,16 +27,19 @@ function v1Save(overrides: Record<string, unknown> = {}): Record<string, unknown
 describe("v1 -> v4 migration chain", () => {
   it("adds default gameStats to a pre-games v1 save", () => {
     const migrated = migrateSave(v1Save());
-    expect(migrated?.version).toBe(SAVE_VERSION); // chains v1 -> v2 -> v3 -> v4
+    expect(migrated?.version).toBe(SAVE_VERSION); // chains v1 -> v7
     expect(migrated?.gameStats).toEqual({
       strikePlays: 0,
       strikeBest: 0,
       duelWins: 0,
       duelLosses: 0,
       duelDraws: 0,
+      lastDuelAt: 0,
+      duelDayCounts: {},
     });
     expect(migrated?.questLog).toEqual({});
-    expect(migrated?.settings.grownUpsPin).toBeNull();
+    // The grown-ups PIN moved to device level (profiles container); the
+    // per-save migration chain no longer manages it.
     expect(migrated?.shop).toEqual({ owned: [], theme: "midnight", avatar: "knight", instrument: "sine" });
     expect(migrated?.practiceEvidence).toEqual({});
     expect(migrated?.streakFreeze).toBeNull();
@@ -43,7 +49,8 @@ describe("v1 -> v4 migration chain", () => {
   it("preserves valid gameStats written by the games-era v1 build", () => {
     const stats = { strikePlays: 4, strikeBest: 1234, duelWins: 2, duelLosses: 1, duelDraws: 0 };
     const migrated = migrateSave(v1Save({ gameStats: stats }));
-    expect(migrated?.gameStats).toEqual(stats);
+    // v1-era stats gain the v4 anti-farming defaults; old fields untouched.
+    expect(migrated?.gameStats).toEqual({ ...stats, lastDuelAt: 0, duelDayCounts: {} });
   });
 
   it("migrating keeps lesson progress and settings intact", () => {
@@ -78,7 +85,15 @@ describe("sanitizeGameStats", () => {
         duelLosses: 2.7,
         duelDraws: 1,
       }),
-    ).toEqual({ strikePlays: 0, strikeBest: 0, duelWins: 0, duelLosses: 2, duelDraws: 1 });
+    ).toEqual({
+      strikePlays: 0,
+      strikeBest: 0,
+      duelWins: 0,
+      duelLosses: 2,
+      duelDraws: 1,
+      lastDuelAt: 0,
+      duelDayCounts: {},
+    });
   });
 
   it("returns defaults for non-records", () => {
@@ -89,6 +104,26 @@ describe("sanitizeGameStats", () => {
       duelWins: 0,
       duelLosses: 0,
       duelDraws: 0,
+      lastDuelAt: 0,
+      duelDayCounts: {},
+    });
+  });
+
+  it("sanitizes the new anti-farming fields individually", () => {
+    expect(
+      sanitizeGameStats({
+        strikePlays: 1,
+        lastDuelAt: -50,
+        duelDayCounts: { "2026-09-26": 3, bogus: 2, "2026-09-25": -1 },
+      }),
+    ).toEqual({
+      strikePlays: 1,
+      strikeBest: 0,
+      duelWins: 0,
+      duelLosses: 0,
+      duelDraws: 0,
+      lastDuelAt: 0,
+      duelDayCounts: { "2026-09-26": 3 },
     });
   });
 });
@@ -147,12 +182,14 @@ describe("validateSave (strict)", () => {
     expect(bad(null)).toBe(false);
   });
 
-  it("rejects non-string grown-ups PINs", () => {
-    const bad = (grownUpsPin: unknown) =>
-      validateSave({ ...defaultSave(), settings: { ...defaultSave().settings, grownUpsPin } });
-    expect(bad(null)).toBe(true);
-    expect(bad("1234")).toBe(true);
-    expect(bad(1234)).toBe(false);
+  it("ignores a stale grown-ups PIN copy lingering in settings", () => {
+    // The PIN is device-level now; an old backup's per-save copy is simply
+    // ignored, never a validation failure.
+    const withStale = {
+      ...defaultSave(),
+      settings: { ...defaultSave().settings, grownUpsPin: "1234" },
+    };
+    expect(validateSave(withStale)).toBe(true);
   });
 
   it("rejects malformed grade windows", () => {
@@ -190,7 +227,108 @@ describe("validateSave (strict)", () => {
   });
 });
 
-describe("v3 -> v4 migration (shop, endless evidence, streak freeze)", () => {
+describe("v3 -> v4 profile migration", () => {
+  /** A save as written by the v3 build (pre-profile): no profile key. */
+  function v3Save(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+    const base = defaultSave() as unknown as Record<string, unknown>;
+    delete base.profile;
+    return { ...base, version: 3, ...overrides };
+  }
+
+  it("adds the unclaimed default profile to a pre-profile v3 save", () => {
+    const migrated = migrateSave(v3Save());
+    expect(migrated?.version).toBe(SAVE_VERSION);
+    expect(migrated?.profile).toEqual(defaultProfile());
+    expect(migrated?.profile.completedAt).toBeNull();
+    expect(migrated && validateSave(migrated)).toBe(true);
+  });
+
+  it("preserves a valid profile through migration", () => {
+    const profile = {
+      ...defaultProfile(),
+      name: "Avery",
+      ageBand: "10-12",
+      experience: "played-before",
+      completedAt: 123456,
+    };
+    const migrated = migrateSave(v3Save({ profile }));
+    expect(migrated?.profile.name).toBe("Avery");
+    expect(migrated?.profile.experience).toBe("played-before");
+    expect(migrated?.profile.completedAt).toBe(123456);
+  });
+
+  it("sanitizes a malformed profile per-field instead of wiping it", () => {
+    const profile = {
+      name: "Avery",
+      ageBand: "ancient",
+      experience: "played-before",
+      goal: "world-domination",
+      instrument: "lute",
+      placement: { garbage: true },
+      completedAt: "yesterday",
+    };
+    const migrated = migrateSave(v3Save({ profile }));
+    expect(migrated?.profile.name).toBe("Avery");
+    expect(migrated?.profile.ageBand).toBe(defaultProfile().ageBand);
+    expect(migrated?.profile.experience).toBe("played-before");
+    expect(migrated?.profile.goal).toBe(defaultProfile().goal);
+    expect(migrated?.profile.placement).toBeNull();
+    expect(migrated?.profile.completedAt).toBeNull();
+    expect(migrated && validateSave(migrated)).toBe(true);
+  });
+
+  it("keeps a well-formed placement through migration", () => {
+    const placement = {
+      completedAt: 999,
+      answers: [{ questionId: "pitch-1", correct: true }],
+      recommendedStartChapter: 2,
+    };
+    const migrated = migrateSave(v3Save({ profile: { ...defaultProfile(), placement } }));
+    expect(migrated?.profile.placement).toEqual(placement);
+  });
+
+  it("defaults the session length to 20 minutes for new saves", () => {
+    expect(defaultSave().settings.sessionMinutes).toBe(20);
+  });
+});
+
+describe("sanitizeProfile / sanitizePlacement", () => {
+  it("returns the default profile for non-records", () => {
+    expect(sanitizeProfile(null)).toEqual(defaultProfile());
+    expect(sanitizeProfile("nope")).toEqual(defaultProfile());
+  });
+
+  it("truncates overlong names", () => {
+    expect(sanitizeProfile({ name: "x".repeat(100) }).name).toHaveLength(40);
+  });
+
+  it("rejects out-of-range placement chapters", () => {
+    const base = { completedAt: 1, answers: [], recommendedStartChapter: 12 };
+    expect(sanitizePlacement(base)).toBeNull();
+    expect(sanitizePlacement({ ...base, recommendedStartChapter: 0 })).toBeNull();
+    expect(sanitizePlacement({ ...base, recommendedStartChapter: 3 })).toEqual({
+      completedAt: 1,
+      answers: [],
+      recommendedStartChapter: 3,
+    });
+  });
+
+  it("rejects malformed placement answers", () => {
+    expect(
+      sanitizePlacement({ completedAt: 1, answers: [{ questionId: 5, correct: true }], recommendedStartChapter: 1 }),
+    ).toBeNull();
+  });
+
+  it("validateSave rejects a save with a bad profile", () => {
+    expect(validateSave({ ...defaultSave(), profile: { ...defaultProfile(), ageBand: "old" } })).toBe(false);
+    expect(validateSave({ ...defaultSave(), profile: null })).toBe(false);
+    expect(
+      validateSave({ ...defaultSave(), profile: { ...defaultProfile(), name: "x".repeat(41) } }),
+    ).toBe(false);
+  });
+});
+
+describe("v3 -> v7 migration (shop, endless evidence, streak freeze)", () => {
   /** A save as written by the v3 build: no shop/practiceEvidence/streakFreeze. */
   function v3Save(overrides: Record<string, unknown> = {}): Record<string, unknown> {
     const base = defaultSave() as unknown as Record<string, unknown>;
@@ -202,7 +340,7 @@ describe("v3 -> v4 migration (shop, endless evidence, streak freeze)", () => {
 
   it("adds defaults for the new fields", () => {
     const migrated = migrateSave(v3Save());
-    expect(migrated?.version).toBe(4);
+    expect(migrated?.version).toBe(SAVE_VERSION);
     expect(migrated?.shop).toEqual({ owned: [], theme: "midnight", avatar: "knight", instrument: "sine" });
     expect(migrated?.practiceEvidence).toEqual({});
     expect(migrated?.streakFreeze).toBeNull();

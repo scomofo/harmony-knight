@@ -45,6 +45,178 @@ body {
   outline-offset: 2px;
 }
 
+/* ------------------------------------------------------------------
+ * Effect expressions (Sound & Juice batch).
+ *
+ * The semantic effect bus (lib/game/effects.ts) resolves each event to a
+ * preset; EffectLayer applies .hk-fx-<event> to the anchor element for the
+ * preset's duration. The .hk-fx-calm modifier (or the global
+ * .hk-reduced-motion kill-switch above) swaps every expression for its
+ * static equivalent: same information, no travel, no pulse. High-contrast
+ * safety: no expression is glow-only — each also changes border or
+ * background.
+ * ------------------------------------------------------------------ */
+
+@keyframes hk-fx-select {
+  0% { background-color: rgba(255, 255, 255, 0.22); }
+  100% { background-color: transparent; }
+}
+.hk-fx-select { animation: hk-fx-select 120ms ease-out; }
+
+@keyframes hk-fx-correct {
+  0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); transform: scale(1); }
+  35% { box-shadow: 0 0 18px 4px rgba(52, 211, 153, 0.55); transform: scale(1.02); }
+  100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); transform: scale(1); }
+}
+.hk-fx-correct {
+  animation: hk-fx-correct 400ms ease-out;
+  border-color: rgba(52, 211, 153, 0.7) !important;
+}
+.hk-fx-calm.hk-fx-correct {
+  animation: none;
+  border-color: rgba(52, 211, 153, 0.9) !important;
+  background-color: rgba(52, 211, 153, 0.12);
+}
+
+@keyframes hk-fx-needs-work {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); }
+  50% { box-shadow: 0 0 14px 3px rgba(251, 191, 36, 0.5); }
+}
+.hk-fx-needs-work {
+  animation: hk-fx-needs-work 600ms ease-in-out;
+  border-color: rgba(251, 191, 36, 0.7) !important;
+}
+.hk-fx-calm.hk-fx-needs-work {
+  animation: none;
+  border-color: rgba(251, 191, 36, 0.9) !important;
+  background-color: rgba(251, 191, 36, 0.08);
+}
+
+@keyframes hk-fx-assisted {
+  0% { background-color: rgba(129, 140, 248, 0.3); }
+  100% { background-color: transparent; }
+}
+.hk-fx-assisted {
+  animation: hk-fx-assisted 300ms ease-out;
+  border-color: rgba(129, 140, 248, 0.6) !important;
+}
+.hk-fx-calm.hk-fx-assisted {
+  animation: none;
+  border-color: rgba(129, 140, 248, 0.8) !important;
+  background-color: rgba(129, 140, 248, 0.1);
+}
+
+@keyframes hk-fx-mastery {
+  0% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); transform: scale(1); }
+  40% { box-shadow: 0 0 26px 8px rgba(251, 191, 36, 0.5); transform: scale(1.03); }
+  100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); transform: scale(1); }
+}
+.hk-fx-mastery {
+  animation: hk-fx-mastery 800ms ease-out;
+  border-color: rgba(251, 191, 36, 0.8) !important;
+}
+.hk-fx-calm.hk-fx-mastery {
+  animation: none;
+  border-color: rgba(251, 191, 36, 1) !important;
+  background-color: rgba(251, 191, 36, 0.12);
+}
+
+@keyframes hk-fx-due-cleared {
+  0% { box-shadow: 0 0 0 0 rgba(45, 212, 191, 0); transform: scale(1); }
+  40% { box-shadow: 0 0 26px 8px rgba(45, 212, 191, 0.5); transform: scale(1.03); }
+  100% { box-shadow: 0 0 0 0 rgba(45, 212, 191, 0); transform: scale(1); }
+}
+.hk-fx-due-cleared {
+  animation: hk-fx-due-cleared 800ms ease-out;
+  border-color: rgba(45, 212, 191, 0.8) !important;
+}
+.hk-fx-calm.hk-fx-due-cleared {
+  animation: none;
+  border-color: rgba(45, 212, 191, 1) !important;
+  background-color: rgba(45, 212, 191, 0.12);
+}
+
+@keyframes hk-fx-clash {
+  0% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.6); }
+  100% { box-shadow: 0 0 0 14px rgba(248, 113, 113, 0); }
+}
+.hk-fx-clash {
+  animation: hk-fx-clash 500ms ease-out;
+  border-color: rgba(248, 113, 113, 0.8) !important;
+}
+.hk-fx-calm.hk-fx-clash {
+  animation: none;
+  border-color: rgba(248, 113, 113, 1) !important;
+  border-style: dashed;
+}
+
+@keyframes hk-fx-phrase-win {
+  0% { box-shadow: 0 0 0 0 rgba(167, 139, 250, 0); transform: scale(1); }
+  30% { box-shadow: 0 0 20px 6px rgba(167, 139, 250, 0.55); transform: scale(1.02); }
+  60% { box-shadow: 0 0 10px 3px rgba(167, 139, 250, 0.3); transform: scale(1); }
+  100% { box-shadow: 0 0 0 0 rgba(167, 139, 250, 0); transform: scale(1); }
+}
+.hk-fx-phrase-win {
+  animation: hk-fx-phrase-win 900ms ease-out;
+  border-color: rgba(167, 139, 250, 0.8) !important;
+}
+.hk-fx-calm.hk-fx-phrase-win {
+  animation: none;
+  border-color: rgba(167, 139, 250, 1) !important;
+  background-color: rgba(167, 139, 250, 0.12);
+}
+
+@keyframes hk-fx-fever {
+  0%, 100% { box-shadow: 0 0 10px 2px rgba(251, 146, 60, 0.45); }
+  50% { box-shadow: 0 0 18px 5px rgba(251, 146, 60, 0.65); }
+}
+.hk-fx-fever {
+  animation: hk-fx-fever 1600ms ease-in-out infinite;
+  border-color: rgba(251, 146, 60, 0.8) !important;
+}
+.hk-fx-calm.hk-fx-fever {
+  animation: none;
+  border-color: rgba(251, 146, 60, 1) !important;
+  background-color: rgba(251, 146, 60, 0.1);
+}
+
+/* Lesson-complete celebration. */
+@keyframes hk-celebrate-pop {
+  0% { transform: scale(0.6); opacity: 0; }
+  60% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.hk-celebrate-pop { animation: hk-celebrate-pop 500ms cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+
+@keyframes hk-confetti-fall {
+  0% { transform: translateY(-12px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(340px) rotate(540deg); opacity: 0; }
+}
+.hk-confetti-piece {
+  position: absolute;
+  top: -12px;
+  animation: hk-confetti-fall 2.4s ease-in forwards;
+}
+
+@keyframes hk-rays-spin {
+  to { transform: rotate(360deg); }
+}
+.hk-rays {
+  animation: hk-rays-spin 24s linear infinite;
+}
+
+/* Confetti is decorative: hidden whenever motion is reduced. */
+@media (prefers-reduced-motion: reduce) {
+  .hk-confetti-piece,
+  .hk-rays {
+    display: none;
+  }
+}
+.hk-reduced-motion .hk-confetti-piece,
+.hk-reduced-motion .hk-rays {
+  display: none;
+}
+
 /* High contrast mode: solid black base, full-strength text, visible borders. */
 .hk-high-contrast body {
   background: #000;

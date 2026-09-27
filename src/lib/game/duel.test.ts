@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { buildDuel, duelPoints, rivalSkillForGrade, scoreDuel } from "./duel.ts";
+import {
+  buildDuel,
+  DUEL_REMATCH_COOLDOWN_MS,
+  duelPoints,
+  duelPointsForDay,
+  formatWaitMs,
+  rematchWaitMs,
+  rivalSkillForGrade,
+  scoreDuel,
+} from "./duel.ts";
 
 describe("buildDuel", () => {
   it("is deterministic per seed with pre-rolled rival answers", () => {
@@ -54,5 +63,56 @@ describe("duelPoints", () => {
     expect(duelPoints("win")).toBe(15);
     expect(duelPoints("draw")).toBe(5);
     expect(duelPoints("loss")).toBe(0);
+  });
+});
+
+describe("rematchWaitMs", () => {
+  it("is ready immediately when no duel has been played", () => {
+    expect(rematchWaitMs(0, 1_000_000)).toBe(0);
+    expect(rematchWaitMs(NaN, 1_000_000)).toBe(0);
+  });
+
+  it("enforces the cooldown after a duel", () => {
+    const last = 1_000_000;
+    expect(rematchWaitMs(last, last)).toBe(DUEL_REMATCH_COOLDOWN_MS);
+    expect(rematchWaitMs(last, last + 30_000)).toBe(DUEL_REMATCH_COOLDOWN_MS - 30_000);
+    expect(rematchWaitMs(last, last + DUEL_REMATCH_COOLDOWN_MS)).toBe(0);
+    expect(rematchWaitMs(last, last + DUEL_REMATCH_COOLDOWN_MS + 999)).toBe(0);
+  });
+});
+
+describe("duelPointsForDay", () => {
+  it("pays full points for the day's first duel", () => {
+    expect(duelPointsForDay("win", 0)).toBe(15);
+    expect(duelPointsForDay("draw", 0)).toBe(5);
+    expect(duelPointsForDay("loss", 0)).toBe(0);
+  });
+
+  it("diminishes returns for repeat duels the same day", () => {
+    expect(duelPointsForDay("win", 1)).toBe(8); // 15/2
+    expect(duelPointsForDay("win", 2)).toBe(5); // 15/3
+    expect(duelPointsForDay("win", 3)).toBe(4); // 15/4
+    expect(duelPointsForDay("draw", 1)).toBe(3); // 5/2
+    expect(duelPointsForDay("draw", 2)).toBe(2); // 5/3
+    expect(duelPointsForDay("draw", 5)).toBe(1);
+  });
+
+  it("never pays zero or negative for a scoring outcome", () => {
+    expect(duelPointsForDay("win", 100)).toBeGreaterThanOrEqual(1);
+    expect(duelPointsForDay("draw", 100)).toBeGreaterThanOrEqual(1);
+    expect(duelPointsForDay("loss", 100)).toBe(0);
+  });
+
+  it("treats negative counts as zero", () => {
+    expect(duelPointsForDay("win", -3)).toBe(15);
+  });
+});
+
+describe("formatWaitMs", () => {
+  it("formats countdowns legibly", () => {
+    expect(formatWaitMs(0)).toBe("0s");
+    expect(formatWaitMs(45_000)).toBe("45s");
+    expect(formatWaitMs(90_000)).toBe("1m 30s");
+    expect(formatWaitMs(61_200)).toBe("1m 2s");
   });
 });

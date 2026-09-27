@@ -7,13 +7,20 @@ import { emitEffect } from "../lib/game/effects.ts";
 import { playTone } from "../lib/game/audio.ts";
 import { authoredLessons, type TaskSpec } from "../lib/game/course.ts";
 import { dueConcepts, scheduleRecall } from "../lib/game/learning.ts";
-import { midiToLetter, nameToMidi } from "../lib/game/music.ts";
+import { nameToMidi } from "../lib/game/music.ts";
+import { intervalMissCopy } from "../lib/game/feedback.ts";
 import { notesNeedingWork, recentAccuracy } from "../lib/game/sr.ts";
+import {
+  buildTargetedTask,
+  confusionDue,
+  confusionKey,
+  difficultyFor,
+} from "../lib/game/adapt.ts";
 import type { NoteEvidence } from "../lib/game/schema.ts";
 import { useStore } from "../lib/game/store.ts";
 import { buildTask } from "../lib/game/tasks.ts";
 
-type Mode = "home" | "notes" | "concepts" | "tasks";
+type Mode = "home" | "notes" | "concepts" | "tasks" | "mixups";
 
 export function PracticeScreen() {
   const [mode, setMode] = useState<Mode>("home");
@@ -28,6 +35,7 @@ export function PracticeScreen() {
       {mode === "notes" && <NoteDrill />}
       {mode === "concepts" && <ConceptDrill />}
       {mode === "tasks" && <TaskReviewList />}
+      {mode === "mixups" && <ConfusionDrill />}
     </div>
   );
 }
@@ -37,6 +45,7 @@ function PracticeHome({ onPick }: { onPick: (m: Mode) => void }) {
   const now = Date.now();
   const needyNotes = notesNeedingWork(save.noteEvidence, now).length;
   const due = dueConcepts(save.concepts, now).length;
+  const mixups = confusionDue(save.confusion, now).length;
   const finishedWithTasks = authoredLessons().filter(
     (l) => save.lessons[l.id]?.step === "done" && l.tryTask,
   ).length;
@@ -63,10 +72,20 @@ function PracticeHome({ onPick }: { onPick: (m: Mode) => void }) {
         {card("notes", "🎹 Note reading", "See a note name, find it on the keyboard. Evidence is per exact note and octave.", needyNotes > 0 ? `${needyNotes} need work` : null)}
         {card("concepts", "🧠 Recall review", "Due concepts return as quick checks. Correct recall lengthens the interval; misses reset to one day.", due > 0 ? `${due} due` : null)}
         {card("tasks", "🛠️ Try-it again", "Redo practical tasks from finished lessons — a second look with fresh ears.", finishedWithTasks > 0 ? `${finishedWithTasks} available` : null)}
+        {card("mixups", "🔀 Untangle mix-ups", "Targeted recalls for pairs you've mixed up — short, spaced, and kind.", mixups > 0 ? `${mixups} to untangle` : null)}
       </div>
-      {needyNotes === 0 && due === 0 && (
+      {needyNotes === 0 && due === 0 && mixups === 0 && (
         <p className="mt-6 text-sm text-white/50">
-          Everything is fresh. New notes unlock as you play, or <Link to="/path" className="underline">keep walking the path</Link>.
+          Everything is fresh.{" "}
+          {accidentalsUnlocked(save.lessons) ? (
+            <>Sharps are in the drill mix now — </>
+          ) : (
+            <>
+              Finish “Semitones and Accidentals” (Chapter 2, Lesson 4) to add sharps
+              to this drill —{" "}
+            </>
+          )}
+          or <Link to="/path" className="underline">keep walking the path</Link>.
         </p>
       )}
     </div>
@@ -77,25 +96,61 @@ function PracticeHome({ onPick }: { onPick: (m: Mode) => void }) {
 // Note reading drill
 // ---------------------------------------------------------------------------
 
-const NOTE_RANGE = ["C4", "D4", "E4", "F4", "G4", "A4", "B4", "C5"];
+const NOTE_RANGE_WHITE = ["C4", "D4", "E4", "F4", "G4", "A4", "B4", "C5"];
+/** Black keys between C4 and C5, spelled as sharps to match the practice keyboard's key labels. */
+const NOTE_RANGE_ACCIDENTALS = ["C#4", "D#4", "F#4", "G#4", "A#4"];
 
-function pickTarget(evidence: Record<string, NoteEvidence>, exclude?: string, now = Date.now()): string {
+/**
+ * Whether the accidental range is unlocked: the player finished
+ * "Semitones and Accidentals" (ch2-l4), the lesson that teaches sharps/flats.
+ */
+export function accidentalsUnlocked(lessons: Record<string, { step: string }>): boolean {
+  return lessons["ch2-l4-accidentals"]?.step === "done";
+}
+
+export function drillRange(lessons: Record<string, { step: string }>): string[] {
+  return accidentalsUnlocked(lessons)
+    ? [...NOTE_RANGE_WHITE, ...NOTE_RANGE_ACCIDENTALS]
+    : NOTE_RANGE_WHITE;
+}
+
+function pickTarget(
+  evidence: Record<string, NoteEvidence>,
+  range: string[],
+  exclude?: string,
+  now = Date.now(),
+): string {
   const needy = notesNeedingWork(evidence, now)
-    .filter((e) => e.note !== exclude)
+    .filter((e) => e.note !== exclude && range.includes(e.note))
     .sort((a, b) => a.dueAt - b.dueAt);
   if (needy.length > 0) return needy[0]!.note;
-  const fresh = NOTE_RANGE.filter((n) => !evidence[n] && n !== exclude);
+  const fresh = range.filter((n) => !evidence[n] && n !== exclude);
   if (fresh.length > 0) return fresh[Math.floor(Math.random() * fresh.length)]!;
-  const pool = NOTE_RANGE.filter((n) => n !== exclude);
+  const pool = range.filter((n) => n !== exclude);
   return pool[Math.floor(Math.random() * pool.length)]!;
+}
+
+/** Render a note name like "C#4" with the letter big and the rest small. */
+function TargetName({ target }: { target: string }) {
+  const m = /^([A-G])([#♯b♭]?)(\d+)$/.exec(target);
+  if (!m) return <>{target}</>;
+  return (
+    <>
+      {m[1]}
+      {m[2] && <span className="text-3xl">{m[2] === "#" ? "♯" : m[2] === "b" ? "♭" : m[2]}</span>}
+      <span className="text-2xl text-white/50">{m[3]}</span>
+    </>
+  );
 }
 
 export function NoteDrill({ initialTarget }: { initialTarget?: string }) {
   const answerNote = useStore((s) => s.answerNote);
-  const [target, setTarget] = useState(() => initialTarget ?? pickTarget(useStore.getState().save.noteEvidence));
+  const lessons = useStore((s) => s.save.lessons);
+  const range = drillRange(lessons);
+  const [target, setTarget] = useState(() => initialTarget ?? pickTarget(useStore.getState().save.noteEvidence, range));
   const [recorded, setRecorded] = useState(false);
   const [heardTarget, setHeardTarget] = useState(false);
-  const [verdict, setVerdict] = useState<{ ok: boolean; cleared: boolean; firstTry: boolean } | null>(null);
+  const [verdict, setVerdict] = useState<{ ok: boolean; cleared: boolean; firstTry: boolean; coach?: string } | null>(null);
   const [lastTapped, setLastTapped] = useState<number | null>(null);
   const [rounds, setRounds] = useState(0);
   const [clearedCount, setClearedCount] = useState(0);
@@ -111,10 +166,15 @@ export function NoteDrill({ initialTarget }: { initialTarget?: string }) {
     const recent = recentAccuracy(historyRef.current.slice(-10));
     const cleared = answerNote(target, ok, correctFirstTry, recent);
     setRecorded(true);
-    setVerdict({ ok, cleared, firstTry: correctFirstTry });
+    setVerdict({
+      ok,
+      cleared,
+      firstTry: correctFirstTry,
+      coach: ok ? undefined : intervalMissCopy(nameToMidi(target), midi),
+    });
     setRounds((n) => n + 1);
     if (cleared) setClearedCount((n) => n + 1);
-    emitEffect({ event: ok && !heardTarget ? "correct" : ok ? "assisted" : "needs-work", cancelKey: `note-${target}` });
+    emitEffect({ event: ok && !heardTarget ? "correct" : ok ? "assisted" : "needs-work", anchor: "note-drill-card", cancelKey: `note-${target}` });
   };
 
   const hearTarget = () => {
@@ -123,7 +183,7 @@ export function NoteDrill({ initialTarget }: { initialTarget?: string }) {
   };
 
   const next = () => {
-    setTarget((t) => pickTarget(useStore.getState().save.noteEvidence, t));
+    setTarget((t) => pickTarget(useStore.getState().save.noteEvidence, range, t));
     setRecorded(false);
     setHeardTarget(false);
     setVerdict(null);
@@ -137,11 +197,10 @@ export function NoteDrill({ initialTarget }: { initialTarget?: string }) {
         Round {rounds + 1} · {clearedCount} cleared this session
       </p>
 
-      <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
+      <div id="note-drill-card" className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
         <p className="text-sm text-white/60">Find this note on the keyboard</p>
         <p className="mt-2 text-5xl font-bold tracking-wide" aria-live="polite">
-          {midiToLetter(nameToMidi(target))}
-          <span className="text-2xl text-white/50">{target.replace(/^[A-G]/, "")}</span>
+          <TargetName target={target} />
         </p>
         <button type="button" onClick={hearTarget} className="mt-3 text-sm text-white/60 underline">
           🔊 Hear the target (counts as a hint)
@@ -161,6 +220,9 @@ export function NoteDrill({ initialTarget }: { initialTarget?: string }) {
             </>
           ) : (
             <>Not quite — wrong key. Look for {target} on the keyboard and try again, or hear the target first.</>
+          )}
+          {verdict.coach && (
+            <p className="mt-2 text-white/70">🎯 {verdict.coach}</p>
           )}
           <div className="mt-3">
             <button
@@ -354,7 +416,12 @@ function TaskReviewCard({
   open: boolean;
   onToggle: () => void;
 }) {
-  const task = useMemo(() => buildTask(lessonId, spec), [lessonId, spec]);
+  const save = useStore((s) => s.save);
+  const task = useMemo(() => {
+    // Adaptive engine (Phase 1): same per-domain difficulty as the lesson.
+    const diff = difficultyFor(spec.kind, save.adaptiveAttempts[spec.kind]);
+    return buildTask(lessonId, spec, diff.level);
+  }, [lessonId, spec, save.adaptiveAttempts]);
   return (
     <div className="rounded-xl border border-white/10 bg-white/5 p-4">
       <button type="button" onClick={onToggle} className="w-full text-left font-semibold">
@@ -365,6 +432,93 @@ function TaskReviewCard({
           <TaskPlayer lessonId={lessonId} task={task} />
         </div>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Confusion drill: targeted recall for mixed-up pairs
+// ---------------------------------------------------------------------------
+
+const DOMAIN_LABELS: Record<string, string> = {
+  "note-id": "note names",
+  "interval-id": "intervals",
+  "scale-id": "scales",
+  "chord-id": "chords",
+};
+
+function ConfusionDrill() {
+  const save = useStore((s) => s.save);
+  const recordConfusionRecall = useStore((s) => s.recordConfusionRecall);
+  const [openKey, setOpenKey] = useState<string | null>(null);
+  const [salt, setSalt] = useState(0);
+  const recordedRef = useRef<Set<string>>(new Set());
+  const due = confusionDue(save.confusion);
+
+  if (due.length === 0) {
+    return (
+      <div>
+        <h1 className="text-2xl font-bold">🔀 Untangle mix-ups</h1>
+        <p className="mt-2 text-sm text-white/60">
+          No mix-ups due right now. When you confuse two answers, they'll show up here
+          for a quick targeted recall.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h1 className="text-2xl font-bold">🔀 Untangle mix-ups</h1>
+      <p className="mt-1 text-sm text-white/60">
+        Short targeted recalls for pairs you've mixed up. Getting one right spaces the
+        next review further out — misses bring it back sooner. Nothing here gates lessons.
+      </p>
+      <div className="mt-4 space-y-3">
+        {due.map((pair) => {
+          const key = confusionKey(pair.domain, pair.correct, pair.chosen);
+          const task = buildTargetedTask(pair.domain, pair.correct, salt);
+          if (!task) return null;
+          const open = openKey === key;
+          return (
+            <div key={key} className="rounded-xl border border-white/10 bg-white/5 p-4">
+              <button
+                type="button"
+                onClick={() => setOpenKey(open ? null : key)}
+                className="w-full text-left"
+              >
+                <span className="font-semibold">
+                  {pair.correct} <span className="font-normal text-white/50">vs {pair.chosen}</span>
+                </span>
+                <span className="mt-1 block text-xs text-white/50">
+                  {DOMAIN_LABELS[pair.domain] ?? pair.domain} · mixed up {pair.misses}×{" "}
+                  <span className="text-white/40">{open ? "▾" : "▸"}</span>
+                </span>
+              </button>
+              {open && (
+                <div className="mt-3">
+                  <TaskPlayer
+                    task={task}
+                    onResult={(r) => {
+                      const once = `${key}:${salt}`;
+                      if (recordedRef.current.has(once)) return;
+                      recordedRef.current.add(once);
+                      recordConfusionRecall(pair.domain, pair.correct, r.correct && !r.assisted);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setSalt((n) => n + 1)}
+                    className="mt-3 rounded-xl border border-white/20 px-4 py-2 text-sm text-white/80"
+                  >
+                    Another one →
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

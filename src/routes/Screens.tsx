@@ -1,48 +1,15 @@
-import { useState } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useStore } from "../lib/game/store.ts";
-import { TeachingPlayer } from "../components/game/TeachingPlayer.tsx";
 import { QuestStrip } from "../components/game/QuestStrip.tsx";
+import { ProfileSwitcher } from "../components/game/ProfileSwitcher.tsx";
+import { OnboardingFlow } from "../components/game/OnboardingFlow.tsx";
 import { SkillRatings } from "../components/game/SkillRatings.tsx";
 import { resolveAvatar } from "../lib/game/shop.ts";
 import { CHAPTERS, authoredLessons } from "../lib/game/course.ts";
+import { masteryForLesson } from "../lib/game/adapt.ts";
 
 export function OnboardingScreen() {
-  const update = useStore((s) => s.update);
-  const navigate = useNavigate();
-  const [heard, setHeard] = useState(false);
-
-  const start = () => {
-    update((s) => ({ ...s, onboarded: true }));
-    navigate({ to: "/lesson/$lessonId", params: { lessonId: "ch1-l1-pitch" } });
-  };
-
-  return (
-    <div className="mx-auto flex min-h-[80vh] max-w-xl flex-col justify-center p-6">
-      <div className="text-6xl" aria-hidden>⚔️</div>
-      <h1 className="mt-4 text-3xl font-bold">Quest of the Harmony Knight</h1>
-      <p className="mt-3 leading-relaxed text-white/80">
-        Music theory in short, focused sessions. Learn one idea, try it, recall it — then return
-        to your saved place. No account. Your progress stays in this browser.
-      </p>
-      <div className="mt-6" onClick={() => setHeard(true)}>
-        <TeachingPlayer
-          midis={[60, 64, 67, 72]}
-          caption="Optional: hear what a lesson sounds like. A rising major arpeggio."
-          lane="onboarding"
-        />
-      </div>
-      {heard && <p className="mt-2 text-sm text-emerald-300">That's the sound of C major climbing upward.</p>}
-      <button
-        type="button"
-        onClick={start}
-        className="mt-8 rounded-xl bg-indigo-500 px-6 py-4 text-lg font-bold text-white"
-      >
-        Begin the first lesson
-      </button>
-      <p className="mt-3 text-center text-sm text-white/50">About 3 minutes. Untimed. You can stop anytime.</p>
-    </div>
-  );
+  return <OnboardingFlow />;
 }
 
 export function HomeScreen() {
@@ -61,7 +28,8 @@ export function HomeScreen() {
 
   return (
     <div className="mx-auto max-w-2xl p-4 sm:p-6">
-      <h1 className="flex items-center gap-3 text-2xl font-bold">
+      <ProfileSwitcher />
+      <h1 className="mt-4 flex items-center gap-3 text-2xl font-bold">
         <span className="text-4xl" role="img" aria-label={`Avatar: ${avatar.name}`}>
           {avatar.emoji}
         </span>
@@ -93,8 +61,10 @@ export function HomeScreen() {
         </Link>
       ) : (
         <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5">
-          <p className="font-semibold">Chapter 1 complete — well played, knight.</p>
-          <p className="mt-1 text-sm text-white/60">More chapters are being authored.</p>
+          <p className="font-semibold">Quest complete — every authored lesson is done. Well played, knight.</p>
+          <p className="mt-1 text-sm text-white/60">
+            Revisit any lesson from the learning path, keep recalls fresh in Practice, or try for the next grade.
+          </p>
         </div>
       )}
 
@@ -171,17 +141,36 @@ export function LearningPathScreen() {
       <div className="mt-6 space-y-6">
         {CHAPTERS.map((ch) => {
           const bodies = new Map(authoredLessons().map((l) => [l.id, l]));
+          const authored = ch.lessons.filter((l) => bodies.has(l.id));
+          const masteredCount = authored.filter((l) =>
+            masteryForLesson(save.lessons[l.id]).mastered,
+          ).length;
           return (
             <section key={ch.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
               <h2 className="font-bold">
                 Chapter {ch.index + 1} · {ch.title}
               </h2>
-              <p className="text-sm italic text-white/50">{ch.theme}</p>
+              <p className="text-sm italic text-white/50">
+                {ch.theme}
+                {authored.length > 0 && masteredCount > 0 && (
+                  <span className="ml-2 not-italic text-emerald-300/80">
+                    · {masteredCount}/{authored.length} mastered 🌟
+                  </span>
+                )}
+              </p>
               <ol className="mt-3 space-y-2">
                 {ch.lessons.map((l) => {
                   const done = save.lessons[l.id]?.step === "done";
                   const started = !!save.lessons[l.id];
                   const authored = bodies.has(l.id);
+                  const mastered = masteryForLesson(save.lessons[l.id]).mastered;
+                  const status = done
+                    ? mastered
+                      ? "🌟 Mastered"
+                      : "✓ Done"
+                    : started
+                      ? `Resume: ${save.lessons[l.id]!.step}`
+                      : "Start";
                   return (
                     <li key={l.id}>
                       {authored ? (
@@ -192,7 +181,7 @@ export function LearningPathScreen() {
                         >
                           <span className={done ? "text-white/50 line-through" : ""}>{l.title}</span>
                           <span className="text-sm text-white/50">
-                            {done ? "✓ Done" : started ? `Resume: ${save.lessons[l.id]!.step}` : "Start"}
+                            {status}
                           </span>
                         </Link>
                       ) : (

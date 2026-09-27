@@ -47,6 +47,13 @@ export function GamesScreen() {
       meta: creationCount > 0 ? `${creationCount} saved` : "No creations yet",
     },
     {
+      to: "/contest",
+      icon: "🏆",
+      title: "Contest",
+      blurb: "Weekly creation contest: enter your pieces, vote head-to-heads, top the local board.",
+      meta: "Bots welcome",
+    },
+    {
       to: "/grades",
       icon: "🏅",
       title: "Grades",

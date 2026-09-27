@@ -1,8 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { DuelGame, type DuelResult } from "../components/game/DuelGame.tsx";
-import { duelPoints } from "../lib/game/duel.ts";
+import { duelPoints, duelPointsForDay, formatWaitMs, rematchWaitMs } from "../lib/game/duel.ts";
+import { todayKey } from "../lib/game/quests.ts";
 import { useStore } from "../lib/game/store.ts";
+
+type LastDuel = DuelResult & { points: number; reduced: boolean };
 
 export function DuelScreen() {
   const grade = useStore((s) => s.save.grade);
@@ -10,12 +13,30 @@ export function DuelScreen() {
   const addPoints = useStore((s) => s.addPoints);
   const stats = useStore((s) => s.save.gameStats);
   const [runId, setRunId] = useState(0);
-  const [last, setLast] = useState<DuelResult | null>(null);
+  const [last, setLast] = useState<LastDuel | null>(null);
+  // Ticking clock for the rematch cooldown countdown.
+  const [now, setNow] = useState(() => Date.now());
+
+  const waitMs = rematchWaitMs(stats.lastDuelAt, now);
+  useEffect(() => {
+    if (waitMs <= 0) return;
+    const t = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(t);
+  }, [waitMs]);
 
   const onFinish = (r: DuelResult) => {
-    setLast(r);
+    // Diminishing returns: count today's duels BEFORE recording this one.
+    const playedToday = useStore.getState().save.gameStats.duelDayCounts[todayKey()] ?? 0;
+    const points = duelPointsForDay(r.outcome, playedToday);
     recordDuelResult(r.outcome);
-    addPoints(duelPoints(r.outcome));
+    addPoints(points);
+    setLast({ ...r, points, reduced: playedToday > 0 && points < duelPoints(r.outcome) });
+  };
+
+  const rematch = () => {
+    setLast(null);
+    setRunId((n) => n + 1);
+    setNow(Date.now());
   };
 
   return (
@@ -29,8 +50,12 @@ export function DuelScreen() {
       <p className="mt-1 text-white/70">
         Spar against the <span className="font-semibold text-rose-300">Discord Sentinel</span>:
         six rounds of ear-training questions, only first attempts count. The Sentinel
-        sharpens as your grade rises. Duels feed your harmony grade — lessons stay open
-        either way.
+        sharpens as your grade rises. Duels earn harmony points and sharpen your ear —
+        your grade itself is won in the Grades trials. Lessons stay open either way.
+      </p>
+      <p className="mt-1 text-xs text-white/40">
+        Fair-play rules: a short breather between rematches, and repeat duels on the
+        same day earn fewer points.
       </p>
       <div className="mt-4" key={runId}>
         <DuelGame grade={grade} onFinish={onFinish} />
@@ -38,13 +63,12 @@ export function DuelScreen() {
       <div className="mt-3 flex gap-2">
         <button
           type="button"
-          onClick={() => {
-            setLast(null);
-            setRunId((n) => n + 1);
-          }}
-          className="rounded-xl border border-white/20 px-4 py-2"
+          onClick={rematch}
+          disabled={waitMs > 0}
+          title={waitMs > 0 ? "Catch your breath — the Sentinel is resetting the board." : "Duel again"}
+          className="rounded-xl border border-white/20 px-4 py-2 disabled:opacity-40"
         >
-          Rematch
+          {waitMs > 0 ? `Rematch in ${formatWaitMs(waitMs)}` : "Rematch"}
         </button>
         <Link to="/games" className="rounded-xl border border-white/20 px-4 py-2 text-white/70">
           ← Games
@@ -53,9 +77,9 @@ export function DuelScreen() {
       {last && (
         <p className="mt-2 text-sm text-white/50" role="status">
           {last.outcome === "win"
-            ? `Victory — +${duelPoints(last.outcome)} harmony points.`
+            ? `Victory — +${last.points} harmony points${last.reduced ? " (repeat duel today: reduced)" : ""}.`
             : last.outcome === "draw"
-              ? `Draw — +${duelPoints(last.outcome)} harmony points.`
+              ? `Draw — +${last.points} harmony points${last.reduced ? " (repeat duel today: reduced)" : ""}.`
               : "Defeat — no points, but the ear remembers."}
         </p>
       )}

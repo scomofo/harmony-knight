@@ -195,6 +195,12 @@ export function StudyDrillScreen() {
     });
   }, [study, drillNo]);
 
+  const task = useMemo(
+    () => (study ? buildTask(`study:${study.id}`, specs[round]!) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [study?.id, drillNo, round],
+  );
+
   if (!study) {
     return (
       <div className="mx-auto max-w-2xl p-4">
@@ -206,20 +212,13 @@ export function StudyDrillScreen() {
     );
   }
 
-  const spec = specs[round]!;
-  const task = useMemo(
-    () => buildTask(`study:${study.id}`, spec),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [study.id, drillNo, round],
-  );
-
   const onResult = (r: { correct: boolean; firstTry: boolean }) => {
     if (!answered && r.correct) {
       setAnswered(true);
       if (r.firstTry) {
         setFirstTryCount((n) => n + 1);
         addPoints(2);
-        emitEffect({ event: "correct", cancelKey: `study-${study.id}-${round}` });
+        emitEffect({ event: "correct", anchor: "study-drill", cancelKey: `study-${study.id}-${round}` });
       }
     }
   };
@@ -227,7 +226,7 @@ export function StudyDrillScreen() {
   const next = () => {
     if (round + 1 >= DRILL_ROUNDS) {
       setDone(true);
-      emitEffect({ event: "phrase-win", cancelKey: `study-${study.id}-done` });
+      emitEffect({ event: "phrase-win", anchor: "study-drill", cancelKey: `study-${study.id}-done` });
     } else {
       setRound((r) => r + 1);
       setAnswered(false);
@@ -268,7 +267,7 @@ export function StudyDrillScreen() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl p-4">
+    <div id="study-drill" className="mx-auto max-w-2xl p-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold">{study.title} drill</h1>
         <p className="text-sm text-white/60">
@@ -276,7 +275,7 @@ export function StudyDrillScreen() {
         </p>
       </div>
       <div className="mt-3" key={`${drillNo}-${round}`}>
-        <TaskPlayer task={task} onResult={onResult} />
+        <TaskPlayer task={task!} onResult={onResult} />
       </div>
       <div className="mt-3 flex gap-2">
         <button

@@ -23,10 +23,13 @@ import {
 } from "../lib/game/curriculum.ts";
 import { authoredLessons } from "../lib/game/course.ts";
 import {
+  PROFILES_KEY,
   defaultSave,
   exportSave,
   importSave,
+  validateProfiles,
   validateSave,
+  type ProfilesData,
 } from "../lib/game/schema.ts";
 import { useStore } from "../lib/game/store.ts";
 import {
@@ -162,10 +165,11 @@ describe("grade rules", () => {
   it("grade persists across a save/load round-trip", async () => {
     useStore.getState().update((s) => ({ ...s, grade: 7 }));
     await flushPersist();
-    const raw = window.localStorage.getItem("harmony-knight-save-v1");
+    const raw = window.localStorage.getItem(PROFILES_KEY);
     expect(raw).toBeTruthy();
-    const loaded = importSave(raw!);
-    expect(loaded?.grade).toBe(7);
+    const parsed = JSON.parse(raw!) as ProfilesData;
+    expect(validateProfiles(parsed)).toBe(true);
+    expect(parsed.profiles[parsed.activeProfileId].save.grade).toBe(7);
   });
 });
 
@@ -210,15 +214,17 @@ describe("persistence", () => {
     s.answerNote("C4", true, true, 1);
     s.recordConcept({ conceptId: "pulse", intervalDays: 1, dueAt: Date.now(), lastResult: "correct" });
     // Not yet: the write is debounced.
-    expect(window.localStorage.getItem("harmony-knight-save-v1")).toBeNull();
+    expect(window.localStorage.getItem(PROFILES_KEY)).toBeNull();
     await flushPersist();
-    const raw = window.localStorage.getItem("harmony-knight-save-v1");
+    const raw = window.localStorage.getItem(PROFILES_KEY);
     expect(raw).toBeTruthy();
-    const parsed = JSON.parse(raw!);
-    expect(validateSave(parsed)).toBe(true);
-    expect(parsed.lessons["ch1-l1-pitch"].completionPointsAwarded).toBe(true);
-    expect(parsed.noteEvidence["C4"].lastCorrect).toBe(true);
-    expect(parsed.concepts["pulse"].intervalDays).toBe(1);
+    const parsed = JSON.parse(raw!) as ProfilesData;
+    expect(validateProfiles(parsed)).toBe(true);
+    const save = parsed.profiles[parsed.activeProfileId].save;
+    expect(validateSave(save)).toBe(true);
+    expect(save.lessons["ch1-l1-pitch"].completionPointsAwarded).toBe(true);
+    expect(save.noteEvidence["C4"].lastCorrect).toBe(true);
+    expect(save.concepts["pulse"].intervalDays).toBe(1);
   });
 
   it("export/import round-trips the whole save", () => {

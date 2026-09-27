@@ -23,13 +23,16 @@ function dayKeys(n: number): string[] {
 }
 
 /**
- * Grown-ups dashboard: mastered and struggling skills from the skill
- * ratings, plus ONE concrete weekly suggestion. Streaks are deliberately
- * absent — skill growth is the story here. Behind a 4-digit kid-gate PIN —
- * a speed bump for little fingers, not real security (everything is local).
+ * Grown-ups dashboard: what the learner has done, where they're thriving,
+ * and what might need practice — mastered and struggling skills from the
+ * skill ratings, plus ONE concrete weekly suggestion. Streaks are
+ * deliberately absent — skill growth is the story here. Behind a 4-digit
+ * kid-gate PIN — a speed bump for little fingers, not real security
+ * (everything is local). The PIN is per-device: one gate for every
+ * learner profile on this device.
  */
 export function GrownUpsScreen() {
-  const pin = useStore((s) => s.save.settings.grownUpsPin);
+  const pin = useStore((s) => s.grownUpsPin);
   const [unlocked, setUnlocked] = useState(false);
   const [changing, setChanging] = useState(false);
 
@@ -50,8 +53,8 @@ export function GrownUpsScreen() {
 }
 
 function PinGate({ mode, onDone }: { mode: "set" | "enter"; onDone: () => void }) {
-  const pin = useStore((s) => s.save.settings.grownUpsPin);
-  const updateSettings = useStore((s) => s.updateSettings);
+  const pin = useStore((s) => s.grownUpsPin);
+  const setGrownUpsPin = useStore((s) => s.setGrownUpsPin);
   const [first, setFirst] = useState("");
   const [second, setSecond] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +64,7 @@ function PinGate({ mode, onDone }: { mode: "set" | "enter"; onDone: () => void }
     if (mode === "set") {
       if (!/^\d{4}$/.test(first)) return setError("PINs are 4 digits.");
       if (first !== second) return setError("Those PINs don't match — try again.");
-      updateSettings({ grownUpsPin: first });
+      setGrownUpsPin(first);
       onDone();
     } else {
       if (first === pin) onDone();

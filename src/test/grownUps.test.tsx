@@ -64,11 +64,11 @@ describe("PIN gate", () => {
     fireEvent.change(inputs[1], { target: { value: "1234" } });
     fireEvent.click(screen.getByRole("button", { name: "Set PIN" }));
     expect(await screen.findByText("Learning days")).toBeTruthy();
-    expect(useStore.getState().save.settings.grownUpsPin).toBe("1234");
+    expect(useStore.getState().grownUpsPin).toBe("1234");
   });
 
   it("a wrong PIN stays locked; the right PIN unlocks", async () => {
-    useStore.getState().updateSettings({ grownUpsPin: "9999" });
+    useStore.getState().setGrownUpsPin("9999");
     renderGrownUps();
     expect(await screen.findByLabelText("Grown-ups PIN")).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Grown-ups PIN"), { target: { value: "0000" } });
@@ -83,7 +83,7 @@ describe("PIN gate", () => {
 
 describe("dashboard content", () => {
   function unlock() {
-    useStore.getState().updateSettings({ grownUpsPin: "1234" });
+    useStore.getState().setGrownUpsPin("1234");
     renderGrownUps();
     return screen.findByLabelText("Grown-ups PIN").then((input) => {
       fireEvent.change(input, { target: { value: "1234" } });
