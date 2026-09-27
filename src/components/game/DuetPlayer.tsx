@@ -69,7 +69,7 @@ export function DuetPlayer({
   };
 
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5 p-3" data-testid="duet-player">
+    <div id={lane} className="rounded-xl border border-white/10 bg-white/5 p-3" data-testid="duet-player">
       <p className="text-sm text-white/80">{caption}</p>
       <div className="mt-2 flex items-center gap-2">
         {playing ? (

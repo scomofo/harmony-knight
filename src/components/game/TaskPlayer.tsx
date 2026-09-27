@@ -63,6 +63,7 @@ export function TaskPlayer({
     if (ok) setSolved(true);
     emitEffect({
       event: ok && !assisted ? "correct" : ok ? "assisted" : "needs-work",
+      anchor: `task-${task.taskId}`,
       cancelKey: task.taskId,
     });
   };
@@ -75,7 +76,7 @@ export function TaskPlayer({
   };
 
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5 p-4" data-testid="task-player">
+    <div id={`task-${task.taskId}`} className="rounded-xl border border-white/10 bg-white/5 p-4" data-testid="task-player">
       <h2 className="font-semibold">Try it yourself</h2>
       <p className="mt-2 text-white/80">{task.prompt}</p>
 

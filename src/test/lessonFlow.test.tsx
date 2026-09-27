@@ -112,10 +112,11 @@ describe("lesson flow", () => {
       expect(screen.getByText(/Only the loudness changed/)).toBeTruthy(),
     );
 
-    // 7. Finish the lesson.
+    // 7. Finish the lesson — the celebration shows stats, not the old copy.
     fireEvent.click(screen.getByText("Finish lesson"));
-    await waitFor(() => expect(screen.getByText("Lesson complete")).toBeTruthy());
-    expect(screen.getByText(/harmony points — first completion/)).toBeTruthy();
+    await waitFor(() => expect(screen.getByText(/Beautiful work!/)).toBeTruthy());
+    expect(screen.getByText(/1\/2 first try/)).toBeTruthy();
+    expect(screen.getByText(/harmony points/)).toBeTruthy();
 
     // 8. Store reflects the finished lesson.
     const save = useStore.getState().save;

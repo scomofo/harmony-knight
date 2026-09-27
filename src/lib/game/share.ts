@@ -3,11 +3,12 @@
  *
  * A share link carries the whole melody in the URL (base64url JSON), so
  * anyone opening it can listen — no account, no server. WAV export renders
- * the same sine-with-envelope tone the composer plays, offline, via
- * OfflineAudioContext.
+ * the creation with the same sampled piano voice the composer hears,
+ * offline, via OfflineAudioContext.
  */
-import { midiToFreq } from "./music.ts";
 import { parseCreationData } from "./creations.ts";
+import { getVoice, type VoiceId } from "./audio.ts";
+import { renderVoiceNote } from "./voice.ts";
 
 export type SharedCreation = {
   name: string;
@@ -67,10 +68,11 @@ export function shareUrl(name: string, notes: number[]): string {
 /** Render the melody to a 16-bit PCM WAV blob. Needs a real browser. */
 export async function renderCreationWav(
   notes: number[],
-  opts: { noteDuration?: number; gap?: number } = {},
+  opts: { noteDuration?: number; gap?: number; voice?: VoiceId } = {},
 ): Promise<Blob> {
   const noteDuration = opts.noteDuration ?? 0.5;
   const gap = opts.gap ?? 0.05;
+  const voice = opts.voice ?? getVoice();
   const sampleRate = 44100;
   const total = notes.length * (noteDuration + gap) + 0.2;
   const ctx = new OfflineAudioContext(1, Math.ceil(total * sampleRate), sampleRate);
@@ -78,19 +80,8 @@ export async function renderCreationWav(
   let onset = 0;
   for (const midi of notes) {
     if (midi >= 0) {
-      // Same voice as the composer: sine with a quick attack and gentle release.
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(midiToFreq(midi), onset);
-      gain.gain.setValueAtTime(0.0001, onset);
-      gain.gain.exponentialRampToValueAtTime(0.5, onset + 0.02);
-      gain.gain.setValueAtTime(0.5, onset + Math.max(0.02, noteDuration - 0.08));
-      gain.gain.exponentialRampToValueAtTime(0.0001, onset + noteDuration);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(onset);
-      osc.stop(onset + noteDuration + 0.05);
+      // Same voice the composer hears: sampled piano by default.
+      await renderVoiceNote(ctx, voice, midi, onset, noteDuration);
     }
     onset += noteDuration + gap;
   }
