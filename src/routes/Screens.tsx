@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useStore } from "../lib/game/store.ts";
 import { QuestStrip } from "../components/game/QuestStrip.tsx";
+import { ProfileSwitcher } from "../components/game/ProfileSwitcher.tsx";
 import { OnboardingFlow } from "../components/game/OnboardingFlow.tsx";
 import { CHAPTERS, authoredLessons } from "../lib/game/course.ts";
 
@@ -23,7 +24,8 @@ export function HomeScreen() {
 
   return (
     <div className="mx-auto max-w-2xl p-4 sm:p-6">
-      <h1 className="text-2xl font-bold">Your quest</h1>
+      <ProfileSwitcher />
+      <h1 className="mt-4 text-2xl font-bold">Your quest</h1>
       <p className="mt-1 text-white/60">
         {save.harmonyPoints} harmony points · Grade {save.grade} · {save.learningDays.length} learning days
       </p>

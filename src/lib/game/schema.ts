@@ -64,8 +64,9 @@ export type Settings = {
   focusMode: boolean;
   sessionMinutes: number;
   playbackSpeed: 1 | 0.75 | 0.5;
-  /** Kid-gate for the grown-ups dashboard. Null until a grown-up sets one. */
-  grownUpsPin: string | null;
+  // NOTE: the grown-ups PIN is intentionally NOT here. It is device-level
+  // (see DeviceSettings below), not per-profile, so siblings sharing a
+  // device share one grown-ups gate.
 };
 
 /* ------------------------------------------------------------------ */
@@ -153,7 +154,6 @@ export function defaultSettings(): Settings {
     focusMode: true,
     sessionMinutes: 20,
     playbackSpeed: 1,
-    grownUpsPin: null,
   };
 }
 
@@ -369,12 +369,13 @@ function validSettings(s: unknown): s is Settings {
     typeof s.sessionMinutes === "number" &&
     s.sessionMinutes >= 1 &&
     s.sessionMinutes <= 60 &&
-    (s.playbackSpeed === 1 || s.playbackSpeed === 0.75 || s.playbackSpeed === 0.5) &&
-    (s.grownUpsPin === null || typeof s.grownUpsPin === "string")
+    (s.playbackSpeed === 1 || s.playbackSpeed === 0.75 || s.playbackSpeed === 0.5)
+    // grownUpsPin is no longer part of Settings (device-level now); a stale
+    // copy lingering in an old persisted save is simply ignored.
   );
 }
 
-function validProfile(v: unknown): v is PlayerProfile {
+function validPlayerProfile(v: unknown): v is PlayerProfile {
   if (!isRecord(v)) return false;
   const oneOf = (x: unknown, allowed: readonly string[]) =>
     typeof x === "string" && allowed.includes(x);
@@ -453,7 +454,7 @@ export function validateSave(data: unknown): data is SaveData {
   if (typeof data.createdAt !== "number" || typeof data.updatedAt !== "number") return false;
   if (typeof data.onboarded !== "boolean") return false;
   if (!validSettings(data.settings)) return false;
-  if (!validProfile(data.profile)) return false;
+  if (!validPlayerProfile(data.profile)) return false;
   if (!recordOfRecords(data.lessons) || !recordOfRecords(data.concepts) || !recordOfRecords(data.noteEvidence))
     return false;
   if (typeof data.harmonyPoints !== "number" || !Number.isFinite(data.harmonyPoints) || data.harmonyPoints < 0)
@@ -492,4 +493,186 @@ export function importSave(json: string): SaveData | null {
     return null;
   }
   return migrateSave(parsed);
+}
+
+/* ------------------------------------------------------------------ */
+/* Multi-profile container (household)                                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Household profiles: one device can hold several learners, each with a
+ * full independent SaveData. The container is versioned separately from
+ * SaveData; a pre-profiles single save migrates into one "Default" profile.
+ * Everything stays in localStorage (PWA offline-safe).
+ */
+export const PROFILES_VERSION = 1;
+export const PROFILES_KEY = "harmony-knight-profiles-v1";
+
+export type ProfileData = {
+  id: string;
+  name: string;
+  /** Emoji from PROFILE_AVATARS. */
+  avatar: string;
+  createdAt: number;
+  save: SaveData;
+};
+
+/** Per-device (not per-profile) settings. */
+export type DeviceSettings = {
+  /** Kid-gate for the grown-ups dashboard. Null until a grown-up sets one. */
+  grownUpsPin: string | null;
+};
+
+export type ProfilesData = {
+  version: number;
+  activeProfileId: string;
+  profiles: Record<string, ProfileData>;
+  device: DeviceSettings;
+};
+
+/** Kid-friendly avatar choices for the profile picker. */
+export const PROFILE_AVATARS = [
+  "⚔️",
+  "🐉",
+  "🦊",
+  "🐱",
+  "🦄",
+  "🤖",
+  "🦉",
+  "🐸",
+  "🐼",
+  "🚀",
+  "⭐",
+  "👻",
+] as const;
+
+export const MAX_PROFILE_NAME_LENGTH = 24;
+
+/** Collision-resistant profile id. */
+export function newProfileId(): string {
+  const rand = Math.floor(Math.random() * 0xffffffff).toString(36);
+  return `p_${Date.now().toString(36)}_${rand}`;
+}
+
+/** Trim + clamp a profile name; falls back to "Knight" when blank. */
+export function sanitizeProfileName(name: unknown): string {
+  const clean = typeof name === "string" ? name.trim().slice(0, MAX_PROFILE_NAME_LENGTH) : "";
+  return clean.length > 0 ? clean : "Knight";
+}
+
+/** Keep only avatars from the curated set; unknown values get the knight. */
+export function sanitizeAvatar(avatar: unknown): string {
+  return typeof avatar === "string" && (PROFILE_AVATARS as readonly string[]).includes(avatar)
+    ? avatar
+    : PROFILE_AVATARS[0];
+}
+
+export function defaultDeviceSettings(): DeviceSettings {
+  return { grownUpsPin: null };
+}
+
+export function newProfile(name: string, avatar: string): ProfileData {
+  const now = Date.now();
+  return {
+    id: newProfileId(),
+    name: sanitizeProfileName(name),
+    avatar: sanitizeAvatar(avatar),
+    createdAt: now,
+    save: defaultSave(),
+  };
+}
+
+/** Fresh container: a single "Default" profile, nothing else. */
+export function defaultProfiles(): ProfilesData {
+  const profile = newProfile("Default", PROFILE_AVATARS[0]);
+  return {
+    version: PROFILES_VERSION,
+    activeProfileId: profile.id,
+    profiles: { [profile.id]: profile },
+    device: defaultDeviceSettings(),
+  };
+}
+
+function validProfile(p: unknown, key: string): p is ProfileData {
+  if (!isRecord(p)) return false;
+  return (
+    p.id === key &&
+    typeof p.name === "string" &&
+    p.name.length > 0 &&
+    p.name.length <= MAX_PROFILE_NAME_LENGTH &&
+    typeof p.avatar === "string" &&
+    p.avatar.length > 0 &&
+    typeof p.createdAt === "number" &&
+    Number.isFinite(p.createdAt) &&
+    validateSave(p.save)
+  );
+}
+
+function validDeviceSettings(v: unknown): v is DeviceSettings {
+  if (!isRecord(v)) return false;
+  return v.grownUpsPin === null || typeof v.grownUpsPin === "string";
+}
+
+/**
+ * Validate an imported profiles container. Never throws; returns false for
+ * anything unsafe to adopt.
+ */
+export function validateProfiles(data: unknown): data is ProfilesData {
+  if (!isRecord(data)) return false;
+  if (data.version !== PROFILES_VERSION) return false;
+  if (typeof data.activeProfileId !== "string" || data.activeProfileId.length === 0) return false;
+  if (!isRecord(data.profiles)) return false;
+  const entries = Object.entries(data.profiles);
+  if (entries.length === 0) return false;
+  if (!entries.every(([key, p]) => validProfile(p, key))) return false;
+  if (!(data.activeProfileId in data.profiles)) return false;
+  if (!validDeviceSettings(data.device)) return false;
+  // ~8MB cap keeps quota failures predictable across several profiles.
+  try {
+    if (JSON.stringify(data).length > 8 * 1024 * 1024) return false;
+  } catch {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Migrate unknown persisted data into a ProfilesData container. Accepts:
+ *  - a profiles container at PROFILES_VERSION (validated as-is), or
+ *  - a pre-profiles single save (schema v1..v3): migrated through the save
+ *    chain and wrapped into one "Default" profile. The grown-ups PIN, if
+ *    set on the old save, moves to device level.
+ * Returns null when the data cannot be adopted safely.
+ */
+export function migrateToProfiles(raw: unknown): ProfilesData | null {
+  if (!isRecord(raw)) return null;
+  // Anything container-shaped is a profiles container, valid or not: a
+  // corrupt container must NEVER be reinterpreted as a single save (the
+  // container version collides with save v1).
+  if ("profiles" in raw || "activeProfileId" in raw) {
+    return validateProfiles(raw) ? (raw as ProfilesData) : null;
+  }
+  // Legacy single save: run the save migration chain, then wrap.
+  const save = migrateSave(raw);
+  if (!save) return null;
+  const profile = newProfile("Default", PROFILE_AVATARS[0]);
+  const legacy = raw as Record<string, unknown>;
+  const legacySettings = isRecord(legacy.settings) ? legacy.settings : {};
+  // The PIN also survives on the migrated save record (v2->v3 migration
+  // stamps it onto settings); read it from either spot.
+  const migratedSettings = save.settings as unknown as Record<string, unknown>;
+  const pin =
+    typeof legacySettings.grownUpsPin === "string"
+      ? legacySettings.grownUpsPin
+      : typeof migratedSettings.grownUpsPin === "string"
+        ? migratedSettings.grownUpsPin
+        : null;
+  if (pin !== null) delete migratedSettings.grownUpsPin;
+  profile.save = save;
+  return {
+    version: PROFILES_VERSION,
+    activeProfileId: profile.id,
+    profiles: { [profile.id]: profile },
+    device: { grownUpsPin: pin },
+  };
 }

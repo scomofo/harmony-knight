@@ -8,6 +8,7 @@ import { playTone } from "../lib/game/audio.ts";
 import { authoredLessons, type TaskSpec } from "../lib/game/course.ts";
 import { dueConcepts, scheduleRecall } from "../lib/game/learning.ts";
 import { nameToMidi } from "../lib/game/music.ts";
+import { intervalMissCopy } from "../lib/game/feedback.ts";
 import { notesNeedingWork, recentAccuracy } from "../lib/game/sr.ts";
 import type { NoteEvidence } from "../lib/game/schema.ts";
 import { useStore } from "../lib/game/store.ts";
@@ -140,7 +141,7 @@ export function NoteDrill({ initialTarget }: { initialTarget?: string }) {
   const [target, setTarget] = useState(() => initialTarget ?? pickTarget(useStore.getState().save.noteEvidence, range));
   const [recorded, setRecorded] = useState(false);
   const [heardTarget, setHeardTarget] = useState(false);
-  const [verdict, setVerdict] = useState<{ ok: boolean; cleared: boolean; firstTry: boolean } | null>(null);
+  const [verdict, setVerdict] = useState<{ ok: boolean; cleared: boolean; firstTry: boolean; coach?: string } | null>(null);
   const [lastTapped, setLastTapped] = useState<number | null>(null);
   const [rounds, setRounds] = useState(0);
   const [clearedCount, setClearedCount] = useState(0);
@@ -156,10 +157,15 @@ export function NoteDrill({ initialTarget }: { initialTarget?: string }) {
     const recent = recentAccuracy(historyRef.current.slice(-10));
     const cleared = answerNote(target, ok, correctFirstTry, recent);
     setRecorded(true);
-    setVerdict({ ok, cleared, firstTry: correctFirstTry });
+    setVerdict({
+      ok,
+      cleared,
+      firstTry: correctFirstTry,
+      coach: ok ? undefined : intervalMissCopy(nameToMidi(target), midi),
+    });
     setRounds((n) => n + 1);
     if (cleared) setClearedCount((n) => n + 1);
-    emitEffect({ event: ok && !heardTarget ? "correct" : ok ? "assisted" : "needs-work", cancelKey: `note-${target}` });
+    emitEffect({ event: ok && !heardTarget ? "correct" : ok ? "assisted" : "needs-work", anchor: "note-drill-card", cancelKey: `note-${target}` });
   };
 
   const hearTarget = () => {
@@ -182,7 +188,7 @@ export function NoteDrill({ initialTarget }: { initialTarget?: string }) {
         Round {rounds + 1} · {clearedCount} cleared this session
       </p>
 
-      <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
+      <div id="note-drill-card" className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
         <p className="text-sm text-white/60">Find this note on the keyboard</p>
         <p className="mt-2 text-5xl font-bold tracking-wide" aria-live="polite">
           <TargetName target={target} />
@@ -205,6 +211,9 @@ export function NoteDrill({ initialTarget }: { initialTarget?: string }) {
             </>
           ) : (
             <>Not quite — wrong key. Look for {target} on the keyboard and try again, or hear the target first.</>
+          )}
+          {verdict.coach && (
+            <p className="mt-2 text-white/70">🎯 {verdict.coach}</p>
           )}
           <div className="mt-3">
             <button

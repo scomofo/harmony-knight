@@ -8,14 +8,24 @@
 
 import { create } from "zustand";
 import {
+  PROFILES_KEY,
+  PROFILES_VERSION,
   SAVE_KEY,
+  defaultProfiles,
   defaultSave,
   importSave,
-  migrateSave,
+  migrateToProfiles,
+  newProfile,
+  sanitizeAvatar,
+  sanitizeProfileName,
+  MAX_PROFILE_NAME_LENGTH,
   type ConceptReview,
+  type DeviceSettings,
   type GameStats,
   type LessonProgress,
   type NoteEvidence,
+  type ProfileData,
+  type ProfilesData,
   type SaveData,
   type SavedCreation,
   type Settings,
@@ -43,8 +53,26 @@ function stampQuest(save: SaveData, id: QuestId): SaveData {
 export type SaveStatus = "ok" | "quota-exceeded" | "unavailable";
 
 type Store = {
+  /** Active profile's save. Every game action below reads/writes this. */
   save: SaveData;
   saveStatus: SaveStatus;
+  /** Household profiles. */
+  activeProfileId: string;
+  profiles: Record<string, ProfileData>;
+  /** Grown-ups PIN — device-level, shared across profiles. */
+  grownUpsPin: string | null;
+  setGrownUpsPin: (pin: string | null) => void;
+  /** Switch the active profile; its save becomes `save` everywhere. */
+  switchProfile: (id: string) => void;
+  /** Create a profile and switch to it. Returns the new profile id. */
+  addProfile: (name: string, avatar: string) => string;
+  /** Rename / change avatar. Blank renames keep the old name. */
+  updateProfile: (id: string, patch: { name?: string; avatar?: string }) => void;
+  /**
+   * Delete a profile. Deleting the active one falls back to the oldest
+   * remaining; deleting the last profile starts a fresh default.
+   */
+  deleteProfile: (id: string) => void;
   /** Merge a partial update and persist. */
   update: (fn: (s: SaveData) => SaveData) => void;
   updateSettings: (patch: Partial<Settings>) => void;
@@ -99,27 +127,87 @@ type Store = {
   resetSave: () => void;
 };
 
-function load(): SaveData {
+function loadProfiles(): ProfilesData {
+  try {
+    const raw = localStorage.getItem(PROFILES_KEY);
+    if (raw) {
+      const data = migrateToProfiles(JSON.parse(raw));
+      if (data) {
+        // Retire a stale legacy key if both somehow exist.
+        try {
+          localStorage.removeItem(SAVE_KEY);
+        } catch {
+          /* ignore */
+        }
+        return data;
+      }
+    }
+  } catch {
+    /* fall through to legacy / fresh */
+  }
+  return migrateLegacyStorage() ?? defaultProfiles();
+}
+
+/**
+ * Adopt a pre-profiles single save (SAVE_KEY): run it through the save
+ * migration chain, wrap it into a "Default" profile, persist under
+ * PROFILES_KEY, and retire the legacy key. Exported for tests.
+ */
+export function migrateLegacyStorage(): ProfilesData | null {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
-    if (!raw) return defaultSave();
-    const migrated = migrateSave(JSON.parse(raw));
-    return migrated ?? defaultSave();
+    if (!raw) return null;
+    const data = migrateToProfiles(JSON.parse(raw));
+    if (!data) return null;
+    try {
+      localStorage.setItem(PROFILES_KEY, JSON.stringify(data));
+      localStorage.removeItem(SAVE_KEY);
+    } catch {
+      /* adopted in memory even if the write failed */
+    }
+    return data;
   } catch {
-    return defaultSave();
+    return null;
   }
 }
 
+/** Build the persisted container from current store state. */
+function containerOf(s: {
+  activeProfileId: string;
+  profiles: Record<string, ProfileData>;
+  grownUpsPin: string | null;
+}): ProfilesData {
+  return {
+    version: PROFILES_VERSION,
+    activeProfileId: s.activeProfileId,
+    profiles: s.profiles,
+    device: { grownUpsPin: s.grownUpsPin } satisfies DeviceSettings,
+  };
+}
+
 let writeTimer: number | undefined;
-function persist(save: SaveData, setStatus: (s: SaveStatus) => void): void {
+function writeNow(data: ProfilesData, setStatus?: (s: SaveStatus) => void): void {
+  try {
+    localStorage.setItem(PROFILES_KEY, JSON.stringify(data));
+  } catch (e) {
+    setStatus?.(
+      e instanceof DOMException && e.name === "QuotaExceededError" ? "quota-exceeded" : "unavailable",
+    );
+  }
+}
+/**
+ * Debounced persist. The container is built from live state at fire time,
+ * so a profile switch (written synchronously) can never be clobbered by a
+ * stale debounced write.
+ */
+function persist(setStatus: (s: SaveStatus) => void): void {
   window.clearTimeout(writeTimer);
-  writeTimer = window.setTimeout(() => {
-    try {
-      localStorage.setItem(SAVE_KEY, JSON.stringify(save));
-    } catch (e) {
-      setStatus(e instanceof DOMException && e.name === "QuotaExceededError" ? "quota-exceeded" : "unavailable");
-    }
-  }, 150);
+  writeTimer = window.setTimeout(() => writeNow(containerOf(useStore.getState()), setStatus), 150);
+}
+/** Identity changes (switch/add/delete/PIN) persist synchronously. */
+function persistNow(setStatus: (s: SaveStatus) => void): void {
+  window.clearTimeout(writeTimer);
+  writeNow(containerOf(useStore.getState()), setStatus);
 }
 
 /**
@@ -129,25 +217,98 @@ function persist(save: SaveData, setStatus: (s: SaveStatus) => void): void {
  */
 function flushSync(): void {
   window.clearTimeout(writeTimer);
-  try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify(useStore.getState().save));
-  } catch {
-    /* last resort; nothing more we can do at teardown */
-  }
+  writeNow(containerOf(useStore.getState()));
 }
 
 if (typeof window !== "undefined") {
   window.addEventListener("pagehide", flushSync);
 }
 
+const initial = loadProfiles();
+const initialActive = initial.profiles[initial.activeProfileId];
+
 export const useStore = create<Store>()((set, get) => ({
-  save: load(),
+  save: initialActive.save,
   saveStatus: "ok",
+  activeProfileId: initial.activeProfileId,
+  profiles: initial.profiles,
+  grownUpsPin: initial.device.grownUpsPin,
+
+  setGrownUpsPin: (pin) => {
+    set({ grownUpsPin: pin });
+    persistNow((saveStatus) => set({ saveStatus }));
+  },
+
+  switchProfile: (id) => {
+    const state = get();
+    if (!state.profiles[id] || id === state.activeProfileId) return;
+    set({ activeProfileId: id, save: state.profiles[id].save });
+    persistNow((saveStatus) => set({ saveStatus }));
+  },
+
+  addProfile: (name, avatar) => {
+    const profile = newProfile(name, avatar);
+    set((state) => ({
+      profiles: { ...state.profiles, [profile.id]: profile },
+      activeProfileId: profile.id,
+      save: profile.save,
+    }));
+    persistNow((saveStatus) => set({ saveStatus }));
+    return profile.id;
+  },
+
+  updateProfile: (id, patch) => {
+    const state = get();
+    const profile = state.profiles[id];
+    if (!profile) return;
+    const renamed =
+      patch.name === undefined
+        ? profile.name
+        : patch.name.trim().slice(0, MAX_PROFILE_NAME_LENGTH) || profile.name;
+    set({
+      profiles: {
+        ...state.profiles,
+        [id]: {
+          ...profile,
+          name: sanitizeProfileName(renamed),
+          avatar: patch.avatar === undefined ? profile.avatar : sanitizeAvatar(patch.avatar),
+        },
+      },
+    });
+    persistNow((saveStatus) => set({ saveStatus }));
+  },
+
+  deleteProfile: (id) => {
+    const state = get();
+    if (!state.profiles[id]) return;
+    const remaining = Object.values(state.profiles)
+      .filter((p) => p.id !== id)
+      .sort((a, b) => a.createdAt - b.createdAt);
+    if (remaining.length === 0) {
+      // Last profile out: start over with a fresh default rather than an
+      // empty, unusable container.
+      const fresh = defaultProfiles();
+      const only = fresh.profiles[fresh.activeProfileId];
+      set({ profiles: fresh.profiles, activeProfileId: fresh.activeProfileId, save: only.save });
+    } else {
+      const profiles = { ...state.profiles };
+      delete profiles[id];
+      const activeProfileId =
+        state.activeProfileId === id ? remaining[0].id : state.activeProfileId;
+      set({ profiles, activeProfileId, save: profiles[activeProfileId].save });
+    }
+    persistNow((saveStatus) => set({ saveStatus }));
+  },
 
   update: (fn) => {
-    const save = { ...fn(get().save), updatedAt: Date.now() };
-    set({ save });
-    persist(save, (saveStatus) => set({ saveStatus }));
+    const state = get();
+    const save = { ...fn(state.save), updatedAt: Date.now() };
+    const profile = state.profiles[state.activeProfileId];
+    const profiles = profile
+      ? { ...state.profiles, [state.activeProfileId]: { ...profile, save } }
+      : state.profiles;
+    set({ save, profiles });
+    persist((saveStatus) => set({ saveStatus }));
   },
 
   updateSettings: (patch) =>
@@ -313,23 +474,43 @@ export const useStore = create<Store>()((set, get) => ({
     return true;
   },
 
+  /**
+   * Replace the ACTIVE profile's save with an imported backup. Other
+   * profiles are untouched. The grown-ups PIN is device-level, so an
+   * imported save never carries one (a stale copy from an old backup is
+   * stripped, never resurrected).
+   */
   replaceSave: (json) => {
     const imported = importSave(json);
     if (!imported) return { ok: false, reason: "Import failed validation and was rejected." };
-    set({ save: imported, saveStatus: "ok" });
+    delete (imported.settings as unknown as Record<string, unknown>).grownUpsPin;
+    const state = get();
+    const profile = state.profiles[state.activeProfileId];
+    const profiles = profile
+      ? { ...state.profiles, [state.activeProfileId]: { ...profile, save: imported } }
+      : state.profiles;
+    set({ save: imported, profiles, saveStatus: "ok" });
+    window.clearTimeout(writeTimer);
     try {
-      localStorage.setItem(SAVE_KEY, JSON.stringify(imported));
+      localStorage.setItem(PROFILES_KEY, JSON.stringify(containerOf(get())));
     } catch {
       return { ok: false, reason: "Storage quota exceeded; live progress kept." };
     }
     return { ok: true };
   },
 
+  /** Reset the ACTIVE profile's save to fresh. Other profiles are untouched. */
   resetSave: () => {
+    const state = get();
     const fresh = defaultSave();
-    set({ save: fresh, saveStatus: "ok" });
+    const profile = state.profiles[state.activeProfileId];
+    const profiles = profile
+      ? { ...state.profiles, [state.activeProfileId]: { ...profile, save: fresh } }
+      : state.profiles;
+    set({ save: fresh, profiles, saveStatus: "ok" });
+    window.clearTimeout(writeTimer);
     try {
-      localStorage.setItem(SAVE_KEY, JSON.stringify(fresh));
+      localStorage.setItem(PROFILES_KEY, JSON.stringify(containerOf(get())));
     } catch {
       /* fresh save is tiny; ignore */
     }
