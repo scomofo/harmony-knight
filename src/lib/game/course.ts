@@ -259,12 +259,7 @@ const CHAPTER_1: LessonBody[] = [
     chapterId: "ch1-sound",
     title: "Loud and Soft: Dynamics",
     estimateMinutes: 3,
-    tryTask: {
-      kind: "self-attempt",
-      seed: 0,
-      prompt:
-        "Clap twice: once piano (soft), once forte (loud). Then clap four beats as a crescendo — each clap a little louder than the last. Mark this done when your own hands have played all three dynamics.",
-    },
+    tryTask: { kind: "dynamics-id", seed: 8 },
     learn: [
       {
         kind: "text",
@@ -307,12 +302,7 @@ const CHAPTER_1: LessonBody[] = [
     chapterId: "ch1-sound",
     title: "Tone Color: Timbre",
     estimateMinutes: 3,
-    tryTask: {
-      kind: "self-attempt",
-      seed: 0,
-      prompt:
-        "Hum a comfortable note on 'ah', then sing the same note on 'ee'. Same pitch — different color. That's timbre, made by your own voice. Mark this done when you've heard your tone change.",
-    },
+    tryTask: { kind: "sing-back", seed: 9 },
     learn: [
       {
         kind: "text",
@@ -450,7 +440,7 @@ const CHAPTER_2: LessonBody[] = [
     chapterId: "ch2-notation",
     title: "The Staff",
     estimateMinutes: 4,
-    tryTask: { kind: "self-attempt", seed: 0 },
+    tryTask: { kind: "staff-id", seed: 22, variant: "produce" },
     learn: [
       {
         kind: "text",
@@ -761,7 +751,7 @@ const CHAPTER_3: LessonBody[] = [
     chapterId: "ch3-rhythm",
     title: "Rests, Ties, Syncopation",
     estimateMinutes: 4,
-    tryTask: { kind: "rhythm-echo", seed: 34 },
+    tryTask: { kind: "rhythm-tap", seed: 35 },
     learn: [
       {
         kind: "text",
@@ -877,12 +867,7 @@ const CHAPTER_4: LessonBody[] = [
     chapterId: "ch4-tonality",
     title: "Key Signatures",
     estimateMinutes: 4,
-    tryTask: {
-      kind: "self-attempt",
-      seed: 0,
-      prompt:
-        "On paper (or in your head), write the order of sharps, then the key signatures for G, D, A, F, and Bb major from memory. Check yourself against the lesson — then mark this done. Honest recall is the whole exercise.",
-    },
+    tryTask: { kind: "keysign-id", seed: 42, variant: "produce" },
     learn: [
       {
         kind: "text",
@@ -1095,12 +1080,7 @@ const CHAPTER_5: LessonBody[] = [
     chapterId: "ch5-chords",
     title: "Consonance and Tension",
     estimateMinutes: 4,
-    tryTask: {
-      kind: "self-attempt",
-      seed: 0,
-      prompt:
-        "At your instrument (or in your head), play a major third, then a minor second. Sit with each: one feels like home, the other like it wants to move. Then resolve the tense one into the stable one. When you've felt the difference, mark this done.",
-    },
+    tryTask: { kind: "consonance-id", seed: 52, variant: "produce" },
     learn: [
       {
         kind: "text",
@@ -1254,12 +1234,7 @@ const CHAPTER_6: LessonBody[] = [
     chapterId: "ch6-phrases",
     title: "Roman Numerals",
     estimateMinutes: 4,
-    tryTask: {
-      kind: "self-attempt",
-      seed: 0,
-      prompt:
-        "On paper, write the seven diatonic triads of G major with their roman numerals: I, ii, iii, IV, V, vi, vii°. Remember — uppercase for major, lowercase for minor. Check yourself against the lesson, then mark this done.",
-    },
+    tryTask: { kind: "numeral-id", seed: 61, variant: "produce" },
     learn: [
       {
         kind: "text",
@@ -1406,12 +1381,7 @@ const CHAPTER_6: LessonBody[] = [
     chapterId: "ch6-phrases",
     title: "Melody Over Chords",
     estimateMinutes: 4,
-    tryTask: {
-      kind: "self-attempt",
-      seed: 0,
-      prompt:
-        "Hum or play a short four-note melody over a C major triad. First land on a chord tone (C, E, or G) and feel how settled it is — then try landing on a non-chord tone and feel the difference. Mark this done when you've tried both.",
-    },
+    tryTask: { kind: "melody-fit", seed: 64, variant: "produce" },
     learn: [
       {
         kind: "text",
@@ -1506,12 +1476,7 @@ const CHAPTER_7: LessonBody[] = [
     chapterId: "ch7-voiceleading",
     title: "Parallels",
     estimateMinutes: 4,
-    tryTask: {
-      kind: "self-attempt",
-      seed: 0,
-      prompt:
-        "On paper, write two chords in C major as outer voices (bass + soprano), e.g. C–G moving to D–A. Check the interval between the voices in each chord: if both are fifths (or both octaves) moving the same way, you've written parallels — now fix them with contrary motion. Mark this done when you've spotted and fixed one.",
-    },
+    tryTask: { kind: "parallel-id", seed: 72 },
     learn: [
       {
         kind: "text",
@@ -1617,12 +1582,7 @@ const CHAPTER_7: LessonBody[] = [
     chapterId: "ch7-voiceleading",
     title: "Melodic Decoration",
     estimateMinutes: 4,
-    tryTask: {
-      kind: "self-attempt",
-      seed: 0,
-      prompt:
-        "Take a simple stepwise line — C D E — and decorate it: turn the D into a neighbor figure (C D C) or add a passing tone (C D E becomes C D E with a neighbor on the way back). Hum or play your decorated line, keeping the chord tones on the strong beats. Mark this done when you've tried one decoration.",
-    },
+    tryTask: { kind: "decoration-id", seed: 74, variant: "produce" },
     learn: [
       {
         kind: "text",
@@ -1675,12 +1635,7 @@ const CHAPTER_8: LessonBody[] = [
     chapterId: "ch8-keychange",
     title: "Closely Related Keys",
     estimateMinutes: 4,
-    tryTask: {
-      kind: "self-attempt",
-      seed: 0,
-      prompt:
-        "On paper, list the five closely related keys of G major: its dominant, its subdominant, its relative minor, and the relatives of the dominant and subdominant. (One of them is E minor — find the other four.) Check against the lesson, then mark this done.",
-    },
+    tryTask: { kind: "related-id", seed: 81, variant: "produce" },
     learn: [
       {
         kind: "text",
@@ -1727,12 +1682,7 @@ const CHAPTER_8: LessonBody[] = [
     chapterId: "ch8-keychange",
     title: "Pivot Chords",
     estimateMinutes: 4,
-    tryTask: {
-      kind: "self-attempt",
-      seed: 0,
-      prompt:
-        "Find a pivot chord between C major and G major: one chord with a sensible roman numeral in both keys. (Hint: Am is vi in C and ii in G.) Write the two numerals, then play or hum C – Am – D – G and feel the doorway swing. Mark this done when you've found your pivot.",
-    },
+    tryTask: { kind: "pivot-id", seed: 82 },
     learn: [
       {
         kind: "text",
@@ -1935,12 +1885,7 @@ const CHAPTER_9: LessonBody[] = [
     chapterId: "ch9-color",
     title: "Extensions",
     estimateMinutes: 4,
-    tryTask: {
-      kind: "self-attempt",
-      seed: 0,
-      prompt:
-        "Build a Cmaj9 from scratch: C E G B D. Play or arpeggiate it slowly — then remove the D and play Cmaj7. Hear what the extension added? That color is the whole lesson. Mark this done when you've heard the difference.",
-    },
+    tryTask: { kind: "extension-id", seed: 92, variant: "produce" },
     learn: [
       {
         kind: "text",
@@ -1987,12 +1932,7 @@ const CHAPTER_9: LessonBody[] = [
     chapterId: "ch9-color",
     title: "Borrowed Chords",
     estimateMinutes: 4,
-    tryTask: {
-      kind: "self-attempt",
-      seed: 0,
-      prompt:
-        "Play or hum the roots C – F – F – C, but make the second F minor (F Ab C) — the borrowed iv. Feel how it darkens the phrase before C brings back the light. Mark this done when you've felt the shadow pass.",
-    },
+    tryTask: { kind: "borrowed-id", seed: 93 },
     learn: [
       {
         kind: "text",
@@ -2094,12 +2034,7 @@ const CHAPTER_10: LessonBody[] = [
     chapterId: "ch10-counterpoint",
     title: "Melodic Shape",
     estimateMinutes: 4,
-    tryTask: {
-      kind: "self-attempt",
-      seed: 0,
-      prompt:
-        "Sing or play a four-note line that climbs to one clear peak and comes home (try C – E – G – E, then make your own). If you can't sing it smoothly, reshape it until you can. Mark this done when your line has one hill, not a flat road.",
-    },
+    tryTask: { kind: "sing-back", seed: 103 },
     learn: [
       {
         kind: "text",
@@ -2152,12 +2087,7 @@ const CHAPTER_10: LessonBody[] = [
     chapterId: "ch10-counterpoint",
     title: "Closing Gestures",
     estimateMinutes: 4,
-    tryTask: {
-      kind: "self-attempt",
-      seed: 0,
-      prompt:
-        "Play or sing a 7–6 close: hold F over a G bass, then sigh down to E while the bass stays put (then resolve both to C). Feel the tension melt. Mark this done when you've felt the sigh.",
-    },
+    tryTask: { kind: "perform-note", seed: 104, variant: "closing" },
     learn: [
       {
         kind: "text",
@@ -2363,12 +2293,7 @@ const CHAPTER_11: LessonBody[] = [
     chapterId: "ch11-development",
     title: "Development and Form",
     estimateMinutes: 4,
-    tryTask: {
-      kind: "self-attempt",
-      seed: 0,
-      prompt:
-        "Take the motif C – D – E and develop it three ways: sequence it up a step (D – E – F), invert it (mirror the shape downward), and fragment it (just E – D, repeated). Mark this done when you've made three transformations.",
-    },
+    tryTask: { kind: "form-id", seed: 112, variant: "produce" },
     learn: [
       {
         kind: "text",

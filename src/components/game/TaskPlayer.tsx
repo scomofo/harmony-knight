@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { TeachingPlayer } from "./TeachingPlayer.tsx";
 import { DuetPlayer } from "./DuetPlayer.tsx";
+import { LessonVisualView } from "./LessonVisual.tsx";
+import {
+  KeyboardAttempt,
+  MicAttempt,
+  TapPadAttempt,
+} from "./PerformInputs.tsx";
 import { emitEffect } from "../../lib/game/effects.ts";
 import { useStore } from "../../lib/game/store.ts";
 import type { PracticalTask } from "../../lib/game/tasks.ts";
@@ -37,11 +43,18 @@ export function TaskPlayer({
 }: {
   lessonId?: string;
   task: PracticalTask;
-  onResult?: (r: { correct: boolean; firstTry: boolean; assisted: boolean }) => void;
+  onResult?: (r: {
+    correct: boolean;
+    firstTry: boolean;
+    assisted: boolean;
+  }) => void;
 }) {
   const recordTaskAttempt = useStore((s) => s.recordTaskAttempt);
   const [hintCount, setHintCount] = useState(0);
-  const [verdict, setVerdict] = useState<{ ok: boolean; firstTry: boolean } | null>(null);
+  const [verdict, setVerdict] = useState<{
+    ok: boolean;
+    firstTry: boolean;
+  } | null>(null);
   const [solved, setSolved] = useState(false);
   const [attempts, setAttempts] = useState(0);
 
@@ -89,27 +102,46 @@ export function TaskPlayer({
               lane={`task-${task.taskId}-duet`}
             />
           ) : task.audio.segments ? (
-            task.audio.segments.map((seg, i) => (
-              <TeachingPlayer
-                key={seg.label}
-                midis={seg.notes}
-                caption={seg.label}
-                lane={`task-${task.taskId}-${i}`}
-                durations={seg.durations}
-              />
-            ))
+            task.audio.segments.map((seg, i) =>
+              seg.voices ? (
+                <DuetPlayer
+                  key={seg.label}
+                  voices={seg.voices}
+                  caption={seg.label}
+                  lane={`task-${task.taskId}-${i}`}
+                />
+              ) : (
+                <TeachingPlayer
+                  key={seg.label}
+                  midis={seg.notes}
+                  caption={seg.label}
+                  lane={`task-${task.taskId}-${i}`}
+                  durations={seg.durations}
+                  gains={seg.gains}
+                  types={seg.types}
+                />
+              ),
+            )
           ) : (
             <TeachingPlayer
               midis={task.audio.notes}
               caption="Listen, then answer."
               lane={`task-${task.taskId}`}
               durations={task.audio.durations}
+              gains={task.audio.gains}
+              types={task.audio.types}
             />
           )}
         </div>
       )}
 
-      <AttemptControls kind={task.kind} choices={task.choices} disabled={solved} onAttempt={attempt} />
+      {task.visual && (
+        <div className="mt-3">
+          <LessonVisualView visual={task.visual} />
+        </div>
+      )}
+
+      <AttemptControls task={task} disabled={solved} onAttempt={attempt} />
 
       {task.hints.length > 0 && hintCount < task.hints.length && !solved && (
         <button
@@ -123,7 +155,10 @@ export function TaskPlayer({
       {hintCount > 0 && (
         <div className="mt-2 space-y-1">
           {task.hints.slice(0, hintCount).map((h, i) => (
-            <p key={i} className="rounded-lg bg-amber-500/10 p-2 text-sm text-amber-200">
+            <p
+              key={i}
+              className="rounded-lg bg-amber-500/10 p-2 text-sm text-amber-200"
+            >
               Hint {i + 1}: {h}
             </p>
           ))}
@@ -134,7 +169,9 @@ export function TaskPlayer({
         <p
           role="status"
           className={`mt-3 rounded-lg p-3 text-sm ${
-            verdict.ok ? "bg-emerald-500/15 text-emerald-200" : "bg-white/5 text-white/85"
+            verdict.ok
+              ? "bg-emerald-500/15 text-emerald-200"
+              : "bg-white/5 text-white/85"
           }`}
         >
           {verdict.ok ? task.praise : task.nudge}
@@ -153,19 +190,42 @@ export function TaskPlayer({
 }
 
 function AttemptControls({
-  kind,
-  choices,
+  task,
   disabled,
   onAttempt,
 }: {
-  kind: PracticalTask["kind"];
-  choices?: string[];
+  task: PracticalTask;
   disabled: boolean;
   onAttempt: (value: unknown) => void;
 }) {
+  const input = task.attemptInput;
+  if (input?.kind === "keyboard") {
+    return (
+      <KeyboardAttempt
+        config={input}
+        disabled={disabled}
+        onAttempt={onAttempt}
+      />
+    );
+  }
+  if (input?.kind === "tap-pad") {
+    return (
+      <TapPadAttempt config={input} disabled={disabled} onAttempt={onAttempt} />
+    );
+  }
+  if (input?.kind === "mic") {
+    return (
+      <MicAttempt config={input} disabled={disabled} onAttempt={onAttempt} />
+    );
+  }
+  const choices = task.choices;
   if (choices && choices.length > 0) {
     return (
-      <div className="mt-3 grid grid-cols-3 gap-2" role="group" aria-label="Answer choices">
+      <div
+        className="mt-3 grid grid-cols-3 gap-2"
+        role="group"
+        aria-label="Answer choices"
+      >
         {choices.map((c) => (
           <button
             key={c}
@@ -180,9 +240,13 @@ function AttemptControls({
       </div>
     );
   }
-  if (kind === "compare-pitch") {
+  if (task.kind === "compare-pitch") {
     return (
-      <div className="mt-3 flex gap-2" role="group" aria-label="Which note is higher">
+      <div
+        className="mt-3 flex gap-2"
+        role="group"
+        aria-label="Which note is higher"
+      >
         <button
           type="button"
           disabled={disabled}
