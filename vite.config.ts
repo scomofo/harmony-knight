@@ -32,7 +32,10 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,html,png,svg}"],
+        // Audio and font extensions are included even though the app currently
+        // ships none: every sound is synthesized with Web Audio, so a future
+        // static .mp3/.wav would otherwise install silently broken offline.
+        globPatterns: ["**/*.{js,css,html,png,svg,mp3,wav,ogg,woff2}"],
         // SPA: serve the app shell for client-side routes, so installed
         // launches and deep links work offline.
         navigateFallback: "index.html",
