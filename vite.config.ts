@@ -40,7 +40,7 @@ export default defineConfig({
       },
     }),
   ],
-  server: { host: "0.0.0.0", port: 8080 },
+  server: { host: "0.0.0.0", port: 8093 },
   test: {
     environment: "jsdom",
     globals: true,

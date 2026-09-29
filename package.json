@@ -31,7 +31,7 @@
   "private": true,
   "scripts": {
     "build": "tsc --noEmit && vite build",
-    "dev": "vite dev --host 0.0.0.0 --port 8080",
+    "dev": "vite dev --host 0.0.0.0 --port 8093",
     "format": "prettier --write .",
     "lint": "eslint .",
     "preview": "vite preview",
